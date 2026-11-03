@@ -1,0 +1,14 @@
+{
+  "name": "@hdc/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "start": "tsx src/main.ts"
+  },
+  "dependencies": {
+    "@hdc/shared": "*",
+    "ulid": "^3.0.2"
+  }
+}

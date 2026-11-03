@@ -147,3 +147,16 @@ vite.config.ts.timestamp-*
 
 # Turbo Repo
 .turbo
+
+# --- このプロジェクト ---
+.DS_Store
+.env
+.env.*
+!.env.example
+# SQLite の保存先（実運用・訓練の記録）
+data/
+# Playwright
+test-results/
+playwright-report/
+e2e/.tmp/
+dist/
