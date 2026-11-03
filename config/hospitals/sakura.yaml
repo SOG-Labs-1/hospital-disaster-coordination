@@ -1,0 +1,130 @@
+# 病院設定A：さくら総合病院(仮)
+# すべて架空。実在の病院・職員とは関係ありません。
+# 「# 仮」と書いた数値は設計書 §13 で未決定のため、仮に置いた値です。
+
+id: sakura
+name: さくら総合病院(仮)
+fictional: true
+staleAfterMinutes: 30 # 仮
+
+locations:
+  - { id: hq, name: 災害対策本部（2階会議室）, kind: headquarters, hasTerminal: true }
+  - { id: er, name: 救急外来, kind: emergency, hasTerminal: true }
+  - { id: outpatient-hall, name: 外来ホール, kind: outpatient, hasTerminal: true }
+  - { id: auditorium, name: 講堂, kind: hall, hasTerminal: true }
+  - { id: rehab, name: リハビリ室, kind: rehabilitation, hasTerminal: false }
+  - { id: or, name: 手術室, kind: operating-room, hasTerminal: true }
+  - { id: ward-3e, name: 3階東病棟, kind: ward, hasTerminal: true }
+  - { id: ward-4e, name: 4階東病棟, kind: ward, hasTerminal: true }
+  - id: ward-5w
+    name: 5階西病棟
+    kind: ward
+    hasTerminal: false
+    routeNote: 5階への移動は東側エレベーターのみ # 仮
+
+# 色だけで区別しないよう、記号と印刷時の枠線を区分ごとに変えている
+triageCategories:
+  - id: red
+    label: 赤
+    symbol: ◆
+    description: 最優先治療（I）
+    color: '#c8102e'
+    textColor: '#ffffff'
+    printBorder: double
+  - id: yellow
+    label: 黄
+    symbol: ▲
+    description: 待機的治療（II）
+    color: '#ffd23f'
+    textColor: '#000000'
+    printBorder: solid
+  - id: green
+    label: 緑
+    symbol: ●
+    description: 保留（III）
+    color: '#2e7d32'
+    textColor: '#ffffff'
+    printBorder: dashed
+  - id: black
+    label: 黒
+    symbol: ✕
+    description: 救命困難・死亡（0）
+    color: '#1a1a1a'
+    textColor: '#ffffff'
+    printBorder: dotted
+
+# 災害時の用途（場所とは別の概念）
+zones:
+  - { id: red-zone, name: 赤ゾーン, triage: [red] }
+  - { id: yellow-zone, name: 黄ゾーン, triage: [yellow] }
+  - { id: green-zone, name: 緑ゾーン, triage: [green] }
+  - { id: black-zone, name: 黒ゾーン, triage: [black] }
+
+zoneAssignments:
+  - { zoneId: red-zone, locationId: er }
+  - { zoneId: yellow-zone, locationId: outpatient-hall }
+  - { zoneId: green-zone, locationId: auditorium }
+  - { zoneId: black-zone, locationId: rehab }
+
+# 受け入れ能力の初期値（人）
+capacity:
+  - { locationId: er, triage: red, value: 6 } # 仮
+  - { locationId: outpatient-hall, triage: yellow, value: 15 } # 仮
+  - { locationId: auditorium, triage: green, value: 40 } # 仮
+  - { locationId: rehab, triage: black, value: 10 } # 仮
+  - { locationId: or, triage: red, value: 3 } # 仮
+  - { locationId: ward-3e, triage: yellow, value: 4 } # 仮
+  - { locationId: ward-4e, triage: yellow, value: 4 } # 仮
+  - { locationId: ward-5w, triage: yellow, value: 3 } # 仮
+
+professions:
+  - { id: doctor, name: 医師 }
+  - { id: nurse, name: 看護師 }
+  - { id: transporter, name: 搬送要員 }
+  - { id: clerk, name: 事務 }
+  - { id: technician, name: 技師 }
+
+positions:
+  - { id: hq-chief, name: 本部長, locationId: hq, permissions: [direct-transport, assign-support] }
+  - { id: hq-transport, name: 搬送調整担当, locationId: hq, permissions: [direct-transport] }
+  - { id: hq-tracking, name: 患者所在把握担当, locationId: hq, permissions: [register-patient] }
+  - { id: hq-recorder, name: 記録担当, locationId: hq, permissions: [register-patient] }
+  - { id: red-zone-lead, name: 赤ゾーン責任者, locationId: er, permissions: [accept-transport] }
+  - { id: yellow-zone-lead, name: 黄ゾーン責任者, locationId: outpatient-hall, permissions: [accept-transport] }
+  - { id: green-zone-lead, name: 緑ゾーン責任者, locationId: auditorium, permissions: [accept-transport] }
+  - { id: or-lead, name: 手術室責任者, locationId: or, permissions: [accept-transport] }
+  - { id: ward-3e-lead, name: 3階東病棟責任者, locationId: ward-3e, permissions: [accept-transport] }
+  - { id: ward-4e-lead, name: 4階東病棟責任者, locationId: ward-4e, permissions: [accept-transport] }
+  - { id: ward-5w-lead, name: 5階西病棟責任者, locationId: ward-5w, permissions: [accept-transport] }
+
+# 入力者として選ぶ職員（すべて架空の名前）
+staff:
+  - { id: hq-01, name: 青木 はるか, professionId: nurse, locationId: hq }
+  - { id: hq-02, name: 石田 健, professionId: clerk, locationId: hq }
+  - { id: hq-03, name: 上野 美咲, professionId: nurse, locationId: hq }
+  - { id: hq-04, name: 岡本 修, professionId: doctor, locationId: hq }
+  - { id: er-01, name: 川口 直子, professionId: nurse, locationId: er }
+  - { id: er-02, name: 北村 亮, professionId: doctor, locationId: er }
+  - { id: oh-01, name: 小林 さとみ, professionId: nurse, locationId: outpatient-hall }
+  - { id: au-01, name: 佐野 一樹, professionId: clerk, locationId: auditorium }
+  - { id: or-01, name: 田村 由紀, professionId: nurse, locationId: or }
+  - { id: w3e-01, name: 中島 綾, professionId: nurse, locationId: ward-3e }
+  - { id: w4e-01, name: 野村 拓也, professionId: nurse, locationId: ward-4e }
+
+warningReasons:
+  - { id: confirmed-different, label: 別の患者であることを確認した }
+  - { id: tag-misread, label: タッグ番号の読み違いの可能性があり、後で確認する }
+  - { id: hq-instruction, label: 本部の指示による }
+  - { id: other, label: その他（理由を書く） }
+
+resources:
+  - { id: stretcher, name: ストレッチャー, unit: 台 }
+  - { id: wheelchair, name: 車いす, unit: 台 }
+  - { id: oxygen, name: 酸素ボンベ, unit: 本 }
+
+checklist:
+  - { id: hq-setup, text: 本部の設置と本部長の決定を記録したか }
+  - { id: zone-open, text: 各ゾーンの開設と責任者を記録したか }
+  - { id: patient-location, text: 全患者の所在を確認時刻つきで把握しているか }
+  - { id: transport-ack, text: 搬送の指示に受領確認を取ったか }
+  - { id: support-done, text: 支援要請の完了を確認したか }

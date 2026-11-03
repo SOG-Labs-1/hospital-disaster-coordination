@@ -1,0 +1,36 @@
+import { readdirSync } from 'node:fs';
+import { join } from 'node:path';
+import { describe, expect, it } from 'vitest';
+import { contrastRatio } from '@hdc/shared';
+import { loadHospitalConfig, repoRoot } from './config';
+
+const ids = readdirSync(join(repoRoot, 'config/hospitals'))
+  .filter((f) => f.endsWith('.yaml'))
+  .map((f) => f.replace(/\.yaml$/, ''));
+
+describe.each(ids)('病院設定 %s', (id) => {
+  const config = loadHospitalConfig(id);
+
+  it('架空の病院として読み込める', () => {
+    expect(config.fictional).toBe(true);
+    expect(config.name).toMatch(/\(仮\)|（仮）/);
+  });
+
+  it('トリアージ区分は記号と印刷の枠線が区分ごとに異なる（色だけに頼らない）', () => {
+    const symbols = config.triageCategories.map((t) => t.symbol);
+    const borders = config.triageCategories.map((t) => t.printBorder);
+    expect(new Set(symbols).size).toBe(symbols.length);
+    expect(new Set(borders).size).toBe(borders.length);
+  });
+
+  it('トリアージ区分の文字色と背景色は WCAG 2.2 AA（4.5:1）を満たす', () => {
+    for (const t of config.triageCategories) {
+      expect(contrastRatio(t.color, t.textColor), t.label).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+});
+
+it('存在しない病院設定や不正な id は読み込まない', () => {
+  expect(() => loadHospitalConfig('../etc')).toThrow();
+  expect(() => loadHospitalConfig('nothing-here')).toThrow();
+});
