@@ -96,5 +96,5 @@ npm run validate:config -- config/hospitals/sakura.yaml
 ## 出典とライセンス
 
 - 本作品：MIT License（[LICENSE](LICENSE)）
-- `.claude/skills/webapp-testing`・`.claude/skills/frontend-design`・`.claude/skills/claude-api`：[anthropics/skills](https://github.com/anthropics/skills) から取得。各フォルダの `LICENSE.txt` のとおり Apache License 2.0 です。内容は改変していません
+- `.claude/skills/webapp-testing`・`.claude/skills/frontend-design`・`.claude/skills/claude-api`：[anthropics/skills](https://github.com/anthropics/skills) から取得（2026-11-04、コミット `ca45fc496a3436251f191354091d557da31c15b5`）。各フォルダの `LICENSE.txt` のとおり Apache License 2.0 です。内容は改変していません
 - フォント：[BIZ UDゴシック](https://fonts.google.com/specimen/BIZ+UDGothic)（SIL Open Font License 1.1、Google Fonts から読み込み）
