@@ -115,7 +115,7 @@ warningReasons:
   - { id: confirmed-different, label: 別の患者であることを確認した }
   - { id: tag-misread, label: タッグ番号の読み違いの可能性があり、後で確認する }
   - { id: hq-instruction, label: 本部の指示による }
-  - { id: other, label: その他（理由を書く） }
+  - { id: other, label: その他（理由を書く）, requiresDetail: true }
 
 resources:
   - { id: stretcher, name: ストレッチャー, unit: 台 }

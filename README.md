@@ -13,7 +13,7 @@
 ## しくみの要点
 
 - **記録は追記のみ**：すべての操作をイベントとして追記し、画面の状態はイベントから集計します。訂正は「訂正イベント」で残します（SQLite のトリガーで UPDATE と DELETE を禁止しています）
-- **実運用と訓練は別ファイル**：`data/live.sqlite` と `data/training.sqlite`。画面上部に常に「実運用／訓練」を表示します
+- **実運用と訓練は別ファイル**：`data/<病院id>/live.sqlite` と `data/<病院id>/training.sqlite`。画面上部に常に「実運用／訓練」を表示します
 - **病院ごとの設定**：場所・災害時の用途（ゾーン）・トリアージ区分の表示・職員一覧などは `config/hospitals/*.yaml` から読み込みます
 - **同時編集の検知**：対象ごとの版番号（expectedVersion）で競合を検知します
 - **重複は止めずに警告**：同じタッグ番号などは警告を出し、理由を記録すれば登録できます
@@ -35,7 +35,13 @@ npm run dev
 
 ブラウザで http://localhost:5173/?terminal=hq を開きます。`terminal` は端末を置く場所のIDです（病院設定の `locations` の id）。訓練モードは `&mode=training` を付けます。
 
-使う病院設定は環境変数 `HOSPITAL_CONFIG` で選べます（既定は `sakura`）。
+使う病院設定は環境変数 `HOSPITAL_CONFIG` で選べます（既定は `sakura`）。サーバーのポートは `SERVER_PORT`（既定 4000）、記録の保存先は `DATA_DIR` で変えられます。
+
+院内の1台のPCで本番のように動かす場合（画面をビルドしてサーバーから配信、http://localhost:4000 ）：
+
+```bash
+npm start
+```
 
 ## テストと検証
 

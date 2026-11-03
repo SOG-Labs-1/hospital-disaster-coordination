@@ -82,7 +82,12 @@ export const CapacitySchema = z.object({
   value: z.number().int().min(0),
 });
 
-export const WarningReasonSchema = z.object({ id, label: z.string().min(1) });
+export const WarningReasonSchema = z.object({
+  id,
+  label: z.string().min(1),
+  /** true なら補足の記入を必須にする（「その他」など） */
+  requiresDetail: z.boolean().default(false),
+});
 
 export const ResourceSchema = z.object({ id, name: z.string().min(1), unit: z.string().min(1) });
 

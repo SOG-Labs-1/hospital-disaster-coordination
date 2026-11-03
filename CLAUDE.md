@@ -58,4 +58,9 @@
 
 ## コマンド
 
-（土台を作ったら、ここに起動・テスト・検証のコマンドを追記すること）
+- `npm run dev` — サーバー（:4000）と画面（:5173）を起動。http://localhost:5173/?terminal=hq （訓練は `&mode=training`）
+- `npm test` — Vitest（shared・server・scripts のテスト）
+- `npm run test:e2e` — Playwright（テスト用ポート 4100/5174、保存先 `e2e/.tmp`。初回は `npx playwright install chromium`）
+- `npm run typecheck` — 3パッケージの型検査
+- `npm run validate:config [-- ファイル]` — config/・scenarios/ の YAML 検証（編集時はフックが自動実行）
+- 環境変数：`HOSPITAL_CONFIG`（既定 sakura）、`SERVER_PORT`（既定 4000。`PORT` は使わない）、`DATA_DIR`
