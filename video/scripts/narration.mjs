@@ -95,6 +95,77 @@ if (process.env.SCRIPT_MD) {
   }
   script.at(-1).pause = 0.5;
 }
+// PARAGRAPH=1：場面（section）ごとに文をまとめて1回で読ませる（文と文のつながりの抑揚が自然になる。利用者が聞き比べて選んだ）。
+// 文ごとの始まりと終わり（字幕の時刻）は、音声の無音の区間から割り出す
+if (process.env.PARAGRAPH === '1') {
+  const sections = [...new Set(script.map((x) => x.section))];
+  for (const sec of sections) {
+    const items = script.filter((x) => x.section === sec);
+    const v = trim(Buffer.from(pcm(await synth(items.map((x) => x.say).join('')))));
+    const n = v.length / 2;
+    const amp = (i) => Math.abs(v.readInt16LE(i * 2));
+    // 無音の区間（振幅が小さい状態が 120ms 以上続く所）を探す
+    const quiet = [];
+    const win = Math.round(0.01 * rate);
+    let startQ = -1;
+    for (let i = 0; i < n; i += win) {
+      let m = 0;
+      for (let k = i; k < Math.min(n, i + win); k++) m = Math.max(m, amp(k));
+      if (m < 600) { if (startQ < 0) startQ = i; }
+      else if (startQ >= 0) { if (i - startQ >= 0.12 * rate) quiet.push([startQ, i]); startQ = -1; }
+    }
+    // 文の切れ目の見込み：それぞれの文を1文だけで読ませた長さの割合（同じ声・速さ。保存してあるので2回目からは API を呼ばない）
+    const single = [];
+    for (const x of items) single.push(trim(Buffer.from(pcm(await synth(x.say)))).length / 2);
+    const total = single.reduce((t, d) => t + d, 0);
+    // 文の終わり（「。」）をまとめて決める：見込みの位置と無音の区間を、順番を保ったまま最もよく合うように組み合わせる（動的計画法）
+    const ratio = n / total;
+    const sents = []; // { line, expect }：「。」ごとの文と、その終わりの見込み位置
+    let acc = 0;
+    items.forEach((x, k) => {
+      const parts = x.say.split(/(?<=。)/).filter(Boolean);
+      for (const sp of parts) {
+        acc += single[k] * (sp.length / x.say.length) * ratio;
+        sents.push({ line: k, expect: acc });
+      }
+    });
+    const ends = sents.slice(0, -1); // 最後の文の終わりは区間の最後
+    const w = Number(process.env.SPLIT_W ?? 1);
+    const cost = (j, q) => Math.abs((quiet[q][0] + quiet[q][1]) / 2 - ends[j].expect) / rate - w * ((quiet[q][1] - quiet[q][0]) / rate);
+    const Q = quiet.length;
+    if (Q < ends.length) throw new Error(`場面 ${sec}：無音の区間が足りない`);
+    const dp = ends.map(() => new Array(Q).fill(Infinity));
+    const prev = ends.map(() => new Array(Q).fill(-1));
+    if (ends.length) for (let q = 0; q < Q; q++) dp[0][q] = cost(0, q);
+    for (let j = 1; j < ends.length; j++) {
+      let bestSoFar = Infinity, bestIdx = -1;
+      for (let q = 0; q < Q; q++) {
+        if (q > 0 && dp[j - 1][q - 1] < bestSoFar) [bestSoFar, bestIdx] = [dp[j - 1][q - 1], q - 1];
+        if (bestIdx >= 0) [dp[j][q], prev[j][q]] = [bestSoFar + cost(j, q), bestIdx];
+      }
+    }
+    const chosen = new Array(ends.length);
+    if (ends.length) {
+      let q = dp.at(-1).indexOf(Math.min(...dp.at(-1)));
+      for (let j = ends.length - 1; j >= 0; j--) { chosen[j] = quiet[q]; q = prev[j][q]; }
+    }
+    // 行の切れ目＝その行の最後の文の終わり
+    const bounds = [];
+    sents.forEach((st, j) => { if (j < ends.length && sents[j + 1].line !== st.line) bounds.push(chosen[j]); });
+    if (process.env.SPLIT_DEBUG) console.error(`場面${sec}: ${bounds.map(([a, b]) => `${(a / rate).toFixed(2)}+${((b - a) / rate).toFixed(2)}`).join(' ')}`);
+    const base = pos / 2;
+    items.forEach((x, k) => {
+      const s0 = k === 0 ? 0 : bounds[k - 1][1];
+      const e0 = k === items.length - 1 ? n : bounds[k][0];
+      timings.push({ text: x.text, en: x.en, section: sec, start: +((base + s0) / rate).toFixed(3), end: +((base + e0) / rate).toFixed(3) });
+    });
+    parts.push(v); pos += v.length;
+    const pause = sec === sections.at(-1) ? 0.5 : Number(process.env.PAUSE_SECTION ?? 1.5);
+    const silence = Buffer.alloc(Math.round(pause * rate) * 2);
+    parts.push(silence); pos += silence.length;
+  }
+  script.length = 0;
+}
 for (const { say: t, text, en, pause, section } of script) {
   const v = trim(Buffer.from(pcm(await synth(t))));
   timings.push({ text, en, section, start: +(pos / 2 / rate).toFixed(3), end: +((pos + v.length) / 2 / rate).toFixed(3) });
