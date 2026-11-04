@@ -1,0 +1,25 @@
+{
+  "name": "tashikame-video",
+  "private": true,
+  "type": "module",
+  "description": "タシカメの紹介映像（Remotion）。アプリ本体の workspaces には入れない",
+  "scripts": {
+    "studio": "remotion studio",
+    "render": "remotion render Intro30 out/intro-30s.mp4",
+    "narration": "OUT_DIR=public node scripts/narration.mjs Iapetus 1.05",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.537",
+    "@remotion/google-fonts": "4.0.537",
+    "@remotion/media": "4.0.537",
+    "@remotion/transitions": "4.0.537",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "remotion": "4.0.537"
+  },
+  "devDependencies": {
+    "@types/react": "19.3.0",
+    "typescript": "5.9.3"
+  }
+}

@@ -160,3 +160,6 @@ test-results/
 playwright-report/
 e2e/.tmp/
 dist/
+
+# 映像用の音声の試作（聞き比べ用。コミットしない）
+docs/video/samples/
