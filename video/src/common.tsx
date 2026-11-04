@@ -90,7 +90,7 @@ export const Subtitles = ({ lines = lines30 as SubLine[], delay = AUDIO_DELAY }:
   const local = t - (at(i) - 0.08);
   const left = endAt(i) + 0.4 - t;
   return (
-    <AbsoluteFill style={{ justifyContent: 'flex-end', alignItems: 'center', paddingBottom: 56 }}>
+    <AbsoluteFill style={{ justifyContent: 'flex-end', alignItems: 'center', paddingBottom: 44 }}>
       <div
         style={{
           fontFamily,

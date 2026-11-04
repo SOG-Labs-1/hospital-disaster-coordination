@@ -3,3 +3,4 @@ out/
 public/captures/
 .capture-data/
 .tts-cache/
+public/sfx/bgm.wav

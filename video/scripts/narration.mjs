@@ -77,7 +77,7 @@ const timings = [];
 let pos = 0;
 // SCRIPT_MD=原稿の md を渡すと、その表から読み上げを作る（3分版。原稿を1か所で直せば声と字幕が変わる）
 // 表の1列目が読み上げ（字幕の日本語）、2列目が英語の字幕。「## 」の見出しごとに場面（section）を分け、場面の切れ目は長めの間にする
-const READ = [['BCP', 'ビーシーピー'], ['Claude', 'クロード'], ['AI', 'エーアイ'], ['ID', 'アイディー'], ['「0人」', 'ゼロにん'], ['年に何度も', 'ねんに何度も']];
+const READ = [['BCP', 'ビーシーピー'], ['Claude', 'クロード'], ['AI', 'エーアイ'], ['ID', 'アイディー'], ['「0人」', 'ゼロにん'], ['年に何度も', 'ねんに何度も'], ['私は', 'わたしは']];
 const spoken = (t) => READ.reduce((x, [a, b]) => x.replaceAll(a, b), t);
 let script = lines.map(([t, en, pause]) => ({ say: t, text: t.replace('エーアイ', 'AI'), en, pause, section: 0 }));
 if (process.env.SCRIPT_MD) {
@@ -130,7 +130,7 @@ if (process.env.PARAGRAPH === '1') {
       }
     });
     const ends = sents.slice(0, -1); // 最後の文の終わりは区間の最後
-    const w = Number(process.env.SPLIT_W ?? 1);
+    const w = Number(process.env.SPLIT_W ?? 0.5);
     const cost = (j, q) => Math.abs((quiet[q][0] + quiet[q][1]) / 2 - ends[j].expect) / rate - w * ((quiet[q][1] - quiet[q][0]) / rate);
     const Q = quiet.length;
     if (Q < ends.length) throw new Error(`場面 ${sec}：無音の区間が足りない`);

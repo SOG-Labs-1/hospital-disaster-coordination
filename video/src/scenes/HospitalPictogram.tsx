@@ -172,3 +172,25 @@ export const FlowMap = ({ step, progress = 0 }: { step: 'register' | 'request' |
     </svg>
   );
 };
+
+/** トリアージの説明：札の付いた患者が、救急外来から手術室（治療できる場所）へ運ばれる矢印。HospitalPictogram の上に重ねる */
+export const TriageRoute = () => {
+  const frame = useCurrentFrame();
+  const p = interpolate(frame, [6, 60], [0, 1], { ...clamp, easing: ease });
+  // 救急外来の患者（300,620）から手術室（900,330）へ
+  const x = interpolate(p, [0, 1], [300, 900]);
+  const y = interpolate(p, [0, 1], [620, 330]) - Math.sin(p * Math.PI) * 60;
+  const show = interpolate(frame, [0, 10], [0, 1], clamp);
+  return (
+    <svg width={1920} height={1080} style={{ position: 'absolute', inset: 0 }}>
+      <g opacity={show}>
+        <path d="M 300 600 Q 560 360 900 310" fill="none" stroke={c.warn} strokeWidth={5} strokeDasharray="14 10" />
+        <polygon points="900,310 878,300 884,322" fill={c.warn} />
+        <Patient x={x} y={y} s={1.1} tri="red" />
+        <rect x={860} y={700} width={940} height={96} fill="rgba(7,13,24,0.95)" stroke={c.warn} strokeWidth={2} />
+        <text x={1330} y={738} fill={c.warn} fontFamily={fontFamily} fontSize={22} fontWeight={700} textAnchor="middle">トリアージタッグ＝治療の急ぎ具合を色で示す札（区分は医師・看護師が決める）</text>
+        <text x={1330} y={776} fill={c.text} fontFamily={fontFamily} fontSize={26} textAnchor="middle">◆赤 ＞ ▲黄 ＞ ●緑　重い患者から、治療できる場所へ</text>
+      </g>
+    </svg>
+  );
+};
