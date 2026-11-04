@@ -20,7 +20,8 @@ export default defineConfig({
   webServer: [
     {
       command: 'rm -rf e2e/.tmp && npx tsx server/src/main.ts',
-      env: { SERVER_PORT: String(SERVER_PORT), DATA_DIR: 'e2e/.tmp/data', DEFAULT_HOSPITAL: 'claude' },
+      // 画面のテストは決まった返事（mock）で動かす。.env が anthropic でも有料の API を呼ばない
+      env: { SERVER_PORT: String(SERVER_PORT), DATA_DIR: 'e2e/.tmp/data', DEFAULT_HOSPITAL: 'claude', AI_PROVIDER: 'mock' },
       url: `http://localhost:${SERVER_PORT}/api/health`,
       reuseExistingServer: false,
     },

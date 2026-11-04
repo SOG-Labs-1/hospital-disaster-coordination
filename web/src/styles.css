@@ -42,7 +42,9 @@ h1 { font-size: 28px; }
 h2 { font-size: var(--text-large); }
 h3 { font-size: var(--text); }
 
-:focus-visible { outline: 4px solid var(--focus); outline-offset: 2px; }
+/* 選んでいる場所の枠は二重にする：内側のオレンジ（濃い背景の上で見える）と外側の濃紺（白い背景の上で見える）。
+   どちらの背景でも 3:1 以上の差がつく（WCAG 2.2 の 1.4.11・2.4.7） */
+:focus-visible { outline: 3px solid var(--ink); outline-offset: 4px; box-shadow: 0 0 0 4px var(--focus); }
 
 .visually-hidden {
   position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
@@ -134,7 +136,7 @@ h3 { font-size: var(--text); }
 }
 .chip input, .triage-choice input { position: absolute; opacity: 0; pointer-events: none; }
 .chip.is-selected { border: 4px solid var(--ink); font-weight: 700; background: #e3eef8; }
-.chip:has(input:focus-visible), .triage-choice:has(input:focus-visible) { outline: 4px solid var(--focus); }
+.chip:has(input:focus-visible), .triage-choice:has(input:focus-visible) { outline: 3px solid var(--ink); outline-offset: 4px; box-shadow: 0 0 0 4px var(--focus); }
 .radio-list { border: 0; padding: 0; margin: 0 0 var(--gap); display: flex; flex-direction: column; gap: 8px; }
 .radio input { width: 24px; height: 24px; }
 
