@@ -82,14 +82,14 @@ function HospitalSetup({ list }: { list: HospitalList }) {
   return (
     <main className="setup">
       <h1>病院を選んでください</h1>
-      <p>この端末で使う病院の設定を選びます。選んだ病院はこのブラウザに保存されます。訓練をするときは「訓練モードで開く」を押します（訓練の記録は実運用とは別に保存されます）。</p>
+      <p>この端末で使う病院の設定を選びます。選んだ病院はこのブラウザに保存されます。訓練をするときは「訓練モードで開く」を押します（訓練の記録は災害運用とは別に保存されます）。</p>
       <ul className="hospital-list">
         {list.hospitals.map((h) => (
           <li key={h.id} className="hospital-choice">
             <h2>{h.name}</h2>
             <div className="button-row">
               <button type="button" className="btn btn-large btn-primary" onClick={() => setHospitalInUrl(h.id, 'live')}>
-                ■ 実運用で開く
+                ■ 災害運用で開く
               </button>
               <button type="button" className="btn btn-large" onClick={() => setHospitalInUrl(h.id, 'training')}>
                 ◇ 訓練モードで開く
@@ -107,14 +107,14 @@ function HospitalSetup({ list }: { list: HospitalList }) {
   );
 }
 
-/** ?mode= の値が正しくないときは、実運用か訓練かを選び直させる（書き間違いで訓練の入力が実運用に入らないように） */
+/** ?mode= の値が正しくないときは、災害運用か訓練かを選び直させる（書き間違いで訓練の入力が災害運用に入らないように） */
 function ModeSetup() {
   return (
     <main className="setup">
-      <h1>実運用か訓練かを選んでください</h1>
+      <h1>災害運用か訓練かを選んでください</h1>
       <p className="inline-alert">
         {modeMissingAfterTraining()
-          ? '⚠ 前回この端末では訓練モードを開いていました。アドレスに実運用か訓練かの指定がないため、記録を開いていません。'
+          ? '⚠ 前回この端末では訓練モードを開いていました。アドレスに災害運用か訓練かの指定がないため、記録を開いていません。'
           : '⚠ アドレスの mode の指定が正しくないため、記録を開いていません。'}
       </p>
       <div className="button-grid">

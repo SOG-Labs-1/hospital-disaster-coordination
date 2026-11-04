@@ -1,4 +1,5 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
+import { clickAction } from './helpers';
 
 // 搬送：本部と手術室の2端末で、調整（依頼したこと）と事実（起きたこと）を記録し、互いに即時に反映されることを確かめる
 
@@ -36,6 +37,9 @@ async function requestTransport(page: Page, patientId: string, to: string, opts:
   await form.getByLabel(/^到着先/).selectOption({ label: to });
   await form.locator('label.chip', { hasText: 'ストレッチャー' }).click();
   await form.getByLabel('付き添いの看護師の人数').selectOption('1');
+  // 前の知らせが残っていることがあるので、新しい知らせに変わるのを待ってから番号を読む
+  const notice = page.getByTestId('notice');
+  const before = (await notice.count()) ? await notice.innerText() : '';
   await form.getByRole('button', { name: '搬送を依頼する' }).click();
   if (opts.override) {
     const dialog = page.getByRole('dialog', { name: '確認してください' });
@@ -43,7 +47,8 @@ async function requestTransport(page: Page, patientId: string, to: string, opts:
     await dialog.getByLabel(opts.override).check();
     await dialog.getByRole('button', { name: '2件目の搬送として依頼する' }).click();
   }
-  const text = await page.getByTestId('notice').filter({ hasText: '搬送依頼を記録しました' }).innerText();
+  await expect(notice.filter({ hasText: '搬送依頼を記録しました' })).not.toHaveText(before);
+  const text = await notice.filter({ hasText: '搬送依頼を記録しました' }).innerText();
   return text.match(/T-\d+/)![0];
 }
 
@@ -120,7 +125,7 @@ test('同じ患者への2件目の搬送と、稼働中の要員への割り当�
 
   const assign = async (t: string) => {
     const card = hq.getByTestId(`transport-${t}`);
-    await card.getByRole('button', { name: '要員を割り当てる' }).click();
+    await clickAction(card, '要員を割り当てる');
     const form = card.getByRole('form', { name: '搬送要員の割り当て' });
     await form.getByRole('group', { name: '搬送要員を1人ずつ選ぶ' }).getByRole('button', { name: /Carter Lowell/ }).click();
     await form.getByRole('button', { name: '1人を割り当てる' }).click();
@@ -139,7 +144,8 @@ test('調整が未記録のまま到着した搬送は「出発未記録」と�
   const patientId = await register(hq, '203', '緑', '講堂');
   const t = await requestTransport(hq, patientId, '外来ホール（黄ゾーン）');
   const card = hq.getByTestId(`transport-${t}`);
-  await card.getByRole('button', { name: '到着を記録' }).click();
+  // 次にすること（了承）ではない操作は「ほかの操作」の中にある
+  await clickAction(card, '到着を記録');
   await expect(hq.getByTestId('notice')).toContainText(`${t} の到着を記録しました`);
   const closed = hq.locator('details.closed-transports');
   await closed.locator('summary').click();

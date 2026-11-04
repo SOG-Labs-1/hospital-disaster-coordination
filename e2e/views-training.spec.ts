@@ -73,7 +73,7 @@ test('訓練を始め、無線の連絡を聞いてボードに入力し、終�
   await expect(notAccepted).toContainText('参加者の補足：手術室に電話で確認していた');
   await hq.screenshot({ path: 'test-results/training-review.png', fullPage: true });
 
-  // 実運用の記録には、訓練で入力した患者は入らない
+  // 災害運用の記録には、訓練で入力した患者は入らない
   const live = await (await hq.request.get('/api/h/claude/live/events')).json();
   expect(live.events.some((e: { payload: { tagNumber?: string; features?: string } }) => e.payload.features === '紺の作業着')).toBe(false);
 });

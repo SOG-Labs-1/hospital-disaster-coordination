@@ -57,7 +57,7 @@ h3 { font-size: var(--text); }
   border-bottom: 6px solid var(--line-strong);
 }
 .topbar-live { background: var(--live); }
-/* 訓練は斜線の帯で、色が見分けにくくても実運用と区別できるようにする */
+/* 訓練は斜線の帯で、色が見分けにくくても災害運用と区別できるようにする */
 .topbar-training {
   background: repeating-linear-gradient(135deg, var(--training) 0 18px, #4a2270 18px 36px);
   border-bottom-style: dashed;

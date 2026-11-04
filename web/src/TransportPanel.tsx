@@ -282,6 +282,19 @@ export function TransportCard({ transport: t, config, state, terminal, enteredBy
   const status = statusLabels[t.status];
   const radioPlaces = [t.fromLocationId, t.toLocationId].filter((id) => !hasTerminal(config, id));
   const handoverPending = !!t.steps.arrived && !t.steps.arrived.handover && !t.steps.handedOver;
+  // 本部の画面では、段階から「次にすること」を決めて大きく出す（部署の画面は focus で決まる）。断られた搬送はすべての操作を出す
+  const stageNext: 'accept' | 'assign' | 'order' | 'depart' | 'arrive' | undefined = t.steps.declined
+    ? undefined
+    : !t.steps.accepted
+      ? 'accept'
+      : !t.steps.staffAssigned
+        ? 'assign'
+        : !t.steps.ordered
+          ? 'order'
+          : !t.steps.departed
+            ? 'depart'
+            : 'arrive';
+  const next = focus ?? stageNext;
 
   async function send(command: CommandInput, opts: { doneText?: string; overrideLabel?: string; undo?: { text: string; undoneText: string } } = {}) {
     const r = await run(
@@ -319,7 +332,7 @@ export function TransportCard({ transport: t, config, state, terminal, enteredBy
   const allActions = (
           <div className="transport-actions no-print">
             <div className="button-row" role="group" aria-label={`${t.id} の調整（依頼したこと）`}>
-              <span className="action-group-label">調整</span>
+              <span className="action-group-label">調整（依頼したこと）</span>
               <button type="button" className="btn" disabled={!enteredBy} aria-expanded={action === 'accept'} onClick={() => setAction(action === 'accept' ? 'none' : 'accept')}>
                 了承を記録
               </button>
@@ -347,7 +360,7 @@ export function TransportCard({ transport: t, config, state, terminal, enteredBy
               </button>
             </div>
             <div className="button-row" role="group" aria-label={`${t.id} の事実（起きたこと）`}>
-              <span className="action-group-label">事実</span>
+              <span className="action-group-label">事実（起きたこと）</span>
               <button
                 type="button"
                 className="btn btn-primary"
@@ -446,11 +459,12 @@ export function TransportCard({ transport: t, config, state, terminal, enteredBy
         </div>
       )}
       {!t.steps.arrived && !t.steps.cancelled &&
-        (focus ? (
+        (next ? (
           <>
-            {/* 部署の画面では、その行でするべき操作だけを大きく出し、ほかは折りたたむ */}
-            <div className="button-row focused-actions no-print">
-              {focus === 'accept' && (
+            {/* その搬送で次にすることだけを大きく出し、ほかは「ほかの操作」に折りたたむ（選択肢を絞って迷いと押し間違いを減らす） */}
+            <div className="button-row focused-actions no-print" role="group" aria-label={`${t.id} で次にすること`}>
+              <span className="action-group-label">次にすること</span>
+              {next === 'accept' && (
                 <>
                   <button type="button" className="btn btn-primary" disabled={!enteredBy} aria-expanded={action === 'accept'} onClick={() => setAction(action === 'accept' ? 'none' : 'accept')}>
                     了承を記録
@@ -460,12 +474,22 @@ export function TransportCard({ transport: t, config, state, terminal, enteredBy
                   </button>
                 </>
               )}
-              {focus === 'depart' && (
+              {next === 'assign' && (
+                <button type="button" className="btn btn-primary" disabled={!enteredBy} aria-expanded={action === 'assign'} onClick={() => setAction(action === 'assign' ? 'none' : 'assign')}>
+                  要員を割り当てる
+                </button>
+              )}
+              {next === 'order' && (
+                <button type="button" className="btn btn-primary" disabled={!enteredBy} aria-expanded={action === 'order'} onClick={() => setAction(action === 'order' ? 'none' : 'order')}>
+                  指示を記録
+                </button>
+              )}
+              {next === 'depart' && (
                 <button type="button" className="btn btn-primary" disabled={!enteredBy || !!t.steps.departed} onClick={recordDeparture}>
                   出発を記録
                 </button>
               )}
-              {focus === 'arrive' && (
+              {next === 'arrive' && (
                 <button type="button" className="btn btn-primary" disabled={!enteredBy} onClick={recordArrival}>
                   到着を記録
                 </button>

@@ -6,7 +6,7 @@ export const modes = ['live', 'training'] as const;
 export const ModeSchema = z.enum(modes);
 export type Mode = z.infer<typeof ModeSchema>;
 
-export const modeLabels: Record<Mode, string> = { live: '実運用', training: '訓練' };
+export const modeLabels: Record<Mode, string> = { live: '災害運用', training: '訓練' };
 
 const isoDateTime = z.iso.datetime({ offset: true });
 

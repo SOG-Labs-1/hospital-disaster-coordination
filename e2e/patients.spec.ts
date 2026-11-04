@@ -27,7 +27,7 @@ test('片方の端末で登録した患者が、もう片方の端末に即時�
   const hq = await openTerminal(browser, 'hq', '青木 はるか');
   const er = await openTerminal(browser, 'er', '川口 直子');
 
-  await expect(hq.getByTestId('mode-badge')).toHaveText(/実運用/);
+  await expect(hq.getByTestId('mode-badge')).toHaveText(/災害運用/);
   await expect(er.getByTestId('patient-count')).toHaveText('0人');
 
   await register(er, { tag: '101', triage: '赤', location: '救急外来', features: '紺の上着、眼鏡' });
@@ -87,7 +87,7 @@ test('区分の変更が他の端末に届き、履歴に残る', async ({ brows
   await expect(hqRow.locator('.history li')).toHaveCount(2);
 });
 
-test('訓練モードは実運用と記録が分かれ、常に「訓練」と表示される', async ({ browser }) => {
+test('訓練モードは災害運用と記録が分かれ、常に「訓練」と表示される', async ({ browser }) => {
   const page = await openTerminal(browser, 'hq', '青木 はるか', 'training');
   await expect(page.getByTestId('mode-badge')).toHaveText(/訓練/);
   await expect(page).toHaveTitle(/【訓練】/);
@@ -143,7 +143,7 @@ test('絞り込んだまま印刷しても全員が出る', async ({ browser }) 
 test('mode の指定が正しくなければ記録を開かず、選び直させる', async ({ browser }) => {
   const page = await (await browser.newContext()).newPage();
   await page.goto('/?terminal=hq&mode=Training');
-  await expect(page.getByRole('heading', { name: '実運用か訓練かを選んでください' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '災害運用か訓練かを選んでください' })).toBeVisible();
   await expect(page.getByTestId('mode-badge')).toHaveCount(0);
   await page.getByRole('button', { name: /訓練で開く/ }).click();
   await expect(page.getByTestId('mode-badge')).toHaveText(/訓練/);

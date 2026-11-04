@@ -5,7 +5,7 @@ import { clearTerminal, setHospitalInUrl } from './session';
 /**
  * 端末の設定（場所・病院）。入力者を選んでいなくても、いつでも上部の帯から開ける。
  * どれも押し間違えると困るので、確かめてから切り替える。
- * 実運用と訓練の切り替えはここに置かない（同じ画面のままモードが変わる誤操作を防ぐ）。病院を選ぶ画面でだけ選ぶ
+ * 災害運用と訓練の切り替えはここに置かない（同じ画面のままモードが変わる誤操作を防ぐ）。病院を選ぶ画面でだけ選ぶ
  */
 export function TerminalSettings({ mode }: { mode: Mode }) {
   const [open, setOpen] = useState(false);
@@ -45,7 +45,7 @@ export function TerminalSettings({ mode }: { mode: Mode }) {
                 onClick={() =>
                   ask(
                     mode === 'training'
-                      ? '病院を選ぶ画面に戻ります。実運用に戻すときも、そこで「実運用で開く」を押します。よいですか？'
+                      ? '病院を選ぶ画面に戻ります。災害運用に戻すときも、そこで「災害運用で開く」を押します。よいですか？'
                       : '病院を選ぶ画面に戻ります。よいですか？',
                     '病院を選び直す',
                     () => setHospitalInUrl(''),
@@ -54,7 +54,7 @@ export function TerminalSettings({ mode }: { mode: Mode }) {
               >
                 病院を変える
               </button>
-              <p className="hint">実運用と訓練の切り替えは、病院を選ぶ画面で行います。</p>
+              <p className="hint">災害運用と訓練の切り替えは、病院を選ぶ画面で行います。</p>
             </div>
           )}
         </div>

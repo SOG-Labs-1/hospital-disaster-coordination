@@ -1,6 +1,6 @@
 import type { Mode } from '@hdc/shared';
 
-// 端末の設定（どの場所に置いた端末か、実運用／訓練、選んでいる入力者）。ログインはしない。
+// 端末の設定（どの場所に置いた端末か、災害運用／訓練、選んでいる入力者）。ログインはしない。
 
 function safeGet(key: string): string | null {
   try {
@@ -19,9 +19,9 @@ function safeSet(key: string, value: string | null) {
 }
 
 /**
- * URL の ?mode=。知らない値は null（黙って実運用にしない）。
- * 省略時は実運用。ただし前回この端末（ブラウザ）で訓練を開いていたときは null にして選び直させる
- * （訓練のつもりの入力が、アドレスの書き漏れで実運用の記録に入らないように）
+ * URL の ?mode=。知らない値は null（黙って災害運用にしない）。
+ * 省略時は災害運用。ただし前回この端末（ブラウザ）で訓練を開いていたときは null にして選び直させる
+ * （訓練のつもりの入力が、アドレスの書き漏れで災害運用の記録に入らないように）
  */
 export function readMode(): Mode | null {
   const value = new URLSearchParams(location.search).get('mode');

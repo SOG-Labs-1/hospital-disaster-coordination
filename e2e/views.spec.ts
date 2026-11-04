@@ -1,4 +1,5 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
+import { clickAction } from './helpers';
 
 // 各部署の画面（上部に依頼を固定表示）と、掲示用画面（操作なし・自動更新）
 
@@ -49,7 +50,7 @@ test('部署の画面：届いた依頼が上部に固定表示され、その�
 
   // 本部が出発を記録すると、手術室に「到着の記録」が出る
   await hq.getByRole('tab', { name: /搬送/ }).click();
-  await hq.getByTestId(`transport-${transportId}`).getByRole('button', { name: '出発を記録' }).click();
+  await clickAction(hq.getByTestId(`transport-${transportId}`), '出発を記録');
   const arriveRow = or.getByTestId(`pinned-arrive-${transportId}`);
   await expect(arriveRow).toContainText('救急外来から移動中', { timeout: 5000 });
   await arriveRow.getByRole('button', { name: '対応する' }).click();
@@ -68,7 +69,7 @@ test('掲示用画面：操作できる部品がなく、記録が変わると�
   await board.goto('/?view=board');
   await expect(board.getByTestId('display-board')).toBeVisible();
   await expect(board.getByTestId('sync-status')).toContainText('同期中');
-  await expect(board.getByTestId('mode-badge')).toHaveText(/実運用/);
+  await expect(board.getByTestId('mode-badge')).toHaveText(/災害運用/);
   // 操作なし：ボタン・入力欄・リンクを置かない
   await expect(board.locator('button, input, select, textarea, a')).toHaveCount(0);
 
@@ -82,7 +83,7 @@ test('掲示用画面：操作できる部品がなく、記録が変わると�
   await expect(board.getByTestId('board-attention').locator('h2')).toContainText(`対応待ち ${waitingBefore + 1}件`);
 
   await hq.getByRole('tab', { name: /搬送/ }).click();
-  await hq.getByTestId(`transport-${transportId}`).getByRole('button', { name: '出発を記録' }).click();
+  await clickAction(hq.getByTestId(`transport-${transportId}`), '出発を記録');
   await expect(board.getByTestId('board-moving')).toContainText('救急外来（赤ゾーン） ▶ 3階東病棟', { timeout: 5000 });
   await expect(board.getByTestId('board-acceptance')).toContainText('救急外来（赤ゾーン）');
   // 設定の初期値は確認済みの数字に見せず「未確認（目安）」と出す

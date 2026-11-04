@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { DomainEventSchema, type DomainEvent, type Mode } from '@hdc/shared';
 
-// イベントの追記保存。実運用と訓練は別ファイル。UPDATE と DELETE はトリガーで禁止する。
+// イベントの追記保存。災害運用と訓練は別ファイル。UPDATE と DELETE はトリガーで禁止する。
 
 export function storePath(dataDir: string, mode: Mode): string {
   return join(dataDir, `${mode}.sqlite`);

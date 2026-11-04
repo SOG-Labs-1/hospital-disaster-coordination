@@ -110,7 +110,7 @@ describe('訓練の進行（mock の部署役）', () => {
     expect(board.events).toHaveLength(0);
     const files = readdirSync(join(dataDir, 'claude', 'training')).filter((f) => f.endsWith('.sqlite'));
     expect(files.sort()).toEqual([`${first}.sqlite`, `${second}.sqlite`].sort());
-    // 実運用の記録は別のファイルで、訓練とは混ざらない
+    // 災害運用の記録は別のファイルで、訓練とは混ざらない
     expect(existsSync(join(dataDir, 'claude', 'live.sqlite'))).toBe(true);
     expect(((await (await fetch(`${base}/live/events`)).json()) as any).events).toHaveLength(0);
   });
@@ -140,7 +140,7 @@ describe('訓練の進行（mock の部署役）', () => {
     expect(again.explanation.text).toContain('参加者の補足：口頭で救急外来に確認していた');
   });
 
-  it('実運用には訓練の進行の入口がない', async () => {
+  it('災害運用には訓練の進行の入口がない', async () => {
     expect((await fetch(`${base}/live/sim`)).status).toBe(404);
   });
 

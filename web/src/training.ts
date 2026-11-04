@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-// 訓練の進行（シミュレーター）の状態を受け取る。実運用モードでは使わない
+// 訓練の進行（シミュレーター）の状態を受け取る。災害運用モードでは使わない
 // 実際の状態（シミュレーターの truth）は受け取らない。参加者が見られるのは無線の受信と自分の送信だけ
 
 export interface TrainingSnapshot {

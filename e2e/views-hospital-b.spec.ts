@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { clickAction } from './helpers';
 
 // 病院B（Hackathon中央病院(仮)）：同じ仕組みが設定だけで動くことを確かめる
 // 待合を黄・緑の両方に使う、本部長が搬送調整を兼任、受け入れは担当者なら誰でも、到着と引き渡しを分ける
@@ -13,7 +14,7 @@ test('病院を選ぶ画面から病院Bを選び、記録は病院Aと分かれ
   const page = await (await browser.newContext()).newPage();
   await page.goto('/?hospital=');
   await expect(page.getByRole('heading', { name: '病院を選んでください' })).toBeVisible();
-  await page.locator('.hospital-choice', { hasText: 'Hackathon中央病院(仮)' }).getByRole('button', { name: /実運用で開く/ }).click();
+  await page.locator('.hospital-choice', { hasText: 'Hackathon中央病院(仮)' }).getByRole('button', { name: /災害運用で開く/ }).click();
   await expect(page.getByRole('heading', { name: 'この端末を置いた場所を選んでください' })).toBeVisible();
   await expect(page.getByText('病院：Hackathon中央病院(仮)')).toBeVisible();
   await page.getByRole('button', { name: '本部（1階事務室）' }).click();
@@ -60,7 +61,7 @@ test('病院Bの設定で、登録から搬送・引き渡しまでが動く', a
   await expect(card.getByTestId('step-accepted')).toContainText('坂本 由香', { timeout: 5000 });
 
   // 本部長（搬送調整を兼任）が指示
-  await card.getByRole('button', { name: '指示を記録' }).click();
+  await clickAction(card, '指示を記録');
   await card.getByRole('form', { name: '指示の記録' }).getByRole('button', { name: '指示を記録する' }).click();
   await expect(card.getByTestId('step-ordered')).toContainText('本部長（搬送調整を兼任）');
 
@@ -91,7 +92,7 @@ test('病院Bの掲示用画面', async ({ browser }) => {
   await board.screenshot({ path: 'test-results/board-hackathon.png' });
 });
 
-test('入力者を選んでいなくても、上部の「端末の設定」から病院や場所を選び直せる。実運用と訓練の切り替えは病院を選ぶ画面だけで行う', async ({ browser }) => {
+test('入力者を選んでいなくても、上部の「端末の設定」から病院や場所を選び直せる。災害運用と訓練の切り替えは病院を選ぶ画面だけで行う', async ({ browser }) => {
   const page = await (await browser.newContext()).newPage();
   await page.goto('/?hospital=');
   // 病院を選ぶ画面から、訓練モードで開ける
@@ -100,16 +101,16 @@ test('入力者を選んでいなくても、上部の「端末の設定」か�
   await page.getByRole('button', { name: '災害対策本部（2階会議室）' }).click();
   await expect(page.getByTestId('mode-badge')).toHaveText(/訓練/);
 
-  // 端末の設定には実運用と訓練の切り替えを置かない（誤操作を防ぐ）。病院を選び直して実運用で開く
+  // 端末の設定には災害運用と訓練の切り替えを置かない（誤操作を防ぐ）。病院を選び直して災害運用で開く
   await page.getByRole('button', { name: /端末の設定/ }).click();
   const panel = page.getByRole('dialog', { name: '端末の設定' });
-  await expect(panel.getByRole('button', { name: /訓練モードに切り替える|実運用に戻す/ })).toHaveCount(0);
+  await expect(panel.getByRole('button', { name: /訓練モードに切り替える|災害運用に戻す/ })).toHaveCount(0);
   await panel.getByRole('button', { name: '病院を変える' }).click();
-  await expect(panel).toContainText('「実運用で開く」を押します');
+  await expect(panel).toContainText('「災害運用で開く」を押します');
   await panel.getByRole('button', { name: '病院を選び直す' }).click();
-  await page.locator('.hospital-choice', { hasText: 'Claude総合病院(仮)' }).getByRole('button', { name: /実運用で開く/ }).click();
-  // 端末の場所は覚えているので、選び直さずに実運用で開く
-  await expect(page.getByTestId('mode-badge')).toHaveText(/実運用/);
+  await page.locator('.hospital-choice', { hasText: 'Claude総合病院(仮)' }).getByRole('button', { name: /災害運用で開く/ }).click();
+  // 端末の場所は覚えているので、選び直さずに災害運用で開く
+  await expect(page.getByTestId('mode-badge')).toHaveText(/災害運用/);
 
   // 場所を選び直す
   await page.getByRole('button', { name: /端末の設定/ }).click();
@@ -118,16 +119,16 @@ test('入力者を選んでいなくても、上部の「端末の設定」か�
   await expect(page.getByRole('heading', { name: 'この端末を置いた場所を選んでください' })).toBeVisible();
 });
 
-test('前回この端末で訓練を開いていたら、アドレスに mode がないときは黙って実運用で開かず、選び直させる', async ({ browser }) => {
+test('前回この端末で訓練を開いていたら、アドレスに mode がないときは黙って災害運用で開かず、選び直させる', async ({ browser }) => {
   const page = await (await browser.newContext()).newPage();
   await page.goto('/?hospital=claude&terminal=hq&mode=training');
   await expect(page.getByTestId('mode-badge')).toHaveText(/訓練/);
   await page.goto('/?hospital=claude&terminal=hq');
-  await expect(page.getByRole('heading', { name: '実運用か訓練かを選んでください' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '災害運用か訓練かを選んでください' })).toBeVisible();
   await expect(page.getByText('前回この端末では訓練モードを開いていました')).toBeVisible();
-  await page.getByRole('button', { name: /実運用で開く/ }).click();
-  await expect(page.getByTestId('mode-badge')).toHaveText(/実運用/);
-  // 実運用を選んだあとは、mode がなくても実運用で開く
+  await page.getByRole('button', { name: /災害運用で開く/ }).click();
+  await expect(page.getByTestId('mode-badge')).toHaveText(/災害運用/);
+  // 災害運用を選んだあとは、mode がなくても災害運用で開く
   await page.goto('/?hospital=claude&terminal=hq');
-  await expect(page.getByTestId('mode-badge')).toHaveText(/実運用/);
+  await expect(page.getByTestId('mode-badge')).toHaveText(/災害運用/);
 });

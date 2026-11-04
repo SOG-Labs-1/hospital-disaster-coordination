@@ -3,7 +3,7 @@ import { formatTime } from './format';
 import { TerminalSettings } from './TerminalSettings';
 import type { SyncStatus } from './useEventLog';
 
-/** 画面上部に常に表示する帯：実運用／訓練、最終更新時刻、同期状態 */
+/** 画面上部に常に表示する帯：災害運用／訓練、最終更新時刻、同期状態 */
 export function TopBar(props: {
   config: HospitalConfig;
   mode: Mode;

@@ -12,7 +12,7 @@ import { buildSnapshot } from './training/snapshot';
 
 // HTTP API と Server-Sent Events の配信。
 // 状態を変える入口は POST /api/h/:hospital/:mode/commands だけで、必ず shared の decide() で検証してから追記する。
-// 複数の病院設定を同時に扱える。記録は病院ごと・実運用／訓練ごとに別ファイルに保存する。
+// 複数の病院設定を同時に扱える。記録は病院ごと・災害運用／訓練ごとに別ファイルに保存する。
 
 interface ModeContext {
   config: HospitalConfig;

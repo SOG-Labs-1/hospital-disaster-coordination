@@ -42,7 +42,7 @@ const registerCmd = (tagNumber?: string) => ({
 });
 
 describe('追記保存', () => {
-  it('実運用と訓練は別ファイルに保存する', async () => {
+  it('災害運用と訓練は別ファイルに保存する', async () => {
     await post('training', registerCmd('1'));
     expect(existsSync(storePath(join(dataDir, 'test'), 'live'))).toBe(true);
     expect(existsSync(storePath(join(dataDir, 'test'), 'training'))).toBe(true);
@@ -140,7 +140,7 @@ describe('Server-Sent Events', () => {
       }
     };
     await readUntil(/event: ready/);
-    await post('training', registerCmd('99')); // 訓練の記録は実運用の端末に届かない
+    await post('training', registerCmd('99')); // 訓練の記録は災害運用の端末に届かない
     await post('live', registerCmd('1'));
     await readUntil(/event: domain-event[\s\S]*\n\n/);
     ac.abort();
