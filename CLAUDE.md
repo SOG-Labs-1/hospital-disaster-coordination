@@ -58,6 +58,7 @@
 
 ## コマンド
 
+- `npm run demo` — 審査・デモ用。架空のデモ用データ入りで、本番と同じ形で起動（http://localhost:4600、記録は `.demo-data/`）
 - `npm run dev` — サーバー（:4000）と画面（:5173）を起動。http://localhost:5173/?terminal=hq （訓練は `&mode=training`）
 - `npm test` — Vitest（shared・server・scripts のテスト）
 - `npm run test:e2e` — Playwright（テスト用ポート 4100/5174、保存先 `e2e/.tmp`。初回は `npx playwright install chromium`）

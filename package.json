@@ -19,7 +19,8 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "typecheck": "tsc -p shared --noEmit && tsc -p server --noEmit && tsc -p web --noEmit",
-    "validate:config": "tsx scripts/validate-yaml.ts"
+    "validate:config": "tsx scripts/validate-yaml.ts",
+    "demo": "npm run build -w web && tsx scripts/demo/start.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.1",
