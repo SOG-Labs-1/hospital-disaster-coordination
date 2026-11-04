@@ -1,5 +1,6 @@
 import { modeLabels, type HospitalConfig, type Mode } from '@hdc/shared';
 import { formatTime } from './format';
+import { TerminalSettings } from './TerminalSettings';
 import type { SyncStatus } from './useEventLog';
 
 /** 画面上部に常に表示する帯：実運用／訓練、最終更新時刻、同期状態 */
@@ -9,8 +10,9 @@ export function TopBar(props: {
   terminalName: string;
   status: SyncStatus;
   lastSyncedAt: Date | null;
+  otherHospitals: boolean;
 }) {
-  const { config, mode, terminalName, status, lastSyncedAt } = props;
+  const { config, mode, terminalName, status, lastSyncedAt, otherHospitals } = props;
   const sync = {
     connecting: { symbol: '…', text: '接続中…' },
     connected: { symbol: '●', text: '同期中' },
@@ -34,6 +36,7 @@ export function TopBar(props: {
         <div className={`sync sync-${status}`} role="status" aria-live="polite" data-testid="sync-status">
           <span aria-hidden="true">{sync.symbol}</span> {sync.text}
         </div>
+        <TerminalSettings mode={mode} otherHospitals={otherHospitals} />
       </div>
     </header>
   );

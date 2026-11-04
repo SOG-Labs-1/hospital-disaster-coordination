@@ -1,5 +1,5 @@
 import type { HospitalConfig } from '@hdc/shared';
-import { setHospitalInUrl, setTerminalInUrl } from './session';
+import { readMode, setHospitalInUrl, setTerminalInUrl } from './session';
 
 /** 端末を置いた場所を選ぶ（最初の1回だけ） */
 export function TerminalSetup({ config, otherHospitals }: { config: HospitalConfig; otherHospitals: boolean }) {
@@ -9,7 +9,10 @@ export function TerminalSetup({ config, otherHospitals }: { config: HospitalConf
       <p>
         病院：<strong>{config.name}</strong>
       </p>
-      <p>選んだ場所はこのブラウザに保存されます。あとで変えるときは、画面上の「端末の場所を変える」を押します。</p>
+      <p>
+        モード：<strong>{readMode() === 'training' ? '◇ 訓練' : '■ 実運用'}</strong>
+      </p>
+      <p>選んだ場所はこのブラウザに保存されます。あとで変えるときは、画面上部の「⚙ 端末の設定」から変えられます。</p>
       <div className="button-grid">
         {config.locations
           .filter((l) => l.hasTerminal)

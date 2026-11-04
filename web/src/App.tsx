@@ -71,7 +71,7 @@ export function App() {
   if (!terminal || !config.locations.some((l) => l.id === terminal)) return <TerminalSetup config={config} otherHospitals={(list?.hospitals.length ?? 1) > 1} />;
   const mode = readMode();
   if (!mode) return <ModeSetup />;
-  return <Headquarters config={config} terminal={terminal} mode={mode} />;
+  return <Headquarters config={config} terminal={terminal} mode={mode} otherHospitals={(list?.hospitals.length ?? 1) > 1} />;
 }
 
 /** 病院を選ぶ（複数の病院設定があり、既定の病院が決まっていないとき） */
@@ -79,14 +79,22 @@ function HospitalSetup({ list }: { list: HospitalList }) {
   return (
     <main className="setup">
       <h1>病院を選んでください</h1>
-      <p>この端末で使う病院の設定を選びます。選んだ病院はこのブラウザに保存されます。</p>
-      <div className="button-grid">
+      <p>この端末で使う病院の設定を選びます。選んだ病院はこのブラウザに保存されます。訓練をするときは「訓練モードで開く」を押します（訓練の記録は実運用とは別に保存されます）。</p>
+      <ul className="hospital-list">
         {list.hospitals.map((h) => (
-          <button key={h.id} type="button" className="btn btn-large" onClick={() => setHospitalInUrl(h.id)}>
-            {h.name}
-          </button>
+          <li key={h.id} className="hospital-choice">
+            <h2>{h.name}</h2>
+            <div className="button-row">
+              <button type="button" className="btn btn-large btn-primary" onClick={() => setHospitalInUrl(h.id, 'live')}>
+                ■ 実運用で開く
+              </button>
+              <button type="button" className="btn btn-large" onClick={() => setHospitalInUrl(h.id, 'training')}>
+                ◇ 訓練モードで開く
+              </button>
+            </div>
+          </li>
         ))}
-      </div>
+      </ul>
     </main>
   );
 }
@@ -108,7 +116,7 @@ function ModeSetup() {
   );
 }
 
-function Headquarters({ config, terminal, mode }: { config: HospitalConfig; terminal: string; mode: Mode }) {
+function Headquarters({ config, terminal, mode, otherHospitals }: { config: HospitalConfig; terminal: string; mode: Mode; otherHospitals: boolean }) {
   const { events, state, status, lastSyncedAt } = useEventLog(mode);
   const [enteredBy, setEnteredBy] = useState<string | null>(() => {
     const saved = readEnteredBy(terminal);
@@ -137,7 +145,7 @@ function Headquarters({ config, terminal, mode }: { config: HospitalConfig; term
   return (
     <CommandProvider mode={mode} config={config} state={state}>
       <div className={`app app-${mode}`}>
-        <TopBar config={config} mode={mode} terminalName={terminalName} status={status} lastSyncedAt={lastSyncedAt} />
+        <TopBar config={config} mode={mode} terminalName={terminalName} status={status} lastSyncedAt={lastSyncedAt} otherHospitals={otherHospitals} />
         <div className="print-header print-only">
           【{modeLabels[mode]}】{config.name} {tabs.find((t) => t.id === tab)!.printTitle}　出力 {formatDateTime(printedAt)}　（時刻は現場で確認した時刻）
         </div>

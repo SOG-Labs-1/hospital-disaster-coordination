@@ -47,10 +47,11 @@ export function readHospital(available: string[], serverDefault: string | null):
 }
 
 /** 病院を切り替える。空文字なら保存を消して、病院を選ぶ画面に戻す */
-export function setHospitalInUrl(hospitalId: string) {
+export function setHospitalInUrl(hospitalId: string, mode?: Mode) {
   safeSet('hdc.hospital', hospitalId || null);
   const params = new URLSearchParams(location.search);
   params.set('hospital', hospitalId);
+  if (mode) params.set('mode', mode);
   // 病院が変われば場所も変わるので、端末の場所は選び直す
   params.delete('terminal');
   location.search = params.toString();

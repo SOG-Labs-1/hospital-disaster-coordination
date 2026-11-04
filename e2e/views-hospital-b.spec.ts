@@ -13,7 +13,7 @@ test('病院を選ぶ画面から病院Bを選び、記録は病院Aと分かれ
   const page = await (await browser.newContext()).newPage();
   await page.goto('/?hospital=');
   await expect(page.getByRole('heading', { name: '病院を選んでください' })).toBeVisible();
-  await page.getByRole('button', { name: 'Hackathon中央病院(仮)' }).click();
+  await page.locator('.hospital-choice', { hasText: 'Hackathon中央病院(仮)' }).getByRole('button', { name: /実運用で開く/ }).click();
   await expect(page.getByRole('heading', { name: 'この端末を置いた場所を選んでください' })).toBeVisible();
   await expect(page.getByText('病院：Hackathon中央病院(仮)')).toBeVisible();
   await page.getByRole('button', { name: '本部（1階事務室）' }).click();
@@ -89,4 +89,28 @@ test('病院Bの掲示用画面', async ({ browser }) => {
   await expect(board.getByTestId('display-board')).toContainText('Hackathon中央病院(仮)');
   await expect(board.getByTestId('board-place-waiting')).toContainText('外来待合（黄ゾーン・緑ゾーン）');
   await board.screenshot({ path: 'test-results/board-hackathon.png' });
+});
+
+test('入力者を選んでいなくても、上部の「端末の設定」から訓練モードや場所を切り替えられる', async ({ browser }) => {
+  const page = await (await browser.newContext()).newPage();
+  await page.goto('/?hospital=');
+  // 病院を選ぶ画面から、訓練モードで開ける
+  await page.locator('.hospital-choice', { hasText: 'Claude総合病院(仮)' }).getByRole('button', { name: /訓練モードで開く/ }).click();
+  await expect(page.getByText('モード：◇ 訓練')).toBeVisible();
+  await page.getByRole('button', { name: '災害対策本部（2階会議室）' }).click();
+  await expect(page.getByTestId('mode-badge')).toHaveText(/訓練/);
+
+  // 入力者を選ぶ前でも、設定を開いて実運用に戻せる（確かめてから）
+  await page.getByRole('button', { name: /端末の設定/ }).click();
+  const panel = page.getByRole('dialog', { name: '端末の設定' });
+  await panel.getByRole('button', { name: /実運用に戻す/ }).click();
+  await expect(panel).toContainText('実運用の記録になります');
+  await panel.getByRole('button', { name: '実運用に切り替える' }).click();
+  await expect(page.getByTestId('mode-badge')).toHaveText(/実運用/);
+
+  // 場所を選び直す
+  await page.getByRole('button', { name: /端末の設定/ }).click();
+  await page.getByRole('dialog', { name: '端末の設定' }).getByRole('button', { name: '端末の場所を変える' }).click();
+  await page.getByRole('dialog', { name: '端末の設定' }).getByRole('button', { name: '場所を選び直す' }).click();
+  await expect(page.getByRole('heading', { name: 'この端末を置いた場所を選んでください' })).toBeVisible();
 });
