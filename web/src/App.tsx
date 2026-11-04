@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { modeLabels, modes, openSupports, supportAlert, type HospitalConfig, type Mode } from '@hdc/shared';
 import { fetchConfig } from './api';
+import { ChronologyPanel } from './ChronologyPanel';
 import { DepartmentTab, PinnedRequests } from './DepartmentPanel';
 import { DisplayBoard } from './DisplayBoard';
 import { EnteredByPicker } from './EnteredByPicker';
@@ -73,7 +74,7 @@ function ModeSetup() {
 }
 
 function Headquarters({ config, terminal, mode }: { config: HospitalConfig; terminal: string; mode: Mode }) {
-  const { state, status, lastSyncedAt } = useEventLog(mode);
+  const { events, state, status, lastSyncedAt } = useEventLog(mode);
   const [enteredBy, setEnteredBy] = useState<string | null>(() => {
     const saved = readEnteredBy(terminal);
     return config.staff.some((s) => s.id === saved) ? saved : null;
@@ -196,6 +197,7 @@ function Headquarters({ config, terminal, mode }: { config: HospitalConfig; term
             />
           )}
           {tab === 'supports' && <SupportPanel config={config} state={state} terminal={terminal} enteredBy={enteredBy} now={now} />}
+          {tab === 'chronology' && <ChronologyPanel config={config} events={events} terminal={terminal} enteredBy={enteredBy} now={now} />}
           {tab === 'locations' && <LocationBoard config={config} state={state} terminal={terminal} enteredBy={enteredBy} now={now} />}
         </main>
       </div>
@@ -203,13 +205,14 @@ function Headquarters({ config, terminal, mode }: { config: HospitalConfig; term
   );
 }
 
-type Tab = 'department' | 'patients' | 'transports' | 'supports' | 'locations';
+type Tab = 'department' | 'patients' | 'transports' | 'supports' | 'locations' | 'chronology';
 const allTabs: { id: Tab; label: string; printTitle: string }[] = [
   { id: 'department', label: 'この部署', printTitle: '部署の状況' },
   { id: 'patients', label: '患者', printTitle: '患者一覧' },
   { id: 'transports', label: '搬送', printTitle: '搬送一覧' },
   { id: 'supports', label: '支援要請', printTitle: '支援要請一覧' },
   { id: 'locations', label: '院内の状況', printTitle: '院内の状況' },
+  { id: 'chronology', label: 'クロノロジー', printTitle: 'クロノロジー' },
 ];
 
 function readTab(terminal: string, tabs: { id: Tab }[]): Tab {
