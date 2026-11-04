@@ -185,6 +185,17 @@ describe('AI が止まっても訓練は続く', () => {
     expect(s.providerFailures).toBe(1);
   });
 
+  it('報告するべき場面で提案がすべて却下されたら、決まった返事で補う（本部に何も届かない、を防ぐ）', async () => {
+    await restartWith({ ...failing, proposeForRole: async () => [{ action: 'report_arrival', transportId: 'T-999', message: '救急外来です。到着しました' }] });
+    await post('/training/sim/control', { action: 'start', scenarioId: 'claude-red-to-or' });
+    await advanceBy(20_000);
+    await advanceBy(15_000);
+    const s = await snapshot();
+    expect(s.inbox).toHaveLength(1);
+    expect(s.inbox[0].text).toContain('タッグ101');
+    expect(s.providerFailures).toBe(1);
+  });
+
   it('返事が時間内に来なければ決まった返事で補う', async () => {
     await restartWith({ ...failing, proposeForRole: () => new Promise(() => {}) });
     await post('/training/sim/control', { action: 'start', scenarioId: 'claude-red-to-or' });

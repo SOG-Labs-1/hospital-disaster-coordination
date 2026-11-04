@@ -66,6 +66,7 @@ export class AnthropicProvider implements AiProvider {
     const user = [
       `あなたの役：${ctx.roleName}（${ctx.locationName}）${ctx.persona ? `。${ctx.persona}` : ''}`,
       `あなたの部署の状況：${JSON.stringify(ctx.ownStatus)}`,
+      '（capacity の value は受け入れ枠の合計、present はいま部署にいるその区分の患者数。残りは value から present を引いた数。状況を報告するときの capacity には合計の value をそのまま入れる）',
       `あなたの部署に関係する搬送：${JSON.stringify(ctx.transports)}`,
       `本部とのやりとり（古い順）：${JSON.stringify(ctx.conversation)}`,
       `報告に使う区分の id：${ctx.triageIds.join(', ')}`,
@@ -80,7 +81,8 @@ export class AnthropicProvider implements AiProvider {
       output_config: { effort: this.opts.effort },
       // 強制の tool_choice はこのモデルでは使えないので auto にし、プロンプトで1つ呼ぶよう指示する。形は strict で固定
       tool_choice: { type: 'auto', disable_parallel_tool_use: true },
-      tools: proposalTools.map((t) => ({ ...t, strict: true }) as Anthropic.Beta.Messages.BetaTool),
+      // この場面で出してよい行動のツールだけを渡す（関係のない行動を選ばないように）
+      tools: proposalTools.filter((t) => ctx.allowedActions.includes(t.name)).map((t) => ({ ...t, strict: true }) as Anthropic.Beta.Messages.BetaTool),
       messages: [{ role: 'user', content: user }],
     });
     if (res.stop_reason === 'refusal') return [null];

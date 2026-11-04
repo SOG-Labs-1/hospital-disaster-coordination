@@ -342,7 +342,8 @@ export interface RoleContext {
   /** 自部署の実際の状況（この部署が知っていること） */
   ownStatus: {
     accepting: boolean;
-    capacity: { triage: string; label: string; value: number }[];
+    /** value は受け入れ枠の合計、present はいまこの部署にいるその区分の患者数（残り＝value−present） */
+    capacity: { triage: string; label: string; value: number; present: number }[];
     staff: { profession: string; value: number }[];
     patients: string[];
     note?: string;
@@ -354,6 +355,8 @@ export interface RoleContext {
   stimulusId: string;
   stimulus: Stimulus;
   stimulusText: string;
+  /** この場面で出してよい行動（AI にはこのツールだけを渡す） */
+  allowedActions: Proposal['action'][];
   /** 選べる区分の id（報告に使う） */
   triageIds: string[];
 }
@@ -378,7 +381,12 @@ export function buildRoleContext(view: SimView, scenario: Scenario, config: Hosp
     persona: role.persona,
     ownStatus: {
       accepting: loc.accepting,
-      capacity: Object.entries(loc.capacity).map(([triage, value]) => ({ triage, label: config.triageCategories.find((t) => t.id === triage)?.label ?? triage, value })),
+      capacity: Object.entries(loc.capacity).map(([triage, value]) => ({
+        triage,
+        label: config.triageCategories.find((t) => t.id === triage)?.label ?? triage,
+        value,
+        present: Object.values(view.patients).filter((p) => p.locationId === role.locationId && p.triage === triage && !inTransit.has(p.key)).length,
+      })),
       staff: Object.entries(loc.staff).map(([p, value]) => ({ profession: config.professions.find((x) => x.id === p)?.name ?? p, value })),
       patients: Object.values(view.patients)
         .filter((p) => p.locationId === role.locationId && !inTransit.has(p.key))
@@ -397,6 +405,7 @@ export function buildRoleContext(view: SimView, scenario: Scenario, config: Hosp
     stimulusId,
     stimulus: st.stimulus,
     stimulusText: describeStimulus(config, st.stimulus),
+    allowedActions: allowedActions[st.stimulus.kind],
     triageIds: config.triageCategories.map((t) => t.id),
   };
 }

@@ -23,12 +23,13 @@ const ctx: RoleContext = {
   locationName: '手術室',
   roleName: '手術室の看護師',
   persona: '慎重',
-  ownStatus: { accepting: true, capacity: [{ triage: 'red', label: '赤', value: 1 }], staff: [], patients: [] },
+  ownStatus: { accepting: true, capacity: [{ triage: 'red', label: '赤', value: 1, present: 0 }], staff: [], patients: [] },
   transports: [{ id: 'T-001', direction: 'incoming', otherLocation: '救急外来', status: '依頼あり' }],
   conversation: [],
   stimulusId: 'S-001',
   stimulus: { kind: 'transportRequest', transportId: 'T-001', patientText: 'タッグ101、赤', fromLocationId: 'er' },
   stimulusText: '本部から搬送の受け入れ依頼が来た',
+  allowedActions: ['accept_transport', 'decline_transport', 'reply_message'],
   triageIds: ['red'],
 };
 const opts = { model: 'model-from-env', reviewModel: 'review-model-from-env', effort: 'low' as const };
@@ -42,9 +43,8 @@ describe('Claude API の部署役', () => {
     expect(p.model).toBe('model-from-env');
     expect(p.tool_choice).toEqual({ type: 'auto', disable_parallel_tool_use: true });
     expect(p.tools!.every((t) => (t as { strict?: boolean }).strict === true)).toBe(true);
-    expect(p.tools!.map((t) => (t as { name: string }).name).sort()).toEqual(
-      ['accept_transport', 'decline_transport', 'reply_message', 'report_arrival', 'report_departure', 'report_status', 'request_support'],
-    );
+    // この場面（搬送の受け入れ依頼）で出してよい行動のツールだけを渡す
+    expect(p.tools!.map((t) => (t as { name: string }).name).sort()).toEqual(['accept_transport', 'decline_transport', 'reply_message']);
     expect(p.fallbacks).toBe('default');
     expect(p.betas).toEqual(['server-side-fallback-2026-07-01']);
     // 医療判断をしないことをシステムプロンプトで指示する

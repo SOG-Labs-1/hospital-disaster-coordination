@@ -137,11 +137,19 @@ export class TrainingManager {
         console.error('部署役の提案を受け取れなかった。決まった返事で補う', err);
         return { proposals: await this.fallback.proposeForRole(ctx), failed: String((err as Error)?.message ?? err) };
       })
-      .then(({ proposals, failed }) => {
+      .then(async ({ proposals, failed }) => {
         this.inflight.delete(stimulusId);
         if (this.runId !== runId) return; // 回が変わった後の返事は使わない
         if (failed) this.append([{ type: 'ProviderFailed', stimulusId, error: failed }]);
-        this.append(resolveProposals(this.events, sc, this.deps.config, stimulusId, proposals, this.now()));
+        let resolved = resolveProposals(this.events, sc, this.deps.config, stimulusId, proposals, this.now());
+        // 報告するべき場面で提案がすべて却下されたら、本部に何も届かなくなるので決まった返事で補う（補ったことは記録する）
+        const mustReport = ['patientArrived', 'statusChanged', 'needSupport', 'notice', 'patientArrivedByTransport', 'supportArrived'].includes(ctx.stimulus.kind);
+        if (!failed && mustReport && resolved.every((e) => e.type === 'ProposalResolved' && !e.accepted)) {
+          const backup = await this.fallback.proposeForRole(ctx);
+          this.append([{ type: 'ProviderFailed', stimulusId, error: '提案がすべて却下されたため、決まった返事で補った' }]);
+          resolved = resolveProposals(this.events, sc, this.deps.config, stimulusId, [...proposals, ...backup], this.now());
+        }
+        this.append(resolved);
         this.deps.onChange?.();
       });
   }

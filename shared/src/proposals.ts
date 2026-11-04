@@ -93,7 +93,7 @@ export const proposalTools = [
   },
   {
     name: 'report_arrival',
-    description: '搬送されてきた患者が自部署に到着したことを報告する。',
+    description: '本部が依頼した搬送（T-番号）で運ばれてきた患者が自部署に到着したことを報告する。搬送の番号がない患者の到着には使わない。',
     input_schema: { type: 'object', properties: { transportId: { type: 'string' }, message: { type: 'string' } }, required: ['transportId', 'message'], additionalProperties: false },
   },
 ] as const;
