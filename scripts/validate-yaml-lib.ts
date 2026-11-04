@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { parseHospitalConfig } from '../shared/src/config.ts';
 import { parseScenario } from '../shared/src/scenario.ts';
+import { parseHospitalTemplate } from '../shared/src/hospital-builder.ts';
 
 export type YamlValidation = { skipped: boolean; kind: string; errors: string[] };
 
@@ -11,6 +12,10 @@ export function validateYamlFile(relPath: string, text: string): YamlValidation 
   if (path.startsWith('config/hospitals/')) {
     const r = parseHospitalConfig(text);
     return { skipped: false, kind: '病院設定', errors: r.ok ? [] : r.errors };
+  }
+  if (path.startsWith('config/templates/')) {
+    const r = parseHospitalTemplate(text);
+    return { skipped: false, kind: '病院の標準の値', errors: r.ok ? [] : r.errors };
   }
   if (path.startsWith('scenarios/')) {
     // シナリオのスキーマに加え、指している病院設定の場所・区分・職種があるかも確かめる

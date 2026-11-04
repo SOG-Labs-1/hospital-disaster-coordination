@@ -19,6 +19,8 @@ export function apiBase(mode: Mode): string {
 export interface HospitalList {
   hospitals: { id: string; name: string }[];
   defaultHospitalId: string | null;
+  /** 画面から病院を作れるか */
+  canCreate: boolean;
 }
 
 export async function fetchHospitals(): Promise<HospitalList> {

@@ -52,8 +52,9 @@ export function setHospitalInUrl(hospitalId: string, mode?: Mode) {
   const params = new URLSearchParams(location.search);
   params.set('hospital', hospitalId);
   if (mode) params.set('mode', mode);
-  // 病院が変われば場所も変わるので、端末の場所は選び直す
+  // 病院が変われば場所も変わるので、端末の場所は選び直す。病院を作る画面などからも抜ける
   params.delete('terminal');
+  params.delete('view');
   location.search = params.toString();
 }
 

@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { parseHospitalConfig, parseScenario, type HospitalConfig, type Scenario } from '@hdc/shared';
+import { parseHospitalConfig, parseHospitalTemplate, parseScenario, type HospitalConfig, type HospitalTemplate, type Scenario } from '@hdc/shared';
 
 export const repoRoot = resolve(import.meta.dirname, '../..');
 export const hospitalsDir = join(repoRoot, 'config/hospitals');
@@ -23,6 +23,27 @@ export function loadHospitalConfig(id: string, dir = hospitalsDir): HospitalConf
 }
 
 export const scenariosDir = join(repoRoot, 'scenarios');
+
+/** 病院を作る画面の標準の値 */
+export function loadHospitalTemplate(path = join(repoRoot, 'config/templates/hospital-defaults.yaml')): HospitalTemplate {
+  const r = parseHospitalTemplate(readFileSync(path, 'utf8'));
+  if (!r.ok) throw new Error(`標準の値 ${path} に誤りがあります:\n${r.errors.map((e) => `  - ${e}`).join('\n')}`);
+  return r.template;
+}
+
+/** 画面から作った病院設定（data/hospitals/*.yaml）を読み込む。読めないファイルは知らせて飛ばす（ほかの病院は止めない） */
+export function loadCreatedHospitals(dir: string): HospitalConfig[] {
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir)
+    .filter((f) => f.endsWith('.yaml'))
+    .sort()
+    .flatMap((f) => {
+      const r = parseHospitalConfig(readFileSync(join(dir, f), 'utf8'));
+      if (r.ok) return [r.config];
+      console.warn(`⚠ 画面から作った病院設定 ${f} を読めなかった:\n${r.errors.map((e) => `  - ${e}`).join('\n')}`);
+      return [];
+    });
+}
 
 /** scenarios/*.yaml を読み込んで検証する。配信する病院のシナリオだけを返す。誤りがあれば起動を止める */
 export function loadScenarios(hospitals: HospitalConfig[], dir = scenariosDir): Scenario[] {

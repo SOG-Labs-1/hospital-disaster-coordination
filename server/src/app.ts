@@ -2,8 +2,9 @@ import { createReadStream, existsSync, statSync } from 'node:fs';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { extname, join, normalize } from 'node:path';
 import { monotonicFactory } from 'ulid';
-import { mkdirSync } from 'node:fs';
-import { decide, modes, reduce, type AppState, type DomainEvent, type HospitalConfig, type Mode, type Scenario } from '@hdc/shared';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { stringify as stringifyYaml } from 'yaml';
+import { buildHospitalConfig, decide, modes, reduce, type AppState, type DomainEvent, type HospitalConfig, type HospitalTemplate, type Mode, type Scenario } from '@hdc/shared';
 import type { AiProvider } from './ai';
 import { EventStore } from './store';
 import { TrainingManager, type ControlAction } from './training/manager';
@@ -34,6 +35,8 @@ export interface AppOptions {
   heartbeatMs?: number;
   /** 訓練モード（シナリオと部署役）。省略すると訓練の進行は使えない（記録の入力はできる） */
   training?: { scenarios: Scenario[]; provider: AiProvider; tickMs?: number; replyTimeoutMs?: number };
+  /** 画面から病院を作る（標準の値と、作った病院設定の保存先）。省略すると作れない */
+  hospitalCreation?: { template: HospitalTemplate; dir: string };
 }
 
 export interface App {
@@ -46,22 +49,26 @@ export interface App {
 const MAX_BODY = 1_000_000;
 
 export function createApp(options: AppOptions): App {
-  const { hospitals, dataDir, staticDir } = options;
+  const { dataDir, staticDir } = options;
+  // 画面から作った病院を、止めずに足せるように持つ
+  const hospitals = [...options.hospitals];
   const now = options.now ?? (() => new Date());
   const ulid = monotonicFactory();
   if (hospitals.length === 0) throw new Error('病院設定が1つもない');
-  const defaultHospitalId = options.defaultHospitalId ?? (hospitals.length === 1 ? hospitals[0]!.id : null);
-  if (defaultHospitalId && !hospitals.some((h) => h.id === defaultHospitalId)) throw new Error(`既定の病院「${defaultHospitalId}」の設定がない`);
+  if (options.defaultHospitalId && !hospitals.some((h) => h.id === options.defaultHospitalId)) throw new Error(`既定の病院「${options.defaultHospitalId}」の設定がない`);
+  /** 病院を指定せずに開いたときの病院。指定がなければ、病院が1つだけのときにその病院 */
+  const defaultHospitalId = () => options.defaultHospitalId ?? (hospitals.length === 1 ? hospitals[0]!.id : null);
 
   const contexts = new Map<string, ModeContext>();
   const key = (hospitalId: string, mode: Mode) => `${hospitalId}:${mode}`;
-  for (const config of hospitals) {
+  function addContexts(config: HospitalConfig) {
     for (const mode of modes) {
       const store = EventStore.open(join(dataDir, config.id), mode);
       const events = store.all();
       contexts.set(key(config.id, mode), { config, mode, store, events, state: reduce(events), clients: new Set() });
     }
   }
+  for (const config of hospitals) addContexts(config);
 
   // 訓練：病院ごとに進行役を置く。進行役はボードを読むだけで、書き込まない
   const managers = new Map<string, TrainingManager>();
@@ -169,7 +176,32 @@ export function createApp(options: AppOptions): App {
 
     if (path === '/api/health') return json(res, 200, { ok: true, serverTime: now().toISOString() });
     if (path === '/api/hospitals' && req.method === 'GET')
-      return json(res, 200, { hospitals: hospitals.map((h) => ({ id: h.id, name: h.name })), defaultHospitalId });
+      return json(res, 200, { hospitals: hospitals.map((h) => ({ id: h.id, name: h.name })), defaultHospitalId: defaultHospitalId(), canCreate: !!options.hospitalCreation });
+    if (path === '/api/hospital-template' && req.method === 'GET') {
+      if (!options.hospitalCreation) return json(res, 404, { status: 'error', errors: ['病院を作る機能は使えない'] });
+      return json(res, 200, options.hospitalCreation.template);
+    }
+    if (path === '/api/hospitals' && req.method === 'POST') {
+      const creation = options.hospitalCreation;
+      if (!creation) return json(res, 404, { status: 'error', errors: ['病院を作る機能は使えない'] });
+      let body: { draft?: unknown };
+      try {
+        body = JSON.parse(await readBody(req));
+      } catch {
+        return json(res, 400, { status: 'rejected', errors: ['JSON として読めない'] });
+      }
+      // id は英数字で自動で付ける（病院名は日本語でもよい）
+      const id = `h-${ulid().toLowerCase().slice(-10)}`;
+      const r = buildHospitalConfig(body.draft as never, creation.template, id);
+      if (!r.ok) return json(res, 400, { status: 'rejected', errors: r.errors });
+      if (hospitals.some((h) => h.name === r.config.name)) return json(res, 400, { status: 'rejected', errors: [`同じ名前の病院「${r.config.name}」がすでにある`] });
+      mkdirSync(creation.dir, { recursive: true });
+      // 作った病院設定はファイルとして残す（記録の保存先と同じく git の管理外）。次の起動でも読み込む
+      writeFileSync(join(creation.dir, `${id}.yaml`), `# 画面から作った病院設定（${now().toISOString()}）\n${stringifyYaml(r.config)}`, { flag: 'wx' });
+      hospitals.push(r.config);
+      addContexts(r.config);
+      return json(res, 200, { status: 'accepted', hospital: { id, name: r.config.name } });
+    }
 
     const c = path.match(/^\/api\/h\/([a-z0-9-]+)\/config$/);
     if (c && req.method === 'GET') {

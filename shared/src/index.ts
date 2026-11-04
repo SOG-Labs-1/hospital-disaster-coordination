@@ -8,3 +8,4 @@ export * from './scenario';
 export * from './proposals';
 export * from './simulator';
 export * from './review';
+export * from './hospital-builder';

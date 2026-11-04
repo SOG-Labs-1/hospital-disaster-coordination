@@ -1,0 +1,111 @@
+# 病院を作る画面で使う標準の値（すべて架空）。
+# 画面で入力するのは病院名・場所・用途の割り当て・役職・入力者で、それ以外はここから始める。
+# 病院ごとに変えたいときは、作った病院設定のファイル（data/hospitals/<id>.yaml）を直す。
+
+staleAfterMinutes: 30 # 仮
+
+# 色だけで区別しないよう、記号と印刷時の枠線を区分ごとに変えている
+triageCategories:
+  - id: red
+    label: 赤
+    symbol: ◆
+    description: 最優先治療（I）
+    color: '#c8102e'
+    textColor: '#ffffff'
+    printBorder: double
+  - id: yellow
+    label: 黄
+    symbol: ▲
+    description: 待機的治療（II）
+    color: '#ffd23f'
+    textColor: '#000000'
+    printBorder: solid
+  - id: green
+    label: 緑
+    symbol: ●
+    description: 保留（III）
+    color: '#2e7d32'
+    textColor: '#ffffff'
+    printBorder: dashed
+  - id: black
+    label: 黒
+    symbol: ✕
+    description: 救命困難・死亡（0）
+    color: '#1a1a1a'
+    textColor: '#ffffff'
+    printBorder: dotted
+
+# 災害時の用途（場所とは別の概念）
+
+# 災害時の用途（場所とは別の概念）
+zones:
+  - { id: red-zone, name: 赤ゾーン, triage: [red] }
+  - { id: yellow-zone, name: 黄ゾーン, triage: [yellow] }
+  - { id: green-zone, name: 緑ゾーン, triage: [green] }
+  - { id: black-zone, name: 黒ゾーン, triage: [black] }
+
+professions:
+  - { id: doctor, name: 医師 }
+  - { id: nurse, name: 看護師 }
+  - { id: transporter, name: 搬送要員 }
+  - { id: clerk, name: 事務 }
+
+transportMethods:
+  - { id: walk, name: 独歩 }
+  - { id: wheelchair, name: 車いす }
+  - { id: stretcher, name: ストレッチャー }
+  - { id: litter, name: 担架 }
+
+transportPolicy:
+  # 受領確認は記録がなくても先へ進めてよい
+  optionalSteps: [acknowledged]
+  # 到着＝引き渡し（所在と担当部署が同時に移る）
+  handoverOnArrival: true
+  # 受け入れ了承の判断は到着先の責任者と代行者。入力は誰でもよい
+  acceptanceDecidedBy: location-lead
+  # 画面に出す段階の名前
+  stepLabels:
+    requested: 要請
+    accepted: 受け入れ了承
+    staffAssigned: 要員の割り当て
+    ordered: 指示
+    acknowledged: 受領確認
+    departed: 出発
+    arrived: 到着
+
+
+supportKinds:
+  - { id: staff, name: 人員, itemSource: professions }
+  - { id: supply, name: 物品, itemSource: resources }
+  - { id: other, name: その他, itemSource: none }
+
+supportPolicy:
+  unassignedAlertMinutes: 10 # 仮
+  undeliveredAlertMinutes: 20 # 仮
+  stepLabels:
+    requested: 要請
+    assigned: 受付（担当）
+    dispatched: 手配の指示
+    received: 届いた
+    completed: 完了
+
+warningReasons:
+  - { id: confirmed-different, label: 別の患者であることを確認した }
+  - { id: tag-misread, label: タッグ番号の読み違いの可能性があり、後で確認する }
+  - { id: hq-instruction, label: 本部の指示による }
+  - { id: urgent, label: 緊急のため、了承済みとして進める }
+  - { id: other, label: その他（理由を書く）, requiresDetail: true }
+
+resources:
+  - { id: stretcher, name: ストレッチャー, unit: 台 }
+  - { id: wheelchair, name: 車いす, unit: 台 }
+  - { id: oxygen, name: 酸素ボンベ, unit: 本 }
+  - { id: infusion-set, name: 輸液セット, unit: セット }
+  - { id: blanket, name: 毛布, unit: 枚 }
+
+checklist:
+  - { id: hq-setup, text: 本部の設置と本部長の決定を記録したか }
+  - { id: zone-open, text: 各ゾーンの開設と責任者を記録したか }
+  - { id: patient-location, text: 全患者の所在を確認時刻つきで把握しているか }
+  - { id: transport-ack, text: 搬送の指示に受領確認を取ったか }
+  - { id: support-done, text: 支援要請の完了を確認したか }

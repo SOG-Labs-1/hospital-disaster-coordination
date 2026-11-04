@@ -5,6 +5,7 @@ import { fetchConfig, fetchHospitals, setApiHospital, type HospitalList } from '
 import { ChronologyPanel } from './ChronologyPanel';
 import { DepartmentTab, PinnedRequests } from './DepartmentPanel';
 import { DisplayBoard } from './DisplayBoard';
+import { HospitalCreate } from './HospitalCreate';
 import { EnteredByPicker } from './EnteredByPicker';
 import { formatDateTime } from './format';
 import { LocationBoard } from './LocationBoard';
@@ -57,6 +58,8 @@ export function App() {
     };
   }, []);
 
+  // 病院を作る画面（病院を選ぶ画面から開く）
+  if (new URLSearchParams(location.search).get('view') === 'create-hospital') return <HospitalCreate />;
   if (needPick && list) return <HospitalSetup list={list} />;
   if (!config && error) return <main className="setup"><p className="inline-alert">⚠ {error}。サーバーが起動しているか確認してください。</p></main>;
   if (!config) return <main className="setup"><p>読み込み中…</p></main>;
@@ -95,6 +98,11 @@ function HospitalSetup({ list }: { list: HospitalList }) {
           </li>
         ))}
       </ul>
+      {list.canCreate && (
+        <a className="btn btn-large create-link" href="?view=create-hospital">
+          ＋ 病院を作る
+        </a>
+      )}
     </main>
   );
 }

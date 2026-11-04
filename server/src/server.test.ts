@@ -158,7 +158,7 @@ describe('複数の病院', () => {
     await new Promise<void>((r) => app.server.listen(0, r));
     base = `http://localhost:${(app.server.address() as AddressInfo).port}`;
     const list = (await (await fetch(`${base}/api/hospitals`)).json()) as any;
-    expect(list).toEqual({ hospitals: [{ id: 'test', name: 'テスト病院(架空)' }, { id: 'other', name: '別の病院(架空)' }], defaultHospitalId: null });
+    expect(list).toEqual({ hospitals: [{ id: 'test', name: 'テスト病院(架空)' }, { id: 'other', name: '別の病院(架空)' }], defaultHospitalId: null, canCreate: false });
     expect(((await (await fetch(`${base}/api/h/other/config`)).json()) as any).name).toBe('別の病院(架空)');
     expect((await fetch(`${base}/api/h/nowhere/config`)).status).toBe(404);
 
@@ -172,5 +172,47 @@ describe('複数の病院', () => {
 
   it('既定の病院が設定にないときは起動しない', () => {
     expect(() => createApp({ hospitals: [testConfig()], dataDir, defaultHospitalId: 'nope' })).toThrow();
+  });
+});
+
+describe('画面から病院を作る', () => {
+  it('作った病院はすぐに使え、ファイルに残り、次の起動でも読み込まれる', async () => {
+    const { loadHospitalTemplate, loadCreatedHospitals } = await import('./config');
+    const dir = join(dataDir, 'hospitals');
+    await app.close();
+    app = createApp({ hospitals: [testConfig()], dataDir, hospitalCreation: { template: loadHospitalTemplate(), dir } });
+    await new Promise<void>((r) => app.server.listen(0, r));
+    base = `http://localhost:${(app.server.address() as AddressInfo).port}`;
+
+    const draft = {
+      name: '作成テスト病院(仮)',
+      fictional: true,
+      locations: [
+        { name: '本部', kind: 'headquarters', hasTerminal: true },
+        { name: '処置室', kind: 'emergency', hasTerminal: true, capacity: { red: 2 } },
+      ],
+      zoneAssignments: [{ zoneId: 'red-zone', locationIndex: 1 }],
+      positions: { hqChief: true, hqTransport: true, locationLeads: true },
+      staff: [{ name: '架空 太郎', locationIndex: 0, professionId: 'clerk' }],
+    };
+    const bad = await fetch(`${base}/api/hospitals`, { method: 'POST', body: JSON.stringify({ draft: { ...draft, fictional: false } }) });
+    expect(bad.status).toBe(400);
+    const res = await fetch(`${base}/api/hospitals`, { method: 'POST', body: JSON.stringify({ draft }) });
+    const body = (await res.json()) as any;
+    expect(res.status).toBe(200);
+    const id = body.hospital.id;
+    expect(id).toMatch(/^h-[0-9a-z]+$/);
+    // 同じ名前はもう作れない
+    expect((await fetch(`${base}/api/hospitals`, { method: 'POST', body: JSON.stringify({ draft }) })).status).toBe(400);
+
+    const list = (await (await fetch(`${base}/api/hospitals`)).json()) as any;
+    expect(list.hospitals.map((h: any) => h.name)).toContain('作成テスト病院(仮)');
+    expect(list.defaultHospitalId).toBeNull(); // 病院が2つになったので選ぶ画面を出す
+    const rec = await fetch(`${base}/api/h/${id}/live/commands`, {
+      method: 'POST',
+      body: JSON.stringify({ command: { type: 'RegisterPatient', payload: { locationId: 'loc-2', triage: 'red' } }, meta: { enteredBy: 'st-1', terminal: 'hq' } }),
+    });
+    expect(rec.status).toBe(200);
+    expect(loadCreatedHospitals(dir).map((h) => h.id)).toEqual([id]);
   });
 });

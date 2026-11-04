@@ -28,6 +28,7 @@
 | 本部 | `?hospital=claude&terminal=hq` | 患者・搬送・支援要請・院内の状況・対応記録のタブ。主要画面に白黒で読める印刷 |
 | 各部署 | `?hospital=claude&terminal=or` など | 上部に「この部署への依頼・記録すること」を固定表示、「この部署」タブ |
 | 掲示用 | `?hospital=claude&view=board` | 本部の大型モニター用。操作なし・自動更新・配置は固定 |
+| 病院を作る | 病院を選ぶ画面の「＋ 病院を作る」（`?view=create-hospital`） | 場所・災害時の用途・役職・入力者を段階ごとに入力して病院を作る。作った病院設定は `data/hospitals/` に保存（git の管理外） |
 | 訓練 | `?hospital=claude&terminal=hq&mode=training` | 無線の受信、訓練タブ（シナリオの開始・一時停止・2倍速・部署への連絡・振り返り） |
 
 ## AI訓練モード

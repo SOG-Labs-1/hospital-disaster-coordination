@@ -65,4 +65,5 @@
 - `npm run validate:config [-- ファイル]` — config/・scenarios/ の YAML 検証（編集時はフックが自動実行）
 - 環境変数：`HOSPITALS`（配信する病院をカンマ区切り。未指定なら config/hospitals/ のすべて）、`DEFAULT_HOSPITAL`（病院を指定せず開いたときの病院。未指定なら選ぶ画面）、`SERVER_PORT`（既定 4000。`PORT` は使わない）、`DATA_DIR`（記録の保存先。病院ごとにサブフォルダ）
 - 訓練の部署役：`AI_PROVIDER=mock|anthropic`（既定 mock）、`ANTHROPIC_MODEL`（anthropic のとき必須）、`ANTHROPIC_REVIEW_MODEL`、`ANTHROPIC_EFFORT`。`.env.example` を `.env` にコピーして使う（`.env` はサーバーだけが読む）
+- 病院の標準の値：`config/templates/hospital-defaults.yaml`。画面から作った病院設定は `<DATA_DIR>/hospitals/*.yaml`（git の管理外、起動時に読み込む）
 - 画面の URL：`?hospital=<病院id>&terminal=<場所id>`、訓練は `&mode=training`、掲示用画面は `?hospital=<病院id>&view=board`
