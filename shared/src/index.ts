@@ -5,3 +5,5 @@ export * from './commands';
 export * from './contrast';
 export * from './describe';
 export * from './scenario';
+export * from './proposals';
+export * from './simulator';
