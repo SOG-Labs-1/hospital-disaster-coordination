@@ -109,6 +109,28 @@ export const TransporterTeamSchema = z.object({ id, name: z.string().min(1), mem
 /** 搬送手段（独歩・車いす・ストレッチャーなど） */
 export const TransportMethodSchema = z.object({ id, name: z.string().min(1) });
 
+/**
+ * 支援要請の種類。itemSource で「何を」の選び方を決める
+ * professions: 職種と人数（人員の要請） / resources: 資源と数量（物品の要請） / none: 自由記述（その他）
+ */
+export const SupportKindSchema = z.object({
+  id,
+  name: z.string().min(1),
+  itemSource: z.enum(['professions', 'resources', 'none']),
+});
+
+export const supportSteps = ['requested', 'assigned', 'dispatched', 'received', 'completed'] as const;
+export type SupportStep = (typeof supportSteps)[number];
+
+export const SupportPolicySchema = z.object({
+  /** 担当が付かないままこの分数を過ぎた要請を「未対応」として目立たせる */
+  unassignedAlertMinutes: z.number().int().positive().default(10),
+  /** 手配の指示の後、届いた記録がないままこの分数を過ぎた要請を「未完了」として目立たせる */
+  undeliveredAlertMinutes: z.number().int().positive().default(20),
+  /** 画面に出す段階の名前 */
+  stepLabels: z.partialRecord(z.enum(supportSteps), z.string().min(1)).default({}),
+});
+
 /** 搬送の段階。コードはこの id で段階を扱い、必須か省略可かは病院設定で決める */
 export const transportSteps = ['requested', 'accepted', 'staffAssigned', 'ordered', 'acknowledged', 'departed', 'arrived'] as const;
 export type TransportStep = (typeof transportSteps)[number];
@@ -148,6 +170,8 @@ const HospitalConfigBaseSchema = z.object({
   transporters: z.array(TransporterSchema).default([]),
   transporterTeams: z.array(TransporterTeamSchema).default([]),
   transportMethods: z.array(TransportMethodSchema).default([]),
+  supportKinds: z.array(SupportKindSchema).default([]),
+  supportPolicy: SupportPolicySchema.default({ unassignedAlertMinutes: 10, undeliveredAlertMinutes: 20, stepLabels: {} }),
   transportPolicy: TransportPolicySchema.default({ optionalSteps: [], handoverOnArrival: true, acceptanceDecidedBy: 'location-lead', stepLabels: {} }),
   /** 確認からこの分数を過ぎた情報に「古い」印を付ける */
   staleAfterMinutes: z.number().int().positive(),
@@ -177,6 +201,7 @@ export const HospitalConfigSchema = HospitalConfigBaseSchema.superRefine((c, ctx
     transporters: c.transporters,
     transporterTeams: c.transporterTeams,
     transportMethods: c.transportMethods,
+    supportKinds: c.supportKinds,
   };
   for (const [key, list] of Object.entries(lists)) {
     for (const d of duplicates(list.map((x) => x.id))) issue([key], `id「${d}」が重複している`);

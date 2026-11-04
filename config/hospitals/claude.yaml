@@ -148,6 +148,22 @@ transportPolicy:
     departed: 出発
     arrived: 到着
 
+# 支援要請の種類（人員・物品・その他）
+supportKinds:
+  - { id: staff, name: 人員, itemSource: professions }
+  - { id: supply, name: 物品, itemSource: resources }
+  - { id: other, name: その他, itemSource: none }
+
+supportPolicy:
+  unassignedAlertMinutes: 10 # 仮
+  undeliveredAlertMinutes: 20 # 仮
+  stepLabels:
+    requested: 要請
+    assigned: 受付（担当）
+    dispatched: 手配の指示
+    received: 届いた
+    completed: 完了
+
 warningReasons:
   - { id: confirmed-different, label: 別の患者であることを確認した }
   - { id: tag-misread, label: タッグ番号の読み違いの可能性があり、後で確認する }
@@ -159,6 +175,8 @@ resources:
   - { id: stretcher, name: ストレッチャー, unit: 台 }
   - { id: wheelchair, name: 車いす, unit: 台 }
   - { id: oxygen, name: 酸素ボンベ, unit: 本 }
+  - { id: infusion-set, name: 輸液セット, unit: セット }
+  - { id: blanket, name: 毛布, unit: 枚 }
 
 checklist:
   - { id: hq-setup, text: 本部の設置と本部長の決定を記録したか }

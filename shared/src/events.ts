@@ -19,7 +19,7 @@ export const ReporterSchema = z.object({
 export type Reporter = z.infer<typeof ReporterSchema>;
 
 export const SubjectSchema = z.object({
-  kind: z.enum(['patient', 'transport', 'transporter', 'location']),
+  kind: z.enum(['patient', 'transport', 'transporter', 'location', 'support']),
   id: z.string().min(1),
 });
 export type Subject = z.infer<typeof SubjectSchema>;
@@ -137,6 +137,41 @@ export const TransportArrivedPayload = z.object({
 /** 引き渡し（到着と分ける病院だけで使う） */
 export const TransportHandedOverPayload = z.object({ note: optionalText });
 
+// ---- 支援要請 ----
+// 要請 → 本部の受付（担当） → 手配の指示（誰に・何を・どこへ） → 届いた（要請した側が記録） → 完了
+
+/** 何を求めるか。職種・資源は病院設定の id、その他は自由記述 */
+export const SupportItemSchema = z.object({
+  professionId: z.string().optional(),
+  resourceId: z.string().optional(),
+  text: z.string().trim().optional(),
+  quantity: z.number().int().min(1).nullable().default(null),
+});
+export type SupportItem = z.infer<typeof SupportItemSchema>;
+
+export const SupportRequestedPayload = z.object({
+  /** 要請した場所（部署または本部） */
+  fromLocationId: z.string().min(1),
+  kindId: z.string().min(1),
+  items: z.array(SupportItemSchema).min(1),
+  note: optionalText,
+});
+export const SupportAssignedPayload = z.object({ assignee: DeciderSchema, note: optionalText });
+export const SupportDispatchedPayload = z.object({
+  /** 誰に（手配先の場所。外部などは providerName） */
+  providerLocationId: z.string().optional(),
+  providerName: z.string().trim().optional(),
+  /** 何を（省略時は要請どおり） */
+  items: z.array(SupportItemSchema).optional(),
+  /** どこへ（省略時は要請した場所） */
+  toLocationId: z.string().optional(),
+  orderedBy: DeciderSchema.optional(),
+  note: optionalText,
+});
+export const SupportReceivedPayload = z.object({ note: optionalText });
+export const SupportCompletedPayload = z.object({ note: optionalText });
+export const SupportCancelledPayload = z.object({ reason: z.string().trim().min(1) });
+
 // ---- 搬送要員 ----
 export const TransporterAvailabilityChangedPayload = z.object({
   available: z.boolean(),
@@ -176,6 +211,12 @@ export const payloadSchemas = {
   TransportArrived: TransportArrivedPayload,
   TransportHandedOver: TransportHandedOverPayload,
   TransporterAvailabilityChanged: TransporterAvailabilityChangedPayload,
+  SupportRequested: SupportRequestedPayload,
+  SupportAssigned: SupportAssignedPayload,
+  SupportDispatched: SupportDispatchedPayload,
+  SupportReceived: SupportReceivedPayload,
+  SupportCompleted: SupportCompletedPayload,
+  SupportCancelled: SupportCancelledPayload,
   LocationStatusReported: LocationStatusReportedPayload,
   StaffCountReported: StaffCountReportedPayload,
 } as const;

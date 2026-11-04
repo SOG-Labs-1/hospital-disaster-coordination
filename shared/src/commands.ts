@@ -23,6 +23,7 @@ import {
   activeTransportsForPatient,
   findPatientsByIdentifier,
   formatPatientId,
+  formatSupportId,
   formatTransportId,
   incomingTransports,
   locationView,
@@ -86,6 +87,13 @@ export const CommandSchema = z.discriminatedUnion('type', [
   // 場所
   z.object({ type: z.literal('ReportLocationStatus'), locationId: z.string(), payload: payloadSchemas.LocationStatusReported }),
   z.object({ type: z.literal('ReportStaffCount'), locationId: z.string(), payload: payloadSchemas.StaffCountReported }),
+  // 支援要請
+  z.object({ type: z.literal('RequestSupport'), payload: payloadSchemas.SupportRequested }),
+  z.object({ type: z.literal('AssignSupport'), supportId: z.string(), payload: payloadSchemas.SupportAssigned }),
+  z.object({ type: z.literal('DispatchSupport'), supportId: z.string(), payload: payloadSchemas.SupportDispatched }),
+  z.object({ type: z.literal('RecordSupportReceived'), supportId: z.string(), payload: payloadSchemas.SupportReceived.default({}) }),
+  z.object({ type: z.literal('CompleteSupport'), supportId: z.string(), payload: payloadSchemas.SupportCompleted.default({}) }),
+  z.object({ type: z.literal('CancelSupport'), supportId: z.string(), payload: payloadSchemas.SupportCancelled }),
 ]);
 export type Command = z.infer<typeof CommandSchema>;
 export type CommandInput = z.input<typeof CommandSchema>;
@@ -139,7 +147,7 @@ export interface DecideContext {
 const FUTURE_TOLERANCE_MS = 5 * 60 * 1000;
 
 /** 版番号の確認をしないコマンド（対象を新しく作る、または事実の報告を足すだけのもの） */
-const versionFree = new Set<Command['type']>(['RegisterPatient', 'RequestTransport', 'ReportLocationStatus', 'ReportStaffCount']);
+const versionFree = new Set<Command['type']>(['RegisterPatient', 'RequestTransport', 'RequestSupport', 'ReportLocationStatus', 'ReportStaffCount']);
 
 /** 受け入れ可能人数。報告があればその値、報告が一度もなければ病院設定の初期値。未確認と報告されていれば null */
 export function effectiveCapacity(
@@ -225,11 +233,36 @@ export function decide(
       const p = payload as z.infer<typeof payloadSchemas.LocationStatusReported>;
       for (const c of p.capacity) if (!triageIds.has(c.triage)) errors.push(`トリアージ区分「${c.triage}」が病院設定にない`);
     }
+    if (type === 'SupportRequested') {
+      const p = payload as z.infer<typeof payloadSchemas.SupportRequested>;
+      if (!locationIds.has(p.fromLocationId)) errors.push(`要請した場所「${p.fromLocationId}」が病院設定にない`);
+      const kind = config.supportKinds.find((k) => k.id === p.kindId);
+      if (!kind) errors.push(`要請の種類「${p.kindId}」が病院設定にない`);
+      else checkSupportItems(kind.itemSource, p.items);
+    }
+    if (type === 'SupportDispatched') {
+      const p = payload as z.infer<typeof payloadSchemas.SupportDispatched>;
+      if (p.providerLocationId && !locationIds.has(p.providerLocationId)) errors.push(`手配先「${p.providerLocationId}」が病院設定にない`);
+      if (p.toLocationId && !locationIds.has(p.toLocationId)) errors.push(`届け先「${p.toLocationId}」が病院設定にない`);
+      if (p.orderedBy) checkDecider(p.orderedBy, '指示した人');
+    }
+    if (type === 'SupportAssigned') {
+      checkDecider((payload as z.infer<typeof payloadSchemas.SupportAssigned>).assignee, '担当者');
+    }
     if (type === 'StaffCountReported') {
       const p = payload as z.infer<typeof payloadSchemas.StaffCountReported>;
       for (const c of p.counts) if (!config.professions.some((x) => x.id === c.professionId)) errors.push(`職種「${c.professionId}」が病院設定にない`);
     }
   };
+
+  /** 要請の「何を」が種類に合っているか */
+  function checkSupportItems(source: 'professions' | 'resources' | 'none', items: z.infer<typeof payloadSchemas.SupportRequested>['items']) {
+    for (const it of items) {
+      if (source === 'professions' && !config.professions.some((p) => p.id === it.professionId)) errors.push(`職種「${it.professionId ?? '（なし）'}」が病院設定にない`);
+      if (source === 'resources' && !config.resources.some((r) => r.id === it.resourceId)) errors.push(`物品「${it.resourceId ?? '（なし）'}」が病院設定にない`);
+      if (source === 'none' && !it.text) errors.push('何を求めるかを書く');
+    }
+  }
 
   /** 判断した人の確認。役職・職員が設定にあるか */
   const checkDecider = (d: Decider, label: string) => {
@@ -480,6 +513,44 @@ export function decide(
       subject = { kind: 'transporter', id: command.transporterId };
       if (!config.transporters.some((x) => x.id === command.transporterId)) errors.push(`搬送要員「${command.transporterId}」が病院設定にない`);
       event = make('TransporterAvailabilityChanged', command.payload);
+      break;
+    }
+
+    // ---- 支援要請 ----
+    case 'RequestSupport': {
+      subject = { kind: 'support', id: formatSupportId(state.requestedSupportCount + 1) };
+      checkRefs('SupportRequested', command.payload);
+      event = make('SupportRequested', command.payload);
+      break;
+    }
+    case 'AssignSupport':
+    case 'DispatchSupport':
+    case 'RecordSupportReceived':
+    case 'CompleteSupport':
+    case 'CancelSupport': {
+      subject = { kind: 'support', id: command.supportId };
+      const s = state.supports[command.supportId];
+      if (!s || s.retracted) {
+        errors.push(`支援要請「${command.supportId}」が見つからない`);
+        break;
+      }
+      if (s.closed) errors.push(`${s.id} は${s.steps.cancelled ? '中止' : '完了'}している`);
+      const type = (
+        {
+          AssignSupport: 'SupportAssigned',
+          DispatchSupport: 'SupportDispatched',
+          RecordSupportReceived: 'SupportReceived',
+          CompleteSupport: 'SupportCompleted',
+          CancelSupport: 'SupportCancelled',
+        } as const
+      )[command.type];
+      checkRefs(type, command.payload);
+      if (command.type === 'DispatchSupport' && command.payload.items) {
+        const kind = config.supportKinds.find((k) => k.id === s.kindId);
+        if (kind) checkSupportItems(kind.itemSource, command.payload.items);
+      }
+      if (command.type === 'RecordSupportReceived' && s.steps.received) errors.push(`${s.id} の受け取りは記録済み`);
+      event = make(type, command.payload);
       break;
     }
 

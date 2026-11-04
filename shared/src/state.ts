@@ -1,6 +1,7 @@
 import {
   payloadSchemas,
   type Decider,
+  type SupportItem,
   subjectKey,
   type DomainEvent,
   type EventType,
@@ -108,6 +109,35 @@ export interface TransportView {
   lastObservedAt: string;
 }
 
+export type SupportStatus = 'requested' | 'assigned' | 'dispatched' | 'received' | 'completed' | 'cancelled';
+
+export interface SupportView {
+  id: string;
+  fromLocationId: string;
+  kindId: string;
+  items: SupportItem[];
+  note?: string;
+  steps: {
+    requested: StepRecord;
+    assigned?: StepRecord & { assignee: Decider; note?: string };
+    dispatched?: StepRecord & {
+      providerLocationId?: string;
+      providerName?: string;
+      items: SupportItem[];
+      toLocationId: string;
+      orderedBy?: Decider;
+      note?: string;
+    };
+    received?: StepRecord & { note?: string };
+    completed?: StepRecord & { note?: string };
+    cancelled?: StepRecord & { reason: string };
+  };
+  status: SupportStatus;
+  closed: boolean;
+  overrides: { eventId: string; codes: string[]; reason: string }[];
+  retracted: boolean;
+}
+
 export interface TransporterActivity {
   available: boolean;
   availabilityNote?: string;
@@ -131,6 +161,9 @@ export interface AppState {
   requestedTransportCount: number;
   transporters: Record<string, TransporterActivity>;
   locations: Record<string, LocationView>;
+  supports: Record<string, SupportView>;
+  supportOrder: string[];
+  requestedSupportCount: number;
   /** 登録順 */
   patientOrder: string[];
   /** 対象ごとの版番号＝その対象のイベント件数 */
@@ -151,6 +184,9 @@ export function emptyState(): AppState {
     requestedTransportCount: 0,
     transporters: {},
     locations: {},
+    supports: {},
+    supportOrder: [],
+    requestedSupportCount: 0,
     patientOrder: [],
     versions: {},
     registeredCount: 0,
@@ -167,6 +203,10 @@ export function versionOf(state: AppState, subject: Subject): number {
 
 export function formatPatientId(n: number): string {
   return `P-${String(n).padStart(3, '0')}`;
+}
+
+export function formatSupportId(n: number): string {
+  return `S-${String(n).padStart(3, '0')}`;
 }
 
 export function formatTransportId(n: number): string {
@@ -273,6 +313,7 @@ function applyEvent(state: AppState, e: DomainEvent, correction: Correction | un
   if (e.subject.kind === 'transport') return applyTransportEvent(state, e, correction);
   if (e.subject.kind === 'transporter') return applyTransporterEvent(state, e, correction);
   if (e.subject.kind === 'location') return applyLocationEvent(state, e, correction);
+  if (e.subject.kind === 'support') return applySupportEvent(state, e, correction);
 
   const patient = state.patients[e.subject.id];
   if (!patient) return;
@@ -563,4 +604,103 @@ export function escortsAway(state: AppState, locationId: string): Record<string,
     for (const e of t.escorts) out[e.professionId] = (out[e.professionId] ?? 0) + e.count;
   }
   return out;
+}
+
+// ---- 支援要請 ----
+
+function supportStatus(s: SupportView): SupportStatus {
+  const st = s.steps;
+  if (st.cancelled) return 'cancelled';
+  if (st.completed) return 'completed';
+  if (st.received) return 'received';
+  if (st.dispatched) return 'dispatched';
+  if (st.assigned) return 'assigned';
+  return 'requested';
+}
+
+function applySupportEvent(state: AppState, e: DomainEvent, correction: Correction | undefined): void {
+  if (e.type === 'SupportRequested') {
+    state.requestedSupportCount += 1;
+    const p = effectivePayload(e, correction) ?? e.payload;
+    const s: SupportView = {
+      id: e.subject.id,
+      fromLocationId: p.fromLocationId,
+      kindId: p.kindId,
+      items: p.items,
+      note: p.note || undefined,
+      steps: { requested: step(e) },
+      status: 'requested',
+      closed: false,
+      overrides: [],
+      retracted: correction?.retract ?? false,
+    };
+    if (e.override) s.overrides.push({ eventId: e.id, codes: e.override.codes, reason: e.override.reason });
+    state.supports[s.id] = s;
+    state.supportOrder.push(s.id);
+    return;
+  }
+  const s = state.supports[e.subject.id];
+  if (!s) return;
+  if (e.override) s.overrides.push({ eventId: e.id, codes: e.override.codes, reason: e.override.reason });
+  switch (e.type) {
+    case 'SupportAssigned': {
+      const p = effectivePayload(e, correction);
+      if (p) s.steps.assigned = { ...step(e), assignee: p.assignee, note: p.note };
+      break;
+    }
+    case 'SupportDispatched': {
+      const p = effectivePayload(e, correction);
+      if (p)
+        s.steps.dispatched = {
+          ...step(e),
+          providerLocationId: p.providerLocationId,
+          providerName: p.providerName,
+          items: p.items ?? s.items,
+          toLocationId: p.toLocationId ?? s.fromLocationId,
+          orderedBy: p.orderedBy,
+          note: p.note,
+        };
+      break;
+    }
+    case 'SupportReceived': {
+      const p = effectivePayload(e, correction);
+      if (p) s.steps.received = { ...step(e), note: p.note };
+      break;
+    }
+    case 'SupportCompleted': {
+      const p = effectivePayload(e, correction);
+      if (p) s.steps.completed = { ...step(e), note: p.note };
+      break;
+    }
+    case 'SupportCancelled': {
+      const p = effectivePayload(e, correction);
+      if (p) s.steps.cancelled = { ...step(e), reason: p.reason };
+      break;
+    }
+  }
+  s.status = supportStatus(s);
+  s.closed = s.status === 'completed' || s.status === 'cancelled';
+}
+
+export function openSupports(state: AppState): SupportView[] {
+  return state.supportOrder.map((id) => state.supports[id]!).filter((s) => !s.retracted && !s.closed);
+}
+
+export type SupportAlert = { kind: 'unassigned' | 'undelivered'; minutes: number };
+
+/**
+ * 目立たせる要請。担当が付かないまま一定時間（未対応）、または手配の指示の後に届いた記録がないまま一定時間（未完了）
+ */
+export function supportAlert(s: SupportView, policy: { unassignedAlertMinutes: number; undeliveredAlertMinutes: number }, now: Date): SupportAlert | null {
+  if (s.closed || s.retracted) return null;
+  const since = (iso: string) => Math.floor((now.getTime() - Date.parse(iso)) / 60000);
+  if (!s.steps.assigned && !s.steps.dispatched && !s.steps.received) {
+    const m = since(s.steps.requested.observedAt);
+    return m >= policy.unassignedAlertMinutes ? { kind: 'unassigned', minutes: m } : null;
+  }
+  if (s.steps.dispatched && !s.steps.received) {
+    const m = since(s.steps.dispatched.observedAt);
+    return m >= policy.undeliveredAlertMinutes ? { kind: 'undelivered', minutes: m } : null;
+  }
+  return null;
 }

@@ -36,6 +36,13 @@ export function testConfig(overrides: Record<string, unknown> = {}): HospitalCon
     ],
     transporterTeams: [{ id: 'team1', name: '班1', members: ['tr1', 'tr2'] }],
     transportMethods: [{ id: 'stretcher', name: 'ストレッチャー' }],
+    resources: [{ id: 'res1', name: '物品1', unit: '個' }],
+    supportKinds: [
+      { id: 'k-staff', name: '人員', itemSource: 'professions' },
+      { id: 'k-supply', name: '物品', itemSource: 'resources' },
+      { id: 'k-other', name: 'その他', itemSource: 'none' },
+    ],
+    supportPolicy: { unassignedAlertMinutes: 10, undeliveredAlertMinutes: 20 },
     transportPolicy: { optionalSteps: ['acknowledged'], handoverOnArrival: true, acceptanceDecidedBy: 'location-lead' },
     ...overrides,
   });
