@@ -238,7 +238,7 @@ const statusLabels: Record<SupportView['status'], { symbol: string; text: string
   cancelled: { symbol: '✕', text: '中止' },
 };
 
-export function SupportCard({ support: s, config, state, terminal, enteredBy, now }: Props & { support: SupportView }) {
+export function SupportCard({ support: s, config, state, terminal, enteredBy, now, focus }: Props & { support: SupportView; focus?: 'receive' }) {
   const { run, showNotice } = useCommands();
   const [action, setAction] = useState<Action>('none');
   const [report, setReport] = useState<ReportMetaValue>(emptyReportMeta);
@@ -261,6 +261,12 @@ export function SupportCard({ support: s, config, state, terminal, enteredBy, no
       setReport(emptyReportMeta);
     }
   }
+
+  const recordReceived = () =>
+    send(
+      { type: 'RecordSupportReceived', supportId: s.id, payload: {} },
+      { undo: { text: `${s.id} が届いたことを記録しました`, undoneText: `${s.id} の「届いた」を取り消しました` } },
+    );
 
   const stepInfo = (st: SupportStep): string | null => {
     const r = st === 'requested' ? s.steps.requested : s.steps[st];
@@ -322,6 +328,14 @@ export function SupportCard({ support: s, config, state, terminal, enteredBy, no
         })}
       </ol>
 
+      {!enteredBy && !s.closed && <p className="inline-alert no-print">⚠ 記録するには、先に画面上の一覧から自分の名前を押してください。</p>}
+      {!s.closed && focus === 'receive' && (
+        <div className="button-row focused-actions no-print">
+          <button type="button" className="btn btn-primary" disabled={!enteredBy || !!s.steps.received} onClick={recordReceived}>
+            届いたを記録
+          </button>
+        </div>
+      )}
       {!s.closed && (
         <>
           <div className="transport-actions no-print">
@@ -336,12 +350,7 @@ export function SupportCard({ support: s, config, state, terminal, enteredBy, no
                 type="button"
                 className="btn btn-primary"
                 disabled={!enteredBy || !!s.steps.received}
-                onClick={() =>
-                  send(
-                    { type: 'RecordSupportReceived', supportId: s.id, payload: {} },
-                    { undo: { text: `${s.id} が届いたことを記録しました`, undoneText: `${s.id} の「届いた」を取り消しました` } },
-                  )
-                }
+                onClick={recordReceived}
               >
                 届いたを記録
               </button>

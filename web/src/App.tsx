@@ -114,7 +114,19 @@ function Headquarters({ config, terminal, mode }: { config: HospitalConfig; term
             }}
           />
           <NoticeBar />
-          {isDepartment && <PinnedRequests config={config} state={state} terminal={terminal} enteredBy={enteredBy} now={now} />}
+          {isDepartment && (
+            <PinnedRequests
+              config={config}
+              state={state}
+              terminal={terminal}
+              enteredBy={enteredBy}
+              now={now}
+              onChangeEnteredBy={(id) => {
+                setEnteredBy(id);
+                saveEnteredBy(terminal, id);
+              }}
+            />
+          )}
           <nav className="tabs" role="tablist" aria-label="画面の切り替え">
             {tabs.map((t) => (
               <button

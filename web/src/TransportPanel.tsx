@@ -266,7 +266,7 @@ const statusLabels: Record<TransportView['status'], { symbol: string; text: stri
   cancelled: { symbol: '✕', text: '中止' },
 };
 
-export function TransportCard({ transport: t, config, state, terminal, enteredBy, now }: CardProps & { transport: TransportView }) {
+export function TransportCard({ transport: t, config, state, terminal, enteredBy, now, focus }: CardProps & { transport: TransportView; focus?: 'accept' | 'depart' | 'arrive' }) {
   const { run, showNotice } = useCommands();
   const [action, setAction] = useState<Action>('none');
   const [report, setReport] = useState<ReportMetaValue>(emptyReportMeta);
@@ -297,6 +297,80 @@ export function TransportCard({ transport: t, config, state, terminal, enteredBy
       setReport(emptyReportMeta);
     }
   }
+
+  const recordDeparture = () =>
+    send(
+      { type: 'RecordDeparture', transportId: t.id, payload: {} },
+      { undo: { text: `${t.id} の出発を記録しました`, undoneText: `${t.id} の出発の記録を取り消しました` } },
+    );
+  const recordArrival = () =>
+    send(
+      { type: 'RecordArrival', transportId: t.id, payload: {} },
+      {
+        undo: {
+          text: `${t.id} の到着を記録しました（${t.patientId} の所在は${locationName(config, t.toLocationId)}）`,
+          undoneText: `${t.id} の到着の記録を取り消しました`,
+        },
+      },
+    );
+
+  const allActions = (
+          <div className="transport-actions no-print">
+            <div className="button-row" role="group" aria-label={`${t.id} の調整（依頼したこと）`}>
+              <span className="action-group-label">調整</span>
+              <button type="button" className="btn" disabled={!enteredBy} aria-expanded={action === 'accept'} onClick={() => setAction(action === 'accept' ? 'none' : 'accept')}>
+                了承を記録
+              </button>
+              <button type="button" className="btn" disabled={!enteredBy} aria-expanded={action === 'decline'} onClick={() => setAction(action === 'decline' ? 'none' : 'decline')}>
+                断りを記録
+              </button>
+              <button type="button" className="btn" disabled={!enteredBy} aria-expanded={action === 'assign'} onClick={() => setAction(action === 'assign' ? 'none' : 'assign')}>
+                要員を割り当てる
+              </button>
+              <button type="button" className="btn" disabled={!enteredBy} aria-expanded={action === 'order'} onClick={() => setAction(action === 'order' ? 'none' : 'order')}>
+                指示を記録
+              </button>
+              <button
+                type="button"
+                className="btn"
+                disabled={!enteredBy || !!t.steps.acknowledged}
+                onClick={() =>
+                  send(
+                    { type: 'AcknowledgeTransport', transportId: t.id, payload: {} },
+                    { undo: { text: `${t.id} の受領確認を記録しました`, undoneText: `${t.id} の受領確認を取り消しました` } },
+                  )
+                }
+              >
+                受領を記録
+              </button>
+            </div>
+            <div className="button-row" role="group" aria-label={`${t.id} の事実（起きたこと）`}>
+              <span className="action-group-label">事実</span>
+              <button
+                type="button"
+                className="btn btn-primary"
+                disabled={!enteredBy || !!t.steps.departed}
+                onClick={recordDeparture}
+              >
+                出発を記録
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                disabled={!enteredBy}
+                onClick={recordArrival}
+              >
+                到着を記録
+              </button>
+              <button type="button" className="btn" disabled={!enteredBy} aria-expanded={action === 'redirect'} onClick={() => setAction(action === 'redirect' ? 'none' : 'redirect')}>
+                行き先を変える
+              </button>
+              <button type="button" className="btn" disabled={!enteredBy} aria-expanded={action === 'cancel'} onClick={() => setAction(action === 'cancel' ? 'none' : 'cancel')}>
+                中止を記録
+              </button>
+            </div>
+          </div>
+  );
 
   const stepInfo = (s: TransportStep): string | null => {
     const r = t.steps[s];
@@ -361,78 +435,41 @@ export function TransportCard({ transport: t, config, state, terminal, enteredBy
         })}
       </ol>
 
-      {!t.steps.arrived && !t.steps.cancelled && (
-        <div className="transport-actions no-print">
-          <div className="button-row" role="group" aria-label={`${t.id} の調整（依頼したこと）`}>
-            <span className="action-group-label">調整</span>
-            <button type="button" className="btn" disabled={!enteredBy} aria-expanded={action === 'accept'} onClick={() => setAction(action === 'accept' ? 'none' : 'accept')}>
-              了承を記録
-            </button>
-            <button type="button" className="btn" disabled={!enteredBy} aria-expanded={action === 'decline'} onClick={() => setAction(action === 'decline' ? 'none' : 'decline')}>
-              断りを記録
-            </button>
-            <button type="button" className="btn" disabled={!enteredBy} aria-expanded={action === 'assign'} onClick={() => setAction(action === 'assign' ? 'none' : 'assign')}>
-              要員を割り当てる
-            </button>
-            <button type="button" className="btn" disabled={!enteredBy} aria-expanded={action === 'order'} onClick={() => setAction(action === 'order' ? 'none' : 'order')}>
-              指示を記録
-            </button>
-            <button
-              type="button"
-              className="btn"
-              disabled={!enteredBy || !!t.steps.acknowledged}
-              onClick={() =>
-                send(
-                  { type: 'AcknowledgeTransport', transportId: t.id, payload: {} },
-                  { undo: { text: `${t.id} の受領確認を記録しました`, undoneText: `${t.id} の受領確認を取り消しました` } },
-                )
-              }
-            >
-              受領を記録
-            </button>
-          </div>
-          <div className="button-row" role="group" aria-label={`${t.id} の事実（起きたこと）`}>
-            <span className="action-group-label">事実</span>
-            <button
-              type="button"
-              className="btn btn-primary"
-              disabled={!enteredBy || !!t.steps.departed}
-              onClick={() =>
-                send(
-                  { type: 'RecordDeparture', transportId: t.id, payload: {} },
-                  { undo: { text: `${t.id} の出発を記録しました`, undoneText: `${t.id} の出発の記録を取り消しました` } },
-                )
-              }
-            >
-              出発を記録
-            </button>
-            <button
-              type="button"
-              className="btn btn-primary"
-              disabled={!enteredBy}
-              onClick={() =>
-                send(
-                  { type: 'RecordArrival', transportId: t.id, payload: {} },
-                  {
-                    undo: {
-                      text: `${t.id} の到着を記録しました（${t.patientId} の所在は${locationName(config, t.toLocationId)}）`,
-                      undoneText: `${t.id} の到着の記録を取り消しました`,
-                    },
-                  },
-                )
-              }
-            >
-              到着を記録
-            </button>
-            <button type="button" className="btn" disabled={!enteredBy} aria-expanded={action === 'redirect'} onClick={() => setAction(action === 'redirect' ? 'none' : 'redirect')}>
-              行き先を変える
-            </button>
-            <button type="button" className="btn" disabled={!enteredBy} aria-expanded={action === 'cancel'} onClick={() => setAction(action === 'cancel' ? 'none' : 'cancel')}>
-              中止を記録
-            </button>
-          </div>
-        </div>
-      )}
+      {!enteredBy && !t.closed && <p className="inline-alert no-print">⚠ 記録するには、先に画面上の一覧から自分の名前を押してください。</p>}
+      {!t.steps.arrived && !t.steps.cancelled &&
+        (focus ? (
+          <>
+            {/* 部署の画面では、その行でするべき操作だけを大きく出し、ほかは折りたたむ */}
+            <div className="button-row focused-actions no-print">
+              {focus === 'accept' && (
+                <>
+                  <button type="button" className="btn btn-primary" disabled={!enteredBy} aria-expanded={action === 'accept'} onClick={() => setAction(action === 'accept' ? 'none' : 'accept')}>
+                    了承を記録
+                  </button>
+                  <button type="button" className="btn" disabled={!enteredBy} aria-expanded={action === 'decline'} onClick={() => setAction(action === 'decline' ? 'none' : 'decline')}>
+                    断りを記録
+                  </button>
+                </>
+              )}
+              {focus === 'depart' && (
+                <button type="button" className="btn btn-primary" disabled={!enteredBy || !!t.steps.departed} onClick={recordDeparture}>
+                  出発を記録
+                </button>
+              )}
+              {focus === 'arrive' && (
+                <button type="button" className="btn btn-primary" disabled={!enteredBy} onClick={recordArrival}>
+                  到着を記録
+                </button>
+              )}
+            </div>
+            <details className="more no-print">
+              <summary>ほかの操作</summary>
+              {allActions}
+            </details>
+          </>
+        ) : (
+          allActions
+        ))}
       {(!t.steps.arrived || handoverPending) && !t.steps.cancelled && enteredBy && (
         <div className="no-print">
           <ReportMetaFields config={config} value={report} onChange={setReport} />

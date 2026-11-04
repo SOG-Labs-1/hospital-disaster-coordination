@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { openSupports, pendingForLocation, type AppState, type HospitalConfig, type SupportView, type TransportView } from '@hdc/shared';
+import { minutesSince } from './format';
 import { locationLabel, locationName, patientShort } from './labels';
 import { LocationCard, makeIsStale } from './LocationBoard';
 import { PatientList } from './PatientList';
@@ -14,53 +15,94 @@ interface Props {
   now: Date;
 }
 
-type Row =
-  | { key: string; label: string; text: string; transport: TransportView }
-  | { key: string; label: string; text: string; support: SupportView };
+type Row = {
+  key: string;
+  label: string;
+  /** 判断が必要な行（受け入れの判断）。ほかの記録より先に片付ける */
+  decision: boolean;
+  text: string;
+  /** 経過分の説明と分数 */
+  elapsed: { text: string; minutes: number };
+} & ({ transport: TransportView; focus: 'accept' | 'depart' | 'arrive' } | { support: SupportView; focus?: 'receive' });
+
+/** 一覧に最初から出す件数。超えた分は「ほか N件を表示」で開く */
+const PINNED_VISIBLE = 4;
 
 /**
  * 各部署の画面の上部に固定表示する「この部署への依頼・この部署が記録すること」。
- * どのタブを開いていても表示し、行ごとの「対応する」で搬送・要請のカードをその場で開く
+ * どのタブを開いていても表示し、行ごとの「対応する」で、その行でするべき操作をその場で開く
  */
-export function PinnedRequests(props: Props) {
-  const { config, state, terminal } = props;
+export function PinnedRequests(props: Props & { onChangeEnteredBy: (staffId: string) => void }) {
+  const { config, state, terminal, enteredBy, now, onChangeEnteredBy } = props;
   const [openKey, setOpenKey] = useState<string | null>(null);
+  const [showAll, setShowAll] = useState(false);
   const p = pendingForLocation(state, terminal);
   const patient = (t: TransportView) => patientShort(config, state.patients[t.patientId], t.patientId);
+  const since = (label: string, iso: string) => ({ text: `${label}から${minutesSince(iso, now)}分`, minutes: minutesSince(iso, now) });
+  const items = (s: SupportView) => (s.steps.dispatched?.items ?? s.items).map((it) => itemText(config, it)).join('、');
+
   const rows: Row[] = [
-    ...p.acceptRequests.map((t) => ({
+    ...p.acceptRequests.map((t): Row => ({
       key: `accept-${t.id}`,
-      label: '受け入れの判断',
-      text: `${t.id} ${patient(t)}　${locationName(config, t.fromLocationId)}から（了承・断りが未記録）`,
+      label: '⚠ 受け入れの判断',
+      decision: true,
+      text: `${t.id} ${patient(t)}　${locationName(config, t.fromLocationId)}から`,
+      elapsed: since('要請', t.steps.requested.observedAt),
       transport: t,
+      focus: 'accept',
     })),
-    ...p.arrivals.map((t) => ({
+    ...p.arrivals.map((t): Row => ({
       key: `arrive-${t.id}`,
       label: '到着の記録',
+      decision: false,
       text: `${t.id} ${patient(t)}　${locationName(config, t.fromLocationId)}から移動中`,
+      elapsed: since('出発', t.steps.departed!.observedAt),
       transport: t,
+      focus: 'arrive',
     })),
-    ...p.departures.map((t) => ({
+    ...p.departures.map((t): Row => ({
       key: `depart-${t.id}`,
       label: '出発の記録',
+      decision: false,
       text: `${t.id} ${patient(t)}　${locationName(config, t.toLocationId)}へ（${t.steps.accepted ? '了承済み' : '了承は未記録'}）`,
+      elapsed: since('要請', t.steps.requested.observedAt),
       transport: t,
+      focus: 'depart',
     })),
-    ...p.supportsToReceive.map((s) => ({
-      key: `receive-${s.id}`,
-      label: '届くはずの支援',
-      text: `${s.id} ${(s.steps.dispatched?.items ?? s.items).map((it) => itemText(config, it)).join('、')}${
-        s.steps.dispatched ? `（${s.steps.dispatched.providerLocationId ? locationName(config, s.steps.dispatched.providerLocationId) : s.steps.dispatched.providerName}から）` : '（手配はまだ）'
-      }`,
-      support: s,
-    })),
-    ...p.supportsToProvide.map((s) => ({
+    ...p.supportsToReceive.map((s): Row => {
+      const d = s.steps.dispatched;
+      return d
+        ? {
+            key: `receive-${s.id}`,
+            label: '届くはずの支援',
+            decision: false,
+            text: `${s.id} ${items(s)}（${d.providerLocationId ? locationName(config, d.providerLocationId) : d.providerName}から）`,
+            elapsed: since('手配', d.observedAt),
+            support: s,
+            focus: 'receive',
+          }
+        : {
+            // 手配前の要請は「向かっている」と読めないように見出しを分ける
+            key: `waiting-${s.id}`,
+            label: '出した要請（手配待ち）',
+            decision: false,
+            text: `${s.id} ${items(s)}`,
+            elapsed: since('要請', s.steps.requested.observedAt),
+            support: s,
+          };
+    }),
+    ...p.supportsToProvide.map((s): Row => ({
       key: `provide-${s.id}`,
       label: '送るはずの支援',
-      text: `${s.id} ${locationName(config, s.steps.dispatched!.toLocationId)}へ ${s.steps.dispatched!.items.map((it) => itemText(config, it)).join('、')}`,
+      decision: false,
+      text: `${s.id} ${locationName(config, s.steps.dispatched!.toLocationId)}へ ${items(s)}`,
+      elapsed: since('手配', s.steps.dispatched!.observedAt),
       support: s,
     })),
-  ];
+  ].sort((a, b) => Number(b.decision) - Number(a.decision) || b.elapsed.minutes - a.elapsed.minutes);
+
+  const visible = showAll ? rows : rows.slice(0, PINNED_VISIBLE);
+  const localStaff = config.staff.filter((s) => s.locationId === terminal);
 
   return (
     <section className={`pinned ${rows.length ? 'has-items' : ''}`} aria-labelledby="pinned-title" data-testid="pinned-requests">
@@ -71,23 +113,42 @@ export function PinnedRequests(props: Props) {
         <p className="hint">いま、この部署が対応する依頼はありません。</p>
       ) : (
         <ul className="pinned-list">
-          {rows.map((r) => (
-            <li key={r.key} className="pinned-row" data-testid={`pinned-${r.key}`}>
+          {visible.map((r) => (
+            <li key={r.key} className={`pinned-row ${r.decision ? 'is-decision' : ''}`} data-testid={`pinned-${r.key}`}>
               <div className="pinned-line">
                 <span className="pinned-label">{r.label}</span>
                 <span className="pinned-text">{r.text}</span>
+                <span className="pinned-elapsed">{r.elapsed.text}</span>
                 <button type="button" className="btn" aria-expanded={openKey === r.key} onClick={() => setOpenKey(openKey === r.key ? null : r.key)}>
                   {openKey === r.key ? '閉じる' : '対応する'}
                 </button>
               </div>
               {openKey === r.key && (
-                <ol className="transport-list pinned-card">
-                  {'transport' in r ? <TransportCard transport={r.transport} {...props} /> : <SupportCard support={r.support} {...props} />}
-                </ol>
+                <>
+                  {!enteredBy && localStaff.length > 0 && (
+                    // 入力者を選ばないと記録できないので、その場で名前を選べるようにする
+                    <div className="pinned-who" role="group" aria-label="入力する人の名前">
+                      <span>記録する人の名前を押してください：</span>
+                      {localStaff.map((s) => (
+                        <button key={s.id} type="button" className="btn" onClick={() => onChangeEnteredBy(s.id)}>
+                          {s.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <ol className="transport-list pinned-card">
+                    {'transport' in r ? <TransportCard transport={r.transport} focus={r.focus} {...props} /> : <SupportCard support={r.support} focus={r.focus} {...props} />}
+                  </ol>
+                </>
               )}
             </li>
           ))}
         </ul>
+      )}
+      {rows.length > PINNED_VISIBLE && (
+        <button type="button" className="btn btn-quiet" aria-expanded={showAll} onClick={() => setShowAll(!showAll)}>
+          {showAll ? `最初の${PINNED_VISIBLE}件だけ表示する` : `ほか ${rows.length - PINNED_VISIBLE}件を表示`}
+        </button>
       )}
     </section>
   );
@@ -117,6 +178,7 @@ export function DepartmentTab(props: Props & { onRequestTransport: (patientId: s
         {...props}
         title={`${locationLabel(config, terminal, now)}の患者`}
         only={(p) => p.locationId === terminal || p.departmentLocationId === terminal}
+        emptyText="いま、この部署にいる患者はいません（登録は「患者」タブ）。"
         onRequestTransport={onRequestTransport}
       />
     </div>

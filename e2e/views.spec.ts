@@ -73,19 +73,55 @@ test('掲示用画面：操作できる部品がなく、記録が変わると�
   await expect(board.locator('button, input, select, textarea, a')).toHaveCount(0);
 
   const before = Number(await board.getByTestId('board-count-red').locator('.board-number').innerText());
+  const waitingBefore = Number((await board.getByTestId('board-attention').locator('h2').innerText()).match(/(\d+)件/)![1]);
   const url = board.url();
 
   const hq = await openTerminal(browser, 'hq', '青木 はるか');
   const { transportId } = await registerAndRequest(hq, '302', '3階東病棟');
   await expect(board.getByTestId('board-count-red').locator('.board-number')).toHaveText(String(before + 1), { timeout: 5000 });
-  await expect(board.getByTestId('board-attention')).toContainText(`受け入れ判断待ち　${transportId}`);
+  await expect(board.getByTestId('board-attention').locator('h2')).toContainText(`対応待ち ${waitingBefore + 1}件`);
 
   await hq.getByRole('tab', { name: /搬送/ }).click();
   await hq.getByTestId(`transport-${transportId}`).getByRole('button', { name: '出発を記録' }).click();
   await expect(board.getByTestId('board-moving')).toContainText('救急外来（赤ゾーン） ▶ 3階東病棟', { timeout: 5000 });
   await expect(board.getByTestId('board-acceptance')).toContainText('救急外来（赤ゾーン）');
+  // 設定の初期値は確認済みの数字に見せず「未確認（目安）」と出す
+  await expect(board.getByTestId('board-place-auditorium')).toContainText('残り未確認（目安');
 
   // 勝手に画面が切り替わらない
   expect(board.url()).toBe(url);
   await board.screenshot({ path: 'test-results/board.png' });
+});
+
+test('掲示用画面：切断中は幅いっぱいの警告を出し、受け取っていない数値は出さない', async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 1920, height: 1080 } });
+  // 配信を止めて、サーバーとの接続が切れた状態を作る
+  await context.route('**/api/live/stream', (route) => route.abort());
+  const board = await context.newPage();
+  await board.goto('/?view=board');
+  await expect(board.getByTestId('board-offline')).toContainText('✕ 切断中');
+  await expect(board.getByTestId('sync-status')).toContainText('✕');
+  // 一度も記録を受け取っていないので、0 と読み違えないよう数値を出さない
+  await expect(board.getByTestId('board-waiting')).toBeVisible();
+  await expect(board.getByTestId('board-patients')).toHaveCount(0);
+  // 1080px の高さに収まる（はみ出してスクロールが必要にならない）
+  expect(await board.evaluate(() => document.documentElement.scrollHeight)).toBeLessThanOrEqual(1080);
+  await board.screenshot({ path: 'test-results/board-offline.png' });
+});
+
+test('部署の画面：入力者を選ばずに「対応する」を開くと、その場で名前を選べる', async ({ browser }) => {
+  const hq = await openTerminal(browser, 'hq', '青木 はるか');
+  const { transportId } = await registerAndRequest(hq, '303', '4階東病棟');
+  const ward = await (await browser.newContext()).newPage();
+  await ward.goto('/?terminal=ward-4e');
+  const row = ward.getByTestId(`pinned-accept-${transportId}`);
+  await expect(row).toContainText('要請から');
+  await row.getByRole('button', { name: '対応する' }).click();
+  await expect(row).toContainText('記録するには、先に画面上の一覧から自分の名前を押してください');
+  await expect(row.getByRole('button', { name: '了承を記録' })).toBeDisabled();
+  await row.getByRole('group', { name: '入力する人の名前' }).getByRole('button', { name: '野村 拓也' }).click();
+  await expect(ward.getByTestId('entered-by')).toHaveText('野村 拓也');
+  await expect(row.getByRole('button', { name: '了承を記録' })).toBeEnabled();
+  // 部署でするべき操作だけを出し、本部向けの操作は「ほかの操作」に折りたたむ
+  await expect(row.getByRole('button', { name: '指示を記録' })).toBeHidden();
 });

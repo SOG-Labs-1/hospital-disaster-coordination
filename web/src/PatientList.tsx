@@ -15,9 +15,10 @@ interface Props {
   /** 表示する患者を絞る（部署の画面など）。省略時は全員 */
   only?: (p: PatientView) => boolean;
   title?: string;
+  emptyText?: string;
 }
 
-export function PatientList({ config, state, terminal, enteredBy, now, onRequestTransport, only, title = '患者一覧' }: Props) {
+export function PatientList({ config, state, terminal, enteredBy, now, onRequestTransport, only, title = '患者一覧', emptyText = 'まだ患者は登録されていません。左の「患者を登録する」から登録します。' }: Props) {
   const patients = only ? activePatients(state).filter(only) : activePatients(state);
   const [filter, setFilter] = useState<string>('all');
   const matches = (p: PatientView) => filter === 'all' || (p.triage ?? 'none') === filter;
@@ -50,7 +51,7 @@ export function PatientList({ config, state, terminal, enteredBy, now, onRequest
         </button>
       </div>
 
-      {patients.length === 0 && <p className="empty">まだ患者は登録されていません。左の「患者を登録する」から登録します。</p>}
+      {patients.length === 0 && <p className="empty">{emptyText}</p>}
       {patients.length > 0 && shownCount === 0 && <p className="empty no-print">この区分の患者はいません。</p>}
       {patients.length > 0 && (
         // 印刷は絞り込みにかかわらず常に全員を出す（紙が名簿として使われても患者が欠けないように）
