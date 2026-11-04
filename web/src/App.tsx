@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { flushSync } from 'react-dom';
-import { modeLabels, modes, type HospitalConfig, type Mode } from '@hdc/shared';
+import { modeLabels, modes, openSupports, supportAlert, type HospitalConfig, type Mode } from '@hdc/shared';
 import { fetchConfig } from './api';
 import { EnteredByPicker } from './EnteredByPicker';
 import { formatDateTime } from './format';
@@ -10,6 +10,7 @@ import { RegisterForm } from './RegisterForm';
 import { readEnteredBy, readMode, readTerminal, saveEnteredBy, setModeInUrl } from './session';
 import { TerminalSetup } from './TerminalSetup';
 import { TopBar } from './TopBar';
+import { SupportPanel } from './SupportPanel';
 import { TransportPanel } from './TransportPanel';
 import { CommandProvider, useCommands } from './useCommands';
 import { useEventLog } from './useEventLog';
@@ -117,6 +118,12 @@ function Headquarters({ config, terminal, mode }: { config: HospitalConfig; term
                 {tab === t.id && <span aria-hidden="true">▼ </span>}
                 {t.label}
                 {t.id === 'transports' && activeTransportCount(state) > 0 && <span className="tab-count">{activeTransportCount(state)}件</span>}
+                {t.id === 'supports' && openSupports(state).length > 0 && (
+                  <span className="tab-count">
+                    {openSupports(state).some((s) => supportAlert(s, config.supportPolicy, now)) && '⏱ '}
+                    {openSupports(state).length}件
+                  </span>
+                )}
               </button>
             ))}
           </nav>
@@ -151,6 +158,7 @@ function Headquarters({ config, terminal, mode }: { config: HospitalConfig; term
               onPreselectUsed={clearPreselect}
             />
           )}
+          {tab === 'supports' && <SupportPanel config={config} state={state} terminal={terminal} enteredBy={enteredBy} now={now} />}
           {tab === 'locations' && <LocationBoard config={config} state={state} terminal={terminal} enteredBy={enteredBy} now={now} />}
         </main>
       </div>
@@ -158,10 +166,11 @@ function Headquarters({ config, terminal, mode }: { config: HospitalConfig; term
   );
 }
 
-type Tab = 'patients' | 'transports' | 'locations';
+type Tab = 'patients' | 'transports' | 'supports' | 'locations';
 const tabs: { id: Tab; label: string; printTitle: string }[] = [
   { id: 'patients', label: '患者', printTitle: '患者一覧' },
   { id: 'transports', label: '搬送', printTitle: '搬送一覧' },
+  { id: 'supports', label: '支援要請', printTitle: '支援要請一覧' },
   { id: 'locations', label: '院内の状況', printTitle: '院内の状況' },
 ];
 
