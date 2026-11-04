@@ -49,6 +49,7 @@ describe('Claude API の部署役', () => {
     expect(p.betas).toEqual(['server-side-fallback-2026-07-01']);
     // 医療判断をしないことをシステムプロンプトで指示する
     expect(String(p.system)).toContain('診断、トリアージ（区分）の判定や変更の提案、治療や処置の助言は一切しません');
+    expect(String(p.system)).toContain('区分や治療は担当の医療者が判断します');
   });
 
   it('ツールを呼ばない返事・形の違う呼び出し・安全上の断りは null（シミュレーターが却下する）', async () => {

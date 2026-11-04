@@ -403,6 +403,7 @@ h3 { font-size: var(--text); }
 .merge-compare div { display: grid; grid-template-columns: 5em 1fr; gap: 8px; }
 .merge-compare dt { font-weight: 700; }
 .merge-compare dd { margin: 0; }
+.same-tag { font-weight: 700; padding: 2px 8px; border: 2px dashed var(--ink); background: var(--caution-bg); }
 .attention-list { margin: 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 4px; }
 
 /* ---- ダイアログ ---- */

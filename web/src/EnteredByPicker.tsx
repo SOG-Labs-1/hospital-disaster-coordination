@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { clearTerminal } from './session';
 import type { HospitalConfig } from '@hdc/shared';
 
 /** 入力者を名前の一覧から1クリックで選ぶ */
@@ -21,9 +22,12 @@ export function EnteredByPicker(props: {
         <span>
           入力者：<strong data-testid="entered-by">{current.name}</strong>（{profession(current.professionId)}）
         </span>
-        <button type="button" className="btn btn-quiet" onClick={() => onChange(null)}>
-          入力者を替える
-        </button>
+        <span className="button-row">
+          <button type="button" className="btn btn-quiet" onClick={() => onChange(null)}>
+            入力者を替える
+          </button>
+          <TerminalChange />
+        </span>
       </section>
     );
   }
@@ -44,5 +48,25 @@ export function EnteredByPicker(props: {
         </button>
       )}
     </section>
+  );
+}
+
+/** 端末を置いた場所を変える（押し間違えないよう、確かめてから） */
+function TerminalChange() {
+  const [asking, setAsking] = useState(false);
+  return asking ? (
+    <span className="button-row">
+      <span className="inline-alert">この端末の場所を選び直します。よいですか？</span>
+      <button type="button" className="btn btn-primary" onClick={clearTerminal}>
+        選び直す
+      </button>
+      <button type="button" className="btn btn-quiet" onClick={() => setAsking(false)}>
+        やめる
+      </button>
+    </span>
+  ) : (
+    <button type="button" className="btn btn-quiet" onClick={() => setAsking(true)}>
+      端末の場所を変える
+    </button>
   );
 }

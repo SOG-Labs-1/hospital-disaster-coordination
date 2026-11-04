@@ -9,7 +9,7 @@ export function TerminalSetup({ config, otherHospitals }: { config: HospitalConf
       <p>
         病院：<strong>{config.name}</strong>
       </p>
-      <p>選んだ場所はこのブラウザに保存されます。あとで変えるときは、アドレスの terminal を書き換えます。</p>
+      <p>選んだ場所はこのブラウザに保存されます。あとで変えるときは、画面上の「端末の場所を変える」を押します。</p>
       <div className="button-grid">
         {config.locations
           .filter((l) => l.hasTerminal)

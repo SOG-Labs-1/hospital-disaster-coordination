@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { activePatients, activeTransportsForPatient, sexes, sexLabels, versionOf, type AppState, type HospitalConfig, type PatientView } from '@hdc/shared';
+import { activePatients, activeTransportsForPatient, findPatientsByIdentifier, sexes, sexLabels, versionOf, type AppState, type HospitalConfig, type PatientView } from '@hdc/shared';
 import { locationName } from './labels';
 import { formatTime, minutesSince } from './format';
 import { TriageBadge } from './Triage';
@@ -72,6 +72,8 @@ function PatientRow({ patient: p, hiddenOnScreen, config, state, terminal, enter
   const [editing, setEditing] = useState<'none' | 'triage' | 'note' | 'correct' | 'merge'>('none');
   const ref = useRef<HTMLLIElement>(null);
   const transports = activeTransportsForPatient(state, p.id);
+  // 同じタッグ番号の患者が別にいれば、どちらの行にも印を付ける（手書きのタッグの重なり・読み違いに気づくため）
+  const sameTag = findPatientsByIdentifier(state, 'tagNumber', p.tagNumber, p.id);
   const moving = transports.find((t) => t.steps.departed);
   const location = moving
     ? `搬送中（${locationName(config, moving.fromLocationId)}→${locationName(config, moving.toLocationId)}）`
@@ -191,6 +193,14 @@ function PatientRow({ patient: p, hiddenOnScreen, config, state, terminal, enter
             {stale && <span className="stale-mark"> ⏱ {age}分前（古い）</span>}
           </dd>
         </div>
+        {sameTag.length > 0 && (
+          <div>
+            <dt>重複</dt>
+            <dd className="same-tag" data-testid="same-tag">
+              ⚠ 同じタッグ番号の患者：{sameTag.map((x) => x.id).join('、')}（特徴で別の人か確かめる。同じ人なら「同じ患者としてまとめる」）
+            </dd>
+          </div>
+        )}
         {p.mergedFrom.length > 0 && (
           <div>
             <dt>統合</dt>

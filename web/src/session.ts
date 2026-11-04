@@ -79,6 +79,14 @@ export function setTerminalInUrl(terminal: string) {
   location.search = params.toString();
 }
 
+/** 端末の場所の設定を消して、場所を選ぶ画面に戻す */
+export function clearTerminal() {
+  safeSet(`hdc.terminal.${hospitalKey}`, null);
+  const params = new URLSearchParams(location.search);
+  params.delete('terminal');
+  location.search = params.toString();
+}
+
 export function readEnteredBy(terminal: string): string | null {
   return safeGet(`hdc.enteredBy.${hospitalKey}.${terminal}`);
 }

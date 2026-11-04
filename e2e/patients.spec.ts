@@ -69,6 +69,9 @@ test('同じタッグ番号は警告し、理由を記録すれば登録でき�
   const row = er.getByTestId('patient-P-002');
   await expect(row).toBeVisible({ timeout: 5000 });
   await expect(row).toContainText('重複を承知で登録：別の患者であることを確認した');
+  // 同じタッグ番号の患者には、どちらの行にも印が付く
+  await expect(row.getByTestId('same-tag')).toContainText('P-001');
+  await expect(er.getByTestId('patient-P-001').getByTestId('same-tag')).toContainText('P-002');
 });
 
 test('区分の変更が他の端末に届き、履歴に残る', async ({ browser }) => {
