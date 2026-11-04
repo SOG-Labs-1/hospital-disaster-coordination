@@ -6,6 +6,7 @@ import {
   type AppState,
   type CommandInput,
   type HospitalConfig,
+  transportSteps,
   type TransportStep,
   type TransportView,
 } from '@hdc/shared';
@@ -20,6 +21,7 @@ import {
   staffName,
   transporterName,
 } from './labels';
+import { emptyReportMeta, ReportMetaFields, toReportMeta, type ReportMetaValue } from './ReportMeta';
 import { TriageBadge } from './Triage';
 import { undoNotice } from './undo';
 import { useCommands } from './useCommands';
@@ -120,6 +122,7 @@ function TransportRequestForm({ config, state, terminal, enteredBy, now, presele
   const [methodId, setMethod] = useState('');
   const [escorts, setEscorts] = useState<Record<string, number>>({});
   const [note, setNote] = useState('');
+  const [report, setReport] = useState<ReportMetaValue>(emptyReportMeta);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -150,7 +153,7 @@ function TransportRequestForm({ config, state, terminal, enteredBy, now, presele
             note: note.trim() || undefined,
           },
         },
-        meta: { enteredBy, terminal, reportedBy: null },
+        meta: { enteredBy, terminal, ...toReportMeta(report) },
         override,
       }),
       { doneText: '{id} の搬送依頼を記録しました', overrideLabel: '2件目の搬送として依頼する' },
@@ -162,6 +165,7 @@ function TransportRequestForm({ config, state, terminal, enteredBy, now, presele
       setMethod('');
       setEscorts({});
       setNote('');
+      setReport(emptyReportMeta);
     }
   }
 
@@ -219,7 +223,7 @@ function TransportRequestForm({ config, state, terminal, enteredBy, now, presele
               <label key={p.id} className="escort">
                 <span>{p.name}</span>
                 <select value={escorts[p.id] ?? 0} onChange={(e) => setEscorts({ ...escorts, [p.id]: Number(e.target.value) })} aria-label={`付き添いの${p.name}の人数`}>
-                  {[0, 1, 2, 3].map((n) => (
+                  {Array.from({ length: 10 }, (_, n) => n).map((n) => (
                     <option key={n} value={n}>
                       {n}人
                     </option>
@@ -233,6 +237,7 @@ function TransportRequestForm({ config, state, terminal, enteredBy, now, presele
         <span>メモ（任意）</span>
         <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="例：酸素投与中" autoComplete="off" />
       </label>
+      <ReportMetaFields config={config} value={report} onChange={setReport} summary="現場からの要請を無線・電話で受けたとき（報告元・確認時刻）" />
       {!enteredBy && <p className="inline-alert">⚠ 先に、画面上の一覧から入力者を選んでください。</p>}
       {enteredBy && missing && <p className="inline-alert">⚠ {missing}</p>}
       <button type="submit" className="btn btn-primary btn-wide" disabled={!enteredBy || !!missing || busy}>
@@ -245,16 +250,6 @@ function TransportRequestForm({ config, state, terminal, enteredBy, now, presele
 // ---- 搬送1件のカード ----
 
 type Action = 'none' | 'accept' | 'decline' | 'assign' | 'order' | 'redirect' | 'cancel';
-
-const stepLabels: Record<TransportStep, string> = {
-  requested: '要請',
-  accepted: '受け入れ了承',
-  staffAssigned: '要員の割り当て',
-  ordered: '指示',
-  acknowledged: '受領確認',
-  departed: '出発',
-  arrived: '到着',
-};
 
 const statusLabels: Record<TransportView['status'], { symbol: string; text: string }> = {
   requested: { symbol: '○', text: '要請あり' },
@@ -271,9 +266,13 @@ const statusLabels: Record<TransportView['status'], { symbol: string; text: stri
 function TransportCard({ transport: t, config, state, terminal, enteredBy, now }: Props & { transport: TransportView }) {
   const { run, showNotice } = useCommands();
   const [action, setAction] = useState<Action>('none');
+  const [report, setReport] = useState<ReportMetaValue>(emptyReportMeta);
   const p = state.patients[t.patientId];
   const version = versionOf(state, { kind: 'transport', id: t.id });
-  const meta = { enteredBy: enteredBy ?? '', terminal, reportedBy: null };
+  const baseMeta = { enteredBy: enteredBy ?? '', terminal, reportedBy: null };
+  // 無線で受けた報告なら、報告元と現場の確認時刻もいっしょに記録する
+  const meta = { ...baseMeta, ...toReportMeta(report) };
+  const stepLabel = (s: TransportStep) => config.transportPolicy.stepLabels[s] ?? s;
   const optional = new Set(config.transportPolicy.optionalSteps);
   const status = statusLabels[t.status];
   const radioPlaces = [t.fromLocationId, t.toLocationId].filter((id) => !hasTerminal(config, id));
@@ -286,11 +285,14 @@ function TransportCard({ transport: t, config, state, terminal, enteredBy, now }
         doneText: opts.doneText,
         overrideLabel: opts.overrideLabel,
         onAccepted: opts.undo
-          ? ([event]) => event && showNotice(undoNotice({ run, event, meta, versionAfter: version + 1, ...opts.undo! }))
+          ? ([event]) => event && showNotice(undoNotice({ run, event, meta: baseMeta, versionAfter: version + 1, ...opts.undo! }))
           : undefined,
       },
     );
-    if (r === 'accepted') setAction('none');
+    if (r === 'accepted') {
+      setAction('none');
+      setReport(emptyReportMeta);
+    }
   }
 
   const stepInfo = (s: TransportStep): string | null => {
@@ -344,12 +346,12 @@ function TransportCard({ transport: t, config, state, terminal, enteredBy, now }
       {t.overrides.length > 0 && <p className="override-note">⚠ 警告を承知で記録：{t.overrides.map((o) => o.reason).join('／')}</p>}
 
       <ol className="steps" aria-label={`${t.id} の段階`}>
-        {(Object.keys(stepLabels) as TransportStep[]).map((s) => {
+        {transportSteps.map((s) => {
           const info = stepInfo(s);
           const skippable = optional.has(s);
           return (
             <li key={s} className={`step ${info ? 'step-done' : skippable ? 'step-optional' : 'step-missing'}`} data-testid={`step-${s}`}>
-              <span aria-hidden="true">{info ? '✓' : skippable ? '・' : '－'}</span> {stepLabels[s]}
+              <span aria-hidden="true">{info ? '✓' : skippable ? '・' : '－'}</span> {stepLabel(s)}
               <span className="step-info">{info ?? (skippable ? '未記録（省略可）' : '未記録')}</span>
             </li>
           );
@@ -426,6 +428,11 @@ function TransportCard({ transport: t, config, state, terminal, enteredBy, now }
               中止を記録
             </button>
           </div>
+        </div>
+      )}
+      {(!t.steps.arrived || handoverPending) && !t.steps.cancelled && enteredBy && (
+        <div className="no-print">
+          <ReportMetaFields config={config} value={report} onChange={setReport} />
         </div>
       )}
       {handoverPending && (

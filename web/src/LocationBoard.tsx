@@ -11,6 +11,7 @@ import {
 } from '@hdc/shared';
 import { formatTime, minutesSince } from './format';
 import { locationLabel, professionName } from './labels';
+import { emptyReportMeta, ReportMetaFields, toReportMeta, type ReportMetaValue } from './ReportMeta';
 import { TriageBadge } from './Triage';
 import { useCommands } from './useCommands';
 
@@ -159,9 +160,9 @@ function LocationCard({ locationId, config, state, terminal, enteredBy, now, isS
         <div>
           <dt>人員</dt>
           <dd>
+            {/* 報告のない職種も「未確認」と出す（「いない」と読み違えないように） */}
             {config.professions.map((p) => {
               const r = v.staff[p.id];
-              if (!r && !away[p.id]) return null;
               return (
                 <span key={p.id} className="staff-count">
                   {p.name} <ReportedValue r={r} now={now} isStale={isStale} format={(x) => `${x}人`} />
@@ -169,7 +170,6 @@ function LocationCard({ locationId, config, state, terminal, enteredBy, now, isS
                 </span>
               );
             })}
-            {Object.keys(v.staff).length === 0 && Object.keys(away).length === 0 && <span className="unknown-value">未確認</span>}
           </dd>
         </div>
         {(location.routeNote || v.note) && (
@@ -197,6 +197,7 @@ function ReportForm({ config, locationId, terminal, enteredBy, onDone }: { confi
   const [capacity, setCapacity] = useState<Record<string, string>>({});
   const [staff, setStaff] = useState<Record<string, string>>({});
   const [note, setNote] = useState('');
+  const [report, setReport] = useState<ReportMetaValue>(emptyReportMeta);
   const name = config.locations.find((l) => l.id === locationId)!.name;
 
   const toValue = (s: string | undefined) => (s === undefined || s === '' ? undefined : s === '?' ? null : Number(s));
@@ -208,7 +209,7 @@ function ReportForm({ config, locationId, terminal, enteredBy, onDone }: { confi
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     if (!ready) return;
-    const meta = { enteredBy, terminal, reportedBy: { locationId } };
+    const meta = { enteredBy, terminal, ...toReportMeta(report, locationId) };
     if (hasStatus) {
       const r = await run(() => ({
         command: {
@@ -234,15 +235,7 @@ function ReportForm({ config, locationId, terminal, enteredBy, onDone }: { confi
   }
 
   const numberSelect = (value: string | undefined, onChange: (v: string) => void, label: string) => (
-    <select value={value ?? ''} onChange={(e) => onChange(e.target.value)} aria-label={label}>
-      <option value="">変えない</option>
-      <option value="?">未確認</option>
-      {Array.from({ length: 41 }, (_, n) => (
-        <option key={n} value={String(n)}>
-          {n}人
-        </option>
-      ))}
-    </select>
+    <CountInput value={value ?? ''} onChange={onChange} label={label} />
   );
 
   return (
@@ -293,6 +286,7 @@ function ReportForm({ config, locationId, terminal, enteredBy, onDone }: { confi
         <span>メモ（任意）</span>
         <input value={note} onChange={(e) => setNote(e.target.value)} autoComplete="off" />
       </label>
+      <ReportMetaFields config={config} value={report} onChange={setReport} fixedLocationId={locationId} summary="報告した人・現場で確認した時刻" />
       <div className="button-row">
         <button type="submit" className="btn btn-primary" disabled={!ready}>
           報告を記録する
@@ -302,5 +296,30 @@ function ReportForm({ config, locationId, terminal, enteredBy, onDone }: { confi
         </button>
       </div>
     </form>
+  );
+}
+
+/**
+ * 人数の入力。空欄＝変えない、「未確認」＝未確認として記録（0とは区別する）。上限は設けない
+ */
+function CountInput({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {
+  const unknown = value === '?';
+  return (
+    <span className="count-input">
+      <input
+        type="text"
+        inputMode="numeric"
+        pattern="[0-9]*"
+        aria-label={label}
+        placeholder="変えない"
+        value={unknown ? '' : value}
+        disabled={unknown}
+        onChange={(e) => onChange(e.target.value.normalize('NFKC').replace(/[^0-9]/g, ''))}
+      />
+      <span className="count-unit">人</span>
+      <button type="button" className={`chip ${unknown ? 'is-selected' : ''}`} aria-pressed={unknown} aria-label={`${label}を未確認として記録`} onClick={() => onChange(unknown ? '' : '?')}>
+        {unknown && '✓ '}未確認
+      </button>
+    </span>
   );
 }

@@ -202,6 +202,33 @@ export function decide(
       const p = payload as z.infer<typeof PatientTriageChangedPayload>;
       if (p.triage !== null && !triageIds.has(p.triage)) errors.push(`トリアージ区分「${p.triage}」が病院設定にない`);
     }
+    // 訂正の差し替えでも、搬送・場所の記録が設定にない値を指さないようにする
+    if (type === 'TransportRequested') {
+      const p = payload as z.infer<typeof payloadSchemas.TransportRequested>;
+      if (!state.patients[p.patientId]) errors.push(`患者「${p.patientId}」が見つからない`);
+      for (const loc of [p.fromLocationId, p.toLocationId]) if (!locationIds.has(loc)) errors.push(`場所「${loc}」が病院設定にない`);
+      if (p.fromLocationId === p.toLocationId) errors.push('出発元と到着先が同じ');
+      if (p.methodId && !config.transportMethods.some((m) => m.id === p.methodId)) errors.push(`搬送手段「${p.methodId}」が病院設定にない`);
+      for (const e of p.escorts)
+        if (!config.professions.some((x) => x.id === e.professionId)) errors.push(`付き添いの職種「${e.professionId}」が病院設定にない`);
+    }
+    if (type === 'TransportRedirected') {
+      const p = payload as z.infer<typeof payloadSchemas.TransportRedirected>;
+      if (!locationIds.has(p.toLocationId)) errors.push(`到着先「${p.toLocationId}」が病院設定にない`);
+    }
+    if (type === 'TransportStaffAssigned') {
+      const p = payload as z.infer<typeof payloadSchemas.TransportStaffAssigned>;
+      for (const id of p.transporterIds) if (!config.transporters.some((x) => x.id === id)) errors.push(`搬送要員「${id}」が病院設定にない`);
+      if (p.teamId && !config.transporterTeams.some((x) => x.id === p.teamId)) errors.push(`搬送班「${p.teamId}」が病院設定にない`);
+    }
+    if (type === 'LocationStatusReported') {
+      const p = payload as z.infer<typeof payloadSchemas.LocationStatusReported>;
+      for (const c of p.capacity) if (!triageIds.has(c.triage)) errors.push(`トリアージ区分「${c.triage}」が病院設定にない`);
+    }
+    if (type === 'StaffCountReported') {
+      const p = payload as z.infer<typeof payloadSchemas.StaffCountReported>;
+      for (const c of p.counts) if (!config.professions.some((x) => x.id === c.professionId)) errors.push(`職種「${c.professionId}」が病院設定にない`);
+    }
   };
 
   /** 判断した人の確認。役職・職員が設定にあるか */
@@ -291,6 +318,8 @@ export function decide(
       if (target.type === 'EventCorrected') errors.push('訂正の記録は訂正できない。元の記録に対して新しく訂正する');
       const { retract, replacement } = command.payload;
       if (!retract && !replacement) errors.push('取り消し（retract）か差し替え（replacement）のどちらかを指定する');
+      // 引き渡しの有無は記録時の病院設定で決まるので、差し替えでは変えられない
+      if (replacement && 'handover' in replacement) errors.push('到着の引き渡しの有無は差し替えられない');
       if (!retract && replacement) {
         const merged = { ...(target.payload as object), ...replacement };
         const r = payloadSchemas[target.type].safeParse(merged);

@@ -243,6 +243,13 @@ describe('搬送要員', () => {
     expect(transporterStatus(state(), 'tr3').status).toBe('idle');
   });
 
+  it('対応不可のまま割り当てた要員も、到着後は待機に戻る', () => {
+    send({ command: { type: 'SetTransporterAvailability', transporterId: 'tr3', payload: { available: false } }, meta, expectedVersion: 0 });
+    stepCmd({ type: 'AssignTransportStaff', transportId: 'T-001', payload: { transporterIds: ['tr3'] } }, { override: { codes: ['TRANSPORTER_BUSY'], reason: '休憩を切り上げて対応' } });
+    stepCmd({ type: 'RecordArrival', transportId: 'T-001', payload: {} });
+    expect(transporterStatus(state(), 'tr3')).toEqual({ status: 'idle', lastLocationId: 'loc-b' });
+  });
+
   it('設定にない要員は割り当てられない', () => {
     expect(stepCmd({ type: 'AssignTransportStaff', transportId: 'T-001', payload: { transporterIds: ['ghost'] } }).status).toBe('rejected');
   });
@@ -300,5 +307,29 @@ describe('場所の報告（未確認と0の区別）', () => {
     expect(send({ command: { type: 'ReportLocationStatus', locationId: 'x', payload: {} }, meta }).status).toBe('rejected');
     expect(send({ command: { type: 'ReportLocationStatus', locationId: 'loc-b', payload: { capacity: [{ triage: 'zz', value: 1 }] } }, meta }).status).toBe('rejected');
     expect(send({ command: { type: 'ReportStaffCount', locationId: 'loc-b', payload: { counts: [{ professionId: 'pilot', value: 1 }] } }, meta }).status).toBe('rejected');
+  });
+});
+
+describe('訂正の差し替えの検証', () => {
+  it('搬送・場所の記録も、差し替え後の値を病院設定で検証する', () => {
+    registerPatient();
+    request();
+    const req = events.at(-1)!;
+    const correct = (eventId: string, replacement: Record<string, unknown>, subjectId: string, kind: 'transport' | 'location' = 'transport') =>
+      send({
+        command: { type: 'CorrectEvent', eventId, payload: { reason: '聞き間違い', replacement } },
+        meta,
+        expectedVersion: versionOf(state(), { kind, id: subjectId }),
+      });
+    expect(correct(req.id, { toLocationId: 'nowhere' }, 'T-001').status).toBe('rejected');
+    expect(correct(req.id, { methodId: 'rocket' }, 'T-001').status).toBe('rejected');
+    expect(correct(req.id, { toLocationId: 'hq' }, 'T-001').status).toBe('accepted');
+    expect(state().transports['T-001']!.toLocationId).toBe('hq');
+
+    stepCmd({ type: 'RecordArrival', transportId: 'T-001', payload: {} });
+    expect(correct(events.at(-1)!.id, { handover: false }, 'T-001').status).toBe('rejected');
+
+    send({ command: { type: 'ReportLocationStatus', locationId: 'loc-b', payload: { capacity: [{ triage: 't1', value: 2 }] } }, meta });
+    expect(correct(events.at(-1)!.id, { capacity: [{ triage: 'zz', value: 2 }] }, 'loc-b', 'location').status).toBe('rejected');
   });
 });

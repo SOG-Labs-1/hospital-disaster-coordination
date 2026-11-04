@@ -60,12 +60,19 @@ export const TriageCategorySchema = z.object({
 
 export const ProfessionSchema = z.object({ id, name: z.string().min(1) });
 
+/**
+ * 権限キー。コードが意味を決める固定のキーで、どの役職に持たせるかを病院設定で決める。
+ * 書き間違いで誰も操作できなくなるのを防ぐため、知らないキーは読み込み時に誤りにする
+ */
+export const permissionKeys = ['accept-transport', 'direct-transport', 'register-patient', 'assign-support'] as const;
+export type PermissionKey = (typeof permissionKeys)[number];
+
 export const PositionSchema = z.object({
   id,
   name: z.string().min(1),
   /** その役職が属する場所（本部など）。省略時は場所に縛られない */
   locationId: id.optional(),
-  permissions: z.array(z.string()).default([]),
+  permissions: z.array(z.enum(permissionKeys)).default([]),
 });
 
 export const StaffSchema = z.object({
@@ -118,6 +125,8 @@ export const TransportPolicySchema = z.object({
    * どちらでも入力は誰でもよく、判断者と入力者を両方記録する
    */
   acceptanceDecidedBy: z.enum(['location-lead', 'anyone-at-location']).default('location-lead'),
+  /** 画面に出す段階の名前。書かなかった段階は id をそのまま出す */
+  stepLabels: z.partialRecord(z.enum(transportSteps), z.string().min(1)).default({}),
 });
 
 const HospitalConfigBaseSchema = z.object({
@@ -139,7 +148,7 @@ const HospitalConfigBaseSchema = z.object({
   transporters: z.array(TransporterSchema).default([]),
   transporterTeams: z.array(TransporterTeamSchema).default([]),
   transportMethods: z.array(TransportMethodSchema).default([]),
-  transportPolicy: TransportPolicySchema.default({ optionalSteps: [], handoverOnArrival: true, acceptanceDecidedBy: 'location-lead' }),
+  transportPolicy: TransportPolicySchema.default({ optionalSteps: [], handoverOnArrival: true, acceptanceDecidedBy: 'location-lead', stepLabels: {} }),
   /** 確認からこの分数を過ぎた情報に「古い」印を付ける */
   staleAfterMinutes: z.number().int().positive(),
 });

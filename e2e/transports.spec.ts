@@ -75,7 +75,7 @@ test('赤ゾーンから手術室への搬送を、要請から到着まで2端�
   const assign = card.getByRole('form', { name: '搬送要員の割り当て' });
   await assign.getByRole('button', { name: /搬送A班/ }).click();
   await assign.getByRole('button', { name: '2人を割り当てる' }).click();
-  await expect(card.getByTestId('step-staffAssigned')).toContainText('Alex Turner、Bianca Reyes');
+  await expect(card.getByTestId('step-staffAssigned')).toContainText('Ansel Whitcombe、Bianca Reyes');
   await expect(hq.getByTestId('transporter-tr-01')).toContainText(`割当済 ${t}`);
 
   await card.getByRole('button', { name: '指示を記録' }).click();
@@ -94,6 +94,9 @@ test('赤ゾーンから手術室への搬送を、要請から到着まで2端�
   await expect(hq.getByTestId(`patient-${patientId}`)).toContainText('搬送中（救急外来→手術室）');
 
   // 手術室で到着（＝引き渡し）を記録すると、本部の画面で所在が移り、要員は待機に戻る
+  // 無線で受けた報告として、報告元と現場の確認時刻もいっしょに記録する
+  await orCard.getByText('無線・電話で受けた報告のとき').click();
+  await orCard.getByLabel('報告した人').fill('搬送A班');
   await orCard.getByRole('button', { name: '到着を記録' }).click();
   await expect(hq.getByTestId(`patient-${patientId}`)).toContainText('手術室', { timeout: 5000 });
   await expect(hq.getByTestId(`patient-${patientId}`)).not.toContainText('搬送中');
@@ -101,6 +104,10 @@ test('赤ゾーンから手術室への搬送を、要請から到着まで2端�
   await expect(hq.getByTestId('transporter-tr-01')).toContainText('待機');
   await expect(hq.getByTestId('transporter-tr-01')).toContainText('最後の到着先：手術室');
   await expect(hq.getByTestId(`moving-${t}`)).toHaveCount(0);
+
+  const { events } = await (await hq.request.get('/api/live/events')).json();
+  const arrival = events.findLast((e: { type: string; subject: { id: string } }) => e.type === 'TransportArrived' && e.subject.id === t);
+  expect(arrival).toMatchObject({ terminal: 'or', enteredBy: 'or-01', reportedBy: { name: '搬送A班' }, payload: { handover: true } });
 });
 
 test('同じ患者への2件目の搬送と、稼働中の要員への割り当ては警告し、理由を記録すれば実行できる', async ({ browser }) => {
@@ -159,9 +166,11 @@ test('院内の状況：受け入れ可否と人数を確認時刻つきで記�
   await ward.getByRole('button', { name: '状況の報告を記録' }).click();
   const form = ward.getByRole('form', { name: '5階西病棟の状況の報告' });
   await form.locator('label.chip', { hasText: '受け入れ不可' }).click();
-  await form.getByLabel('黄の受け入れ可能人数').selectOption('0');
-  await form.getByLabel('看護師の人数').selectOption('4');
-  await form.getByLabel('医師の人数').selectOption('?');
+  await form.getByLabel('黄の受け入れ可能人数', { exact: true }).fill('0');
+  await form.getByLabel('看護師の人数', { exact: true }).fill('４'); // 全角でも入る
+  await form.getByRole('button', { name: '医師の人数を未確認として記録' }).click();
+  await form.getByText('報告した人・現場で確認した時刻').click();
+  await form.getByLabel('報告した人').fill('病棟リーダー');
   await form.getByRole('button', { name: '報告を記録する' }).click();
 
   await expect(ward.getByTestId('accepting')).toContainText('✕ 受け入れ不可');
@@ -169,7 +178,8 @@ test('院内の状況：受け入れ可否と人数を確認時刻つきで記�
   await expect(ward.getByTestId('capacity-yellow')).toContainText('0人');
   await expect(ward.getByTestId('capacity-yellow')).not.toContainText('設定の初期値');
   await expect(ward).toContainText('看護師 4人');
-  await expect(ward).toContainText('医師 未確認');
+  await expect(ward).toContainText('医師 未確認（');
+  await expect(ward).toContainText('技師 未確認'); // 報告のない職種も「未確認」と出る
   await expect(hq.getByTestId('attention-list')).not.toContainText('5階西病棟');
   await hq.screenshot({ path: 'test-results/locations.png', fullPage: true });
 });

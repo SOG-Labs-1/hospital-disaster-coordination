@@ -462,10 +462,15 @@ function applyTransportEvent(state: AppState, e: DomainEvent, correction: Correc
         if (laterObservation(e, { observedAt: patient.lastObservedAt })) patient.lastObservedAt = e.observedAt;
         patient.lastRecordedAt = e.recordedAt;
       }
-      // 到着した搬送要員は、最後の到着先で待機に戻る
+      // 到着した搬送要員は、最後の到着先で待機に戻る（対応不可のまま割り当てられていた場合も待機に戻す）
       for (const id of t.transporterIds) {
         const a = (state.transporters[id] ??= { available: true });
         a.lastLocationId = t.toLocationId;
+        if (!a.available) {
+          a.available = true;
+          a.availabilityNote = undefined;
+          a.availabilitySince = e.observedAt;
+        }
       }
       break;
     }

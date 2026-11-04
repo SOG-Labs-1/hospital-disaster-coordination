@@ -113,7 +113,7 @@ staff:
 
 # 搬送要員（1人ずつ。すべて架空の名前）
 transporters:
-  - { id: tr-01, name: Alex Turner }
+  - { id: tr-01, name: Ansel Whitcombe }
   - { id: tr-02, name: Bianca Reyes }
   - { id: tr-03, name: Carter Lowell }
   - { id: tr-04, name: Dana Whitfield }
@@ -138,6 +138,15 @@ transportPolicy:
   handoverOnArrival: true
   # 受け入れ了承の判断は到着先の責任者と代行者。入力は誰でもよい
   acceptanceDecidedBy: location-lead
+  # 画面に出す段階の名前
+  stepLabels:
+    requested: 要請
+    accepted: 受け入れ了承
+    staffAssigned: 要員の割り当て
+    ordered: 指示
+    acknowledged: 受領確認
+    departed: 出発
+    arrived: 到着
 
 warningReasons:
   - { id: confirmed-different, label: 別の患者であることを確認した }

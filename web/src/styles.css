@@ -319,6 +319,10 @@ h3 { font-size: var(--text); }
 .capacity-table .over { font-weight: 700; color: var(--danger); border: 3px double var(--danger); }
 .staff-count { display: block; }
 .away { font-weight: 700; }
+.count-input { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.count-input input { width: 5em; min-height: var(--tap); font: inherit; padding: 4px 8px; border: 2px solid var(--ink-muted); border-radius: var(--radius); }
+.count-input input:disabled { background: #f3f5f7; border-style: dotted; }
+.report-meta-set { margin-left: 12px; font-size: var(--text-small); text-decoration: none; padding: 0 6px; border: 2px solid currentColor; border-radius: var(--radius); }
 .attention-list { margin: 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 4px; }
 
 /* ---- ダイアログ ---- */
