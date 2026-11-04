@@ -1,0 +1,203 @@
+import {
+  advance,
+  buildRoleContext,
+  reduceSim,
+  resolveProposals,
+  simMsAt,
+  type DomainEvent,
+  type HospitalConfig,
+  type Scenario,
+  type SimEvent,
+  type SimEventInput,
+  type SimView,
+} from '@hdc/shared';
+import type { AiProvider } from '../ai';
+import { SimStore } from './sim-store';
+
+// 訓練の進行。シミュレーター（shared）を時計で動かし、部署役（AiProvider）に刺激を渡し、
+// 返ってきた提案をシミュレーターで検証して記録する。
+// 参加者のボードは読むだけで、書き込まない（書き込めるのは参加者の操作によるコマンドだけ）。
+
+/** ボードへの読み取り専用の入口と、訓練の回ごとのボードの切り替え */
+export interface BoardAccess {
+  events(): readonly DomainEvent[];
+  /** 新しい回を始めるとき、その回のボード（別ファイル）に切り替える */
+  switchRun(runId: string | null): void;
+}
+
+export interface TrainingDeps {
+  config: HospitalConfig;
+  scenarios: Scenario[];
+  simStorePath: string;
+  provider: AiProvider;
+  board: BoardAccess;
+  newId: () => string;
+  now?: () => Date;
+  /** 何かが変わったときに呼ぶ（画面への配信） */
+  onChange?: () => void;
+}
+
+export type ControlAction = { action: 'start'; scenarioId: string } | { action: 'pause' } | { action: 'resume' } | { action: 'speed'; speed: number } | { action: 'end' };
+
+export class TrainingManager {
+  private store: SimStore;
+  private runId: string | null;
+  private events: SimEvent[];
+  private inflight = new Set<string>();
+  private now: () => Date;
+
+  constructor(private deps: TrainingDeps) {
+    this.store = new SimStore(deps.simStorePath);
+    this.now = deps.now ?? (() => new Date());
+    this.runId = this.store.latestRunId();
+    this.events = this.runId ? this.store.runEvents(this.runId) : [];
+  }
+
+  get currentRunId(): string | null {
+    return this.runId;
+  }
+
+  get providerName(): string {
+    return this.deps.provider.name;
+  }
+
+  scenario(): Scenario | undefined {
+    const v = this.events.find((e) => e.type === 'RunStarted');
+    return v?.type === 'RunStarted' ? this.deps.scenarios.find((s) => s.id === v.scenarioId) : undefined;
+  }
+
+  view(): SimView | null {
+    const sc = this.scenario();
+    return sc ? reduceSim(this.events, sc, this.deps.config) : null;
+  }
+
+  simEvents(): readonly SimEvent[] {
+    return this.events;
+  }
+
+  private append(inputs: SimEventInput[]): void {
+    if (!this.runId || inputs.length === 0) return;
+    const at = this.now().toISOString();
+    const events = inputs.map((e) => ({ ...e, id: this.deps.newId(), at }) as SimEvent);
+    this.store.append(this.runId, events);
+    this.events.push(...events);
+  }
+
+  /** 時計を進める。出来事を起こし、ボードを観察し、返事の時間が来た刺激を部署役に渡す */
+  tick(): void {
+    const sc = this.scenario();
+    if (!sc) return;
+    const before = this.events.length;
+    const r = advance({ scenario: sc, config: this.deps.config, simEvents: this.events, boardEvents: this.deps.board.events(), now: this.now() });
+    this.append(r.events);
+    // 再起動などで、渡したまま返事を受け取っていない刺激があれば渡し直す
+    const view = reduceSim(this.events, sc, this.deps.config);
+    for (const [id, st] of view.stimuli) if (st.dispatched && !st.resolved && !this.inflight.has(id)) this.ask(id);
+    if (this.events.length !== before) this.deps.onChange?.();
+  }
+
+  private ask(stimulusId: string): void {
+    const sc = this.scenario();
+    if (!sc) return;
+    this.inflight.add(stimulusId);
+    const runId = this.runId;
+    const ctx = buildRoleContext(reduceSim(this.events, sc, this.deps.config), sc, this.deps.config, stimulusId);
+    this.deps.provider
+      .proposeForRole(ctx)
+      .catch((err) => {
+        console.error('部署役の提案を受け取れなかった', err);
+        return [null];
+      })
+      .then((proposals) => {
+        this.inflight.delete(stimulusId);
+        if (this.runId !== runId) return; // 回が変わった後の返事は使わない
+        this.append(resolveProposals(this.events, sc, this.deps.config, stimulusId, proposals, this.now()));
+        this.deps.onChange?.();
+      });
+  }
+
+  /** 返事待ちの部署役がなくなるまで待つ（テスト用） */
+  async settle(): Promise<void> {
+    while (this.inflight.size) await new Promise((r) => setTimeout(r, 5));
+  }
+
+  control(c: ControlAction): { ok: true } | { ok: false; error: string } {
+    const view = this.view();
+    const sim = view ? simMsAt(view, this.now()) : 0;
+    const last = view?.clock.at(-1);
+    const live = view && !view.ended;
+    switch (c.action) {
+      case 'start': {
+        if (!this.deps.scenarios.some((s) => s.id === c.scenarioId)) return { ok: false, error: `シナリオ「${c.scenarioId}」がない` };
+        if (live) this.append([{ type: 'RunEnded', simMs: sim, reason: 'manual' }]);
+        this.runId = this.deps.newId();
+        this.events = [];
+        this.inflight.clear();
+        this.deps.board.switchRun(this.runId);
+        this.append([{ type: 'RunStarted', runId: this.runId, scenarioId: c.scenarioId, hospitalId: this.deps.config.id, provider: this.deps.provider.name }]);
+        break;
+      }
+      case 'pause':
+        if (!live) return { ok: false, error: '進行中の訓練がない' };
+        if (last!.running) this.append([{ type: 'ClockChanged', running: false, speed: last!.speed }]);
+        break;
+      case 'resume':
+        if (!live) return { ok: false, error: '進行中の訓練がない' };
+        if (!last!.running) this.append([{ type: 'ClockChanged', running: true, speed: last!.speed }]);
+        break;
+      case 'speed':
+        if (!live) return { ok: false, error: '進行中の訓練がない' };
+        if (![1, 2].includes(c.speed)) return { ok: false, error: '速さは1倍か2倍' };
+        this.append([{ type: 'ClockChanged', running: last!.running, speed: c.speed }]);
+        break;
+      case 'end':
+        if (!live) return { ok: false, error: '進行中の訓練がない' };
+        this.append([{ type: 'RunEnded', simMs: sim, reason: 'manual' }]);
+        break;
+    }
+    this.tick();
+    this.deps.onChange?.();
+    return { ok: true };
+  }
+
+  /** 本部から部署役へ連絡する（無線で伝えたことにあたる） */
+  message(to: string, text: string): { ok: true } | { ok: false; error: string } {
+    const sc = this.scenario();
+    const view = this.view();
+    if (!sc || !view || view.ended) return { ok: false, error: '進行中の訓練がない' };
+    if (!sc.roles.some((r) => r.locationId === to)) return { ok: false, error: 'その場所には部署役がいない' };
+    if (!text.trim()) return { ok: false, error: '内容を書く' };
+    const sim = simMsAt(view, this.now());
+    const n = view.outbox.length + 1;
+    this.append([
+      { type: 'MessageFromHQ', messageId: `H-${String(n).padStart(3, '0')}`, to, text: text.trim(), simMs: sim },
+      { type: 'StimulusQueued', stimulusId: `S-H${n}`, role: to, stimulus: { kind: 'hqMessage', text: text.trim() }, dueSimMs: sim + sc.settings.responseDelaySeconds * 1000 },
+    ]);
+    this.deps.onChange?.();
+    return { ok: true };
+  }
+
+  heard(messageId: string): { ok: true } | { ok: false; error: string } {
+    const view = this.view();
+    if (!view?.inbox.some((m) => m.messageId === messageId)) return { ok: false, error: 'その連絡がない' };
+    this.append([{ type: 'MessageHeard', messageId }]);
+    this.deps.onChange?.();
+    return { ok: true };
+  }
+
+  addNote(findingId: string, note: string): { ok: true } | { ok: false; error: string } {
+    if (!this.view()?.ended) return { ok: false, error: '訓練が終わってから補足する' };
+    this.append([{ type: 'ReviewNoteAdded', findingId, note: note.trim() }]);
+    this.deps.onChange?.();
+    return { ok: true };
+  }
+
+  recordExplanations(explanations: Extract<SimEvent, { type: 'ReviewExplained' }>['explanations']): void {
+    this.append([{ type: 'ReviewExplained', provider: this.deps.provider.name, explanations }]);
+    this.deps.onChange?.();
+  }
+
+  close(): void {
+    this.store.close();
+  }
+}
