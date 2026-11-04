@@ -28,7 +28,12 @@ test('訓練を始め、無線の連絡を聞いてボードに入力し、終�
   await expect(hq.getByTestId('patient-count')).toHaveText('0人');
 
   // 聞いた連絡をクロノロジーに残し、患者を登録して、手術室への搬送を依頼する
+  // 部署役の言葉は下書きとして出し、参加者が確かめてから残す
   await first.getByRole('button', { name: '連絡メモに残す' }).click();
+  const draft = first.getByRole('form', { name: '連絡メモの下書き' });
+  await expect(draft.getByLabel(/聞いた内容/)).toHaveValue(/タッグ101/);
+  await draft.getByLabel(/聞いた内容/).fill('救急外来：赤 タッグ101 紺の作業着の男性が到着');
+  await draft.getByRole('button', { name: 'この内容で残す' }).click();
   await expect(hq.getByTestId('notice')).toContainText('連絡メモ');
   await expect(inbox.locator('.radio-row', { hasText: 'タッグ101' }).getByRole('button', { name: '聞いた' })).toHaveCount(0);
   const form = hq.getByRole('form', { name: '患者を登録する' });

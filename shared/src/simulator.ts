@@ -57,6 +57,8 @@ export type SimEvent = SimBase &
     | { type: 'TransportArrivedInSim'; transportId: string; simMs: number }
     | { type: 'SupportDeliveredInSim'; supportId: string; simMs: number }
     | { type: 'RunEnded'; simMs: number; reason: 'time' | 'manual' }
+    /** 部署役（AI）の返事に失敗し、決まった返事（mock）で補った */
+    | { type: 'ProviderFailed'; stimulusId: string; error: string }
     | { type: 'ReviewNoteAdded'; findingId: string; note: string }
     | { type: 'ReviewExplained'; provider: string; explanations: { findingId: string; text: string; evidence: string[] }[] }
   );
@@ -121,6 +123,7 @@ export interface SimView {
   proposals: Extract<SimEvent, { type: 'ProposalResolved' }>[];
   notes: Record<string, string>;
   explanations: Extract<SimEvent, { type: 'ReviewExplained' }> | null;
+  providerFailures: number;
 }
 
 export function simMsAt(view: SimView, now: Date): number {
@@ -157,6 +160,7 @@ export function emptySimView(): SimView {
     proposals: [],
     notes: {},
     explanations: null,
+    providerFailures: 0,
   };
 }
 
@@ -275,6 +279,9 @@ function applySim(v: SimView, e: SimEvent, scenario: Scenario): void {
     }
     case 'SupportDeliveredInSim':
       v.supports[e.supportId]!.deliveredSimMs = e.simMs;
+      return;
+    case 'ProviderFailed':
+      v.providerFailures += 1;
       return;
     case 'ReviewNoteAdded':
       v.notes[e.findingId] = e.note;
@@ -546,45 +553,78 @@ function describeItems(config: HospitalConfig, items: SupportItem[]): string {
 
 // ---- 提案の検証と反映 ----
 
-export function validateProposal(view: SimView, config: HospitalConfig, role: string, p: Proposal): string | null {
+/** 刺激ごとに、部署役が出してよい行動。これ以外の行動は却下する（関係のない返事で状態を動かさない） */
+export const allowedActions: Record<Stimulus['kind'], Proposal['action'][]> = {
+  patientArrived: ['reply_message', 'report_status'],
+  statusChanged: ['report_status', 'reply_message'],
+  needSupport: ['request_support', 'reply_message'],
+  notice: ['reply_message'],
+  transportRequest: ['accept_transport', 'decline_transport', 'reply_message'],
+  transportOrdered: ['report_departure', 'reply_message'],
+  patientArrivedByTransport: ['report_arrival', 'reply_message'],
+  supportArrived: ['reply_message'],
+  hqMessage: ['reply_message', 'report_status', 'accept_transport', 'decline_transport'],
+};
+
+/**
+ * 医療的な判断（診断・トリアージ判定・治療の助言）を含む言葉。部署役の返事に含まれていたら却下する。
+ * プロンプトでの指示に加えた、出力側の簡単な確認
+ */
+const MEDICAL_ADVICE = /診断|処方|投与して|投与すべき|治療して|治療すべき|手術すべき|処置して|処置すべき|(トリアージ|区分)を(変更|変え|上げ|下げ)/;
+
+export function validateProposal(view: SimView, config: HospitalConfig, role: string, p: Proposal, stimulus?: Stimulus): string | null {
   const loc = view.locations[role];
   if (!loc) return '部署が見つからない';
+  if (stimulus && !allowedActions[stimulus.kind].includes(p.action)) return `この連絡への返事として「${p.action}」はできない`;
+  if (MEDICAL_ADVICE.test(p.message)) return '医療的な判断を含む言葉がある';
   const t = 'transportId' in p ? view.transports[p.transportId] : undefined;
   switch (p.action) {
     case 'reply_message':
       return null;
-    case 'report_status':
+    case 'report_status': {
+      if (p.accepting === null && p.capacity.length === 0) return '報告する状況がない（返事だけなら reply_message）';
       if (p.accepting !== null && p.accepting !== loc.accepting) return '受け入れ可否が実際の状態と違う';
       for (const c of p.capacity) {
         if (!(c.triage in loc.capacity)) return `区分「${c.triage}」の受け入れ枠はこの部署にない`;
         if (loc.capacity[c.triage] !== c.value) return '受け入れ可能人数が実際の状態と違う';
       }
+      // 言葉の中の人数（「N人」）も、報告した人数と合っていなければならない（構造化した値と文の食い違いを防ぐ）
+      // 場所の名前（3階東病棟など）の数字は人数ではないので見ない
+      const numbers = [...p.message.normalize('NFKC').matchAll(/(\d+)\s*人/g)].map((m) => Number(m[1]));
+      const allowed = new Set(p.capacity.map((c) => c.value));
+      if (numbers.some((n) => !allowed.has(n))) return '言葉の中の数字が報告した人数と違う';
       return null;
+    }
     case 'accept_transport': {
       if (!t || t.cancelled) return `搬送「${p.transportId}」の依頼はこの部署に来ていない`;
       if (t.toLocationId !== role) return 'この部署への搬送ではない';
-      if (t.arrivedSimMs !== undefined) return 'すでに到着している';
+      if (t.arrivedSimMs !== undefined || t.departedSimMs !== undefined) return 'すでに出発・到着している';
+      if (t.roleAccepted === true) return 'すでに了承している';
       if (!loc.accepting) return 'この部署はいま受け入れ不可';
-      const triage = t.patientKey ? view.patients[t.patientKey]?.triage : undefined;
-      if (triage) {
-        if (!(triage in loc.capacity)) return 'この区分の患者の受け入れ枠がない';
-        const present = Object.values(view.patients).filter((x) => x.locationId === role && x.triage === triage).length;
-        const incoming = Object.values(view.transports).filter(
-          (x) => x.id !== t.id && x.toLocationId === role && x.roleAccepted === true && x.arrivedSimMs === undefined && !x.cancelled && x.patientKey && view.patients[x.patientKey]?.triage === triage,
-        ).length;
-        if (loc.capacity[triage]! - present - incoming <= 0) return '受け入れ可能人数を超える';
-      }
+      // どの患者か分からないと、受け入れ枠で判断できない（本部にタッグ番号や特徴を確かめてもらう）
+      if (!t.patientKey) return 'どの患者か特定できない';
+      const triage = view.patients[t.patientKey]?.triage;
+      if (!triage || !(triage in loc.capacity)) return 'この区分の患者の受け入れ枠がない';
+      const present = Object.values(view.patients).filter((x) => x.locationId === role && x.triage === triage).length;
+      const incoming = Object.values(view.transports).filter(
+        (x) => x.id !== t.id && x.toLocationId === role && x.roleAccepted === true && x.arrivedSimMs === undefined && !x.cancelled && x.patientKey && view.patients[x.patientKey]?.triage === triage,
+      ).length;
+      if (loc.capacity[triage]! - present - incoming <= 0) return '受け入れ可能人数を超える';
       return null;
     }
     case 'decline_transport':
       if (!t || t.cancelled) return `搬送「${p.transportId}」の依頼はこの部署に来ていない`;
       if (t.toLocationId !== role) return 'この部署への搬送ではない';
+      if (t.departedSimMs !== undefined) return 'すでに出発している';
+      if (t.roleAccepted === false) return 'すでに断っている';
       return null;
     case 'report_departure':
       if (!t || t.cancelled) return `搬送「${p.transportId}」が見つからない`;
       if (t.fromLocationId !== role) return 'この部署から出る搬送ではない';
+      // 出発は本部の指示を受けてから
+      if (t.orderedSimMs === undefined) return '本部の搬送の指示がまだない';
       if (t.departedSimMs !== undefined) return 'すでに出発している';
-      if (t.patientKey && view.patients[t.patientKey]?.locationId !== role) return 'その患者はこの部署にいない';
+      if (!t.patientKey || view.patients[t.patientKey]?.locationId !== role) return 'その患者はこの部署にいない';
       return null;
     case 'report_arrival':
       if (!t) return `搬送「${p.transportId}」が見つからない`;
@@ -613,7 +653,7 @@ export function resolveProposals(
   let messages = view.inbox.length;
   if (proposals.length === 0) proposals = [null];
   for (const p of proposals) {
-    const reason = p ? validateProposal(view, config, st.role, p) : '提案の形が正しくない';
+    const reason = p ? validateProposal(view, config, st.role, p, st.stimulus) : '提案の形が正しくない';
     const e: SimEventInput = reason
       ? { type: 'ProposalResolved', stimulusId, role: st.role, proposal: p, accepted: false, reason, simMs: sim }
       : { type: 'ProposalResolved', stimulusId, role: st.role, proposal: p, accepted: true, messageId: seqId('R', ++messages), simMs: sim };

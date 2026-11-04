@@ -21,6 +21,7 @@ export interface TrainingSnapshot {
   inbox: { messageId: string; from: string; fromName: string; text: string; simMs: number; heard: boolean }[];
   outbox: { messageId: string; to: string; toName: string; text: string; simMs: number }[];
   pendingReplies: number;
+  providerFailures: number;
   review: {
     findings: {
       id: string;

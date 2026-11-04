@@ -5,6 +5,7 @@ import type { AddressInfo } from 'node:net';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createApp, type App } from './app';
 import { MockProvider } from './ai/mock';
+import type { AiProvider } from './ai/provider';
 import { loadHospitalConfig, loadScenarios } from './config';
 
 const config = loadHospitalConfig('claude');
@@ -153,5 +154,68 @@ describe('訓練の進行（mock の部署役）', () => {
     base = `http://localhost:${(app.server.address() as AddressInfo).port}/api/h/claude`;
     expect((await snapshot()).run.runId).toBe(runId);
     expect(((await (await fetch(`${base}/training/events`)).json()) as any).events).toHaveLength(1);
+  });
+});
+
+describe('AI が止まっても訓練は続く', () => {
+  async function restartWith(provider: AiProvider) {
+    await app.close();
+    app = createApp({ hospitals: [config], dataDir, now: () => new Date(clock), training: { scenarios, provider, tickMs: 1_000_000, replyTimeoutMs: 50 } });
+    await new Promise<void>((r) => app.server.listen(0, r));
+    base = `http://localhost:${(app.server.address() as AddressInfo).port}/api/h/claude`;
+  }
+  const failing: AiProvider = {
+    name: 'anthropic',
+    proposeForRole: async () => {
+      throw new Error('API に届かない');
+    },
+    explainReview: async () => {
+      throw new Error('API に届かない');
+    },
+  };
+
+  it('部署役の返事に失敗したら決まった返事で補い、補った回数を画面に出す', async () => {
+    await restartWith(failing);
+    await post('/training/sim/control', { action: 'start', scenarioId: 'claude-red-to-or' });
+    await advanceBy(20_000);
+    await advanceBy(15_000);
+    const s = await snapshot();
+    expect(s.inbox).toHaveLength(1);
+    expect(s.inbox[0].text).toContain('タッグ101');
+    expect(s.providerFailures).toBe(1);
+  });
+
+  it('返事が時間内に来なければ決まった返事で補う', async () => {
+    await restartWith({ ...failing, proposeForRole: () => new Promise(() => {}) });
+    await post('/training/sim/control', { action: 'start', scenarioId: 'claude-red-to-or' });
+    await advanceBy(20_000);
+    await advanceBy(15_000);
+    await new Promise((r) => setTimeout(r, 100));
+    await app.training('claude')!.settle();
+    expect((await snapshot()).providerFailures).toBe(1);
+  });
+
+  it('説明文に失敗しても振り返りの照合は見られ、空の説明文は追記しない', async () => {
+    await restartWith(failing);
+    await post('/training/sim/control', { action: 'start', scenarioId: 'claude-red-to-or' });
+    await advanceBy(40_000);
+    await post('/training/sim/control', { action: 'end' });
+    await app.training('claude')!.settle();
+    const s = await snapshot();
+    expect(s.review.findings.length).toBeGreaterThan(0);
+    expect(s.review.explainedBy).toBeNull();
+  });
+
+  it('補足は振り返りにある指摘にだけ、決まった長さまで付けられる。参加者には作る人向けの説明を見せない', async () => {
+    await post('/training/sim/control', { action: 'start', scenarioId: 'claude-red-to-or' });
+    const s0 = await snapshot();
+    expect(s0.scenarios[0].description).not.toContain('2枚');
+    await advanceBy(40_000);
+    await post('/training/sim/control', { action: 'end' });
+    await app.training('claude')!.settle();
+    expect((await post('/training/sim/note', { findingId: 'F-99', note: 'x' })).code).toBe(400);
+    const id = (await snapshot()).review.findings[0].id;
+    expect((await post('/training/sim/note', { findingId: id, note: 'あ'.repeat(301) })).code).toBe(400);
+    expect((await post('/training/sim/note', { findingId: id, note: '電話で確認した' })).code).toBe(200);
   });
 });

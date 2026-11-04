@@ -33,7 +33,7 @@ export interface AppOptions {
   now?: () => Date;
   heartbeatMs?: number;
   /** 訓練モード（シナリオと部署役）。省略すると訓練の進行は使えない（記録の入力はできる） */
-  training?: { scenarios: Scenario[]; provider: AiProvider; tickMs?: number };
+  training?: { scenarios: Scenario[]; provider: AiProvider; tickMs?: number; replyTimeoutMs?: number };
 }
 
 export interface App {
@@ -87,6 +87,7 @@ export function createApp(options: AppOptions): App {
         scenarios,
         simStorePath: join(dataDir, config.id, 'training-sim.sqlite'),
         provider: options.training.provider,
+        replyTimeoutMs: options.training.replyTimeoutMs,
         newId: () => ulid(),
         now,
         onChange: () => broadcastSim(config.id),

@@ -370,6 +370,7 @@ h3 { font-size: var(--text); }
 .radio-from { font-weight: 700; }
 .radio-text { font-size: var(--text-large); }
 .radio-clock { margin: 6px 0 0; text-align: right; }
+.radio-draft { grid-column: 1 / -1; }
 .radio-clock strong { font-size: var(--text-large); font-variant-numeric: tabular-nums; }
 @media (max-width: 900px) { .radio-row { grid-template-columns: 1fr; } }
 .training-clock { display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px 24px; margin-bottom: var(--gap); }

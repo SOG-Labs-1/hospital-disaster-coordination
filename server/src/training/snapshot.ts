@@ -22,8 +22,10 @@ export interface TrainingSnapshot {
   inbox: { messageId: string; from: string; fromName: string; text: string; simMs: number; heard: boolean }[];
   /** 本部から部署役への連絡 */
   outbox: { messageId: string; to: string; toName: string; text: string; simMs: number }[];
-  /** 返事を考えている部署役の数 */
+  /** 本部から送った連絡で、返事を待っているものの数 */
   pendingReplies: number;
+  /** 部署役（AI）の返事に失敗し、決まった返事で補った回数 */
+  providerFailures: number;
   /** 振り返り（訓練が終わってから） */
   review: {
     findings: (Finding & { categoryLabel: string; note?: string; explanation?: { text: string; evidence: string[] } })[];
@@ -42,7 +44,7 @@ export function buildSnapshot(opts: { config: HospitalConfig; scenarios: Scenari
     scenarios: scenarios.map((s) => ({
       id: s.id,
       title: s.title,
-      description: s.description,
+      description: s.briefing,
       durationMinutes: s.durationMinutes,
       roles: s.roles.map((r) => ({ locationId: r.locationId, name: r.name })),
     })),
@@ -62,7 +64,9 @@ export function buildSnapshot(opts: { config: HospitalConfig; scenarios: Scenari
         : null,
     inbox: (view?.inbox ?? []).map((m) => ({ messageId: m.messageId, from: m.from, fromName: roleName(m.from), text: m.text, simMs: m.simMs, heard: m.heard })),
     outbox: (view?.outbox ?? []).map((m) => ({ messageId: m.messageId, to: m.to, toName: roleName(m.to), text: m.text, simMs: m.simMs })),
-    pendingReplies: view ? [...view.stimuli.values()].filter((s) => s.dispatched && !s.resolved).length : 0,
+    // 部署役が何を考えているか（＝何が起きたか）が先に分からないよう、本部からの連絡への返事待ちだけを数える
+    pendingReplies: view ? [...view.stimuli.values()].filter((s) => s.stimulus.kind === 'hqMessage' && !s.resolved).length : 0,
+    providerFailures: view?.providerFailures ?? 0,
     review: review
       ? {
           findings: review.findings.map((f) => {

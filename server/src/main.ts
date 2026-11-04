@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { createApp } from './app';
 import { createAiProvider } from './ai';
+import { MockProvider } from './ai/mock';
 import { loadHospitalConfig, loadScenarios, repoRoot, resolveHospitalIds } from './config';
 
 // .env（API キーなど）はサーバーだけが読む。リポジトリにはコミットしない
@@ -19,7 +20,11 @@ const dataDir = process.env.DATA_DIR ?? join(repoRoot, 'data');
 const hospitals = hospitalIds.map((id) => loadHospitalConfig(id));
 const scenarios = loadScenarios(hospitals);
 // 訓練の部署役（AI_PROVIDER=mock|anthropic）。実運用の記録には使わない
-const provider = await createAiProvider();
+// 設定の誤りで実運用まで止めないよう、部署役を作れなければ mock に切り替えて起動する
+const provider = await createAiProvider().catch((err) => {
+  console.warn(`⚠ 部署役（AI）を準備できなかったため、決まった返事（mock）で動かします：${(err as Error).message}`);
+  return new MockProvider();
+});
 const app = createApp({ hospitals, dataDir, defaultHospitalId, staticDir: join(repoRoot, 'web/dist'), training: { scenarios, provider } });
 
 app.server.listen(port, () => {

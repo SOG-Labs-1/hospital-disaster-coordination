@@ -70,7 +70,10 @@ export const ScenarioSchema = z
     /** 使う病院設定の id */
     hospital: id,
     fictional: z.literal(true),
+    /** シナリオを作る人向けの説明（参加者には見せない。先の出来事が書いてあってよい） */
     description: z.string().default(''),
+    /** 参加者に見せる説明（先の出来事は書かない） */
+    briefing: z.string().default(''),
     durationMinutes: z.number().positive(),
     /** AI が担う部署役。参加者は本部 */
     roles: z.array(z.object({ locationId: z.string(), name: z.string().min(1), persona: z.string().default('') })).min(1),

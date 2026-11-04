@@ -25,29 +25,37 @@ export function RadioInbox({ config, snapshot, terminal, enteredBy, now }: Props
   const heard = snapshot.inbox.filter((m) => m.heard).reverse();
   if (!snapshot.run) return null;
 
+  const [draft, setDraft] = useState<{ messageId: string; text: string } | null>(null);
+
   async function markHeard(messageId: string) {
     const r = await trainingPost('heard', { messageId });
     if (!r.ok) showNotice({ kind: 'error', text: r.error });
   }
 
-  /** 聞いた内容を、そのままクロノロジーの連絡メモとして記録する（参加者の操作として） */
-  async function logIt(m: TrainingSnapshot['inbox'][number]) {
-    if (!enteredBy) return;
+  /**
+   * 聞いた内容を、クロノロジーの連絡メモとして記録する（参加者の操作として）。
+   * 部署役の言葉をそのまま記録にしないよう、下書きとして出して参加者が確かめ・直してから残す
+   */
+  async function logIt(m: TrainingSnapshot['inbox'][number], text: string) {
+    if (!enteredBy || !text.trim()) return;
     const ok = await run(
       () => ({
-        command: { type: 'LogMessage', payload: { channel: 'radio', fromLocationId: m.from, toLocationId: terminal, text: m.text, relatedIds: [] } },
+        command: { type: 'LogMessage', payload: { channel: 'radio', fromLocationId: m.from, toLocationId: terminal, text: text.trim(), relatedIds: [] } },
         meta: { enteredBy, terminal, reportedBy: { locationId: m.from } },
       }),
       { doneText: '連絡メモ {id} として残しました' },
     );
-    if (ok === 'accepted') await markHeard(m.messageId);
+    if (ok === 'accepted') {
+      setDraft(null);
+      await markHeard(m.messageId);
+    }
   }
 
   return (
     <section className={`radio-inbox ${unheard.length ? 'has-items' : ''}`} aria-labelledby="radio-title" data-testid="radio-inbox">
       <h2 id="radio-title">
         <span aria-hidden="true">📻</span> 無線の受信 <span className="count">聞いていない {unheard.length}件</span>
-        {snapshot.pendingReplies > 0 && <span className="radio-pending">… 部署役が返事を考えています</span>}
+        {snapshot.pendingReplies > 0 && <span className="radio-pending">… 本部からの連絡に、部署役が返事を考えています</span>}
       </h2>
       {unheard.length === 0 ? (
         <p className="hint">新しい連絡はありません。部署からの連絡はここに届きます（ボードは自動では変わりません）。</p>
@@ -62,10 +70,33 @@ export function RadioInbox({ config, snapshot, terminal, enteredBy, now }: Props
                 <button type="button" className="btn btn-primary" onClick={() => markHeard(m.messageId)}>
                   聞いた
                 </button>
-                <button type="button" className="btn" disabled={!enteredBy} onClick={() => logIt(m)} title="この連絡を、そのままクロノロジーの連絡メモに残します">
+                <button type="button" className="btn" disabled={!enteredBy} aria-expanded={draft?.messageId === m.messageId} onClick={() => setDraft({ messageId: m.messageId, text: m.text })}>
                   連絡メモに残す
                 </button>
               </span>
+              {draft?.messageId === m.messageId && (
+                <form
+                  className="action-form radio-draft"
+                  aria-label="連絡メモの下書き"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    logIt(m, draft.text);
+                  }}
+                >
+                  <label className="field">
+                    <span>聞いた内容（確かめて、必要なら直してから残す）</span>
+                    <input value={draft.text} onChange={(e) => setDraft({ ...draft, text: e.target.value })} autoComplete="off" />
+                  </label>
+                  <div className="button-row">
+                    <button type="submit" className="btn btn-primary" disabled={!draft.text.trim()}>
+                      この内容で残す
+                    </button>
+                    <button type="button" className="btn btn-quiet" onClick={() => setDraft(null)}>
+                      やめる
+                    </button>
+                  </div>
+                </form>
+              )}
             </li>
           ))}
         </ul>
@@ -83,6 +114,11 @@ export function RadioInbox({ config, snapshot, terminal, enteredBy, now }: Props
             ))}
           </ul>
         </details>
+      )}
+      {snapshot.providerFailures > 0 && (
+        <p className="inline-alert" data-testid="provider-failures">
+          ⚠ 部署役（AI）の返事に{snapshot.providerFailures}回失敗し、決まった返事で補いました。
+        </p>
       )}
       <p className="radio-clock">
         訓練の経過 <strong>{formatSim(liveSimMs(snapshot, now))}</strong>
@@ -225,7 +261,7 @@ function MessageToRole({ snapshot }: { config: HospitalConfig; snapshot: Trainin
         </fieldset>
         <label className="field">
           <span>伝えること</span>
-          <input value={text} onChange={(e) => setText(e.target.value)} autoComplete="off" placeholder="例：手術室、赤の患者を1人受け入れられますか" />
+          <input value={text} onChange={(e) => setText(e.target.value)} autoComplete="off" placeholder="例：受け入れられるか確認します" />
         </label>
         <button type="submit" className="btn btn-primary" disabled={!to || !text.trim()}>
           無線で伝える

@@ -196,3 +196,62 @@ describe('部署役が知り得る情報だけを渡す', () => {
     expect(b.conversation).toEqual([]);
   });
 });
+
+describe('提案の検証（点検の指摘への対応）', () => {
+  function requestFor(tag: string | undefined) {
+    run.tick(30_000);
+    run.boardSend(() => ({ command: { type: 'RegisterPatient', payload: { locationId: 'loc-a', tagNumber: tag, triage: 't1' } }, meta }));
+    run.boardSend(() => ({ command: { type: 'RequestTransport', payload: { patientId: 'P-001', toLocationId: 'loc-b' } }, meta }));
+    run.tick(10_000);
+    return [...run.view().stimuli].find(([, x]) => x.stimulus.kind === 'transportRequest')![0];
+  }
+  const last = () => run.view().proposals.at(-1)!;
+
+  it('どの患者か特定できない搬送は了承できない（受け入れ枠で判断できないため）', () => {
+    const id = requestFor(undefined);
+    run.propose(id, { action: 'accept_transport', transportId: 'T-001', message: '受け入れます' });
+    expect(last()).toMatchObject({ accepted: false, reason: 'どの患者か特定できない' });
+  });
+
+  it('刺激に合わない行動は却下する（関係のない返事で出発させない）', () => {
+    const id = requestFor('1');
+    run.propose(id, { action: 'report_departure', transportId: 'T-001', message: '出発しました' });
+    expect(last().reason).toContain('この連絡への返事として');
+  });
+
+  it('本部の指示がない出発は却下する', () => {
+    run.tick(30_000);
+    run.boardSend(() => ({ command: { type: 'RegisterPatient', payload: { locationId: 'loc-a', tagNumber: '1', triage: 't1' } }, meta }));
+    run.boardSend(() => ({ command: { type: 'RequestTransport', payload: { patientId: 'P-001', toLocationId: 'loc-b' } }, meta }));
+    run.add([
+      { type: 'StimulusQueued', stimulusId: 'S-X', role: 'loc-a', stimulus: { kind: 'transportOrdered', transportId: 'T-001', patientText: '', toLocationId: 'loc-b' }, dueSimMs: 0 },
+    ]);
+    run.tick(0);
+    run.propose('S-X', { action: 'report_departure', transportId: 'T-001', message: '出発しました' });
+    expect(last()).toMatchObject({ accepted: false, reason: '本部の搬送の指示がまだない' });
+  });
+
+  it('同じ搬送への了承を繰り返せない', () => {
+    const id = requestFor('1');
+    run.propose(id, { action: 'accept_transport', transportId: 'T-001', message: '受け入れます' });
+    run.add([{ type: 'StimulusQueued', stimulusId: 'S-Y', role: 'loc-b', stimulus: { kind: 'hqMessage', text: '確認です' }, dueSimMs: 0 }]);
+    run.tick(0);
+    run.propose('S-Y', { action: 'accept_transport', transportId: 'T-001', message: 'もう一度受け入れます' });
+    expect(last()).toMatchObject({ accepted: false, reason: 'すでに了承している' });
+  });
+
+  it('医療的な判断を含む言葉は却下する', () => {
+    run.tick(30_000);
+    const [s] = run.tick(10_000);
+    run.propose(s!, { action: 'reply_message', message: 'この患者はトリアージを変更して黄にしてください' });
+    expect(last()).toMatchObject({ accepted: false, reason: '医療的な判断を含む言葉がある' });
+    expect(run.view().inbox).toHaveLength(0);
+  });
+
+  it('状況の報告は、言葉の中の人数も実際と合っていなければならない（場所名の数字は見ない）', () => {
+    run.add([{ type: 'StimulusQueued', stimulusId: 'S-Z', role: 'loc-b', stimulus: { kind: 'statusChanged' }, dueSimMs: 0 }]);
+    run.tick(0);
+    run.propose('S-Z', { action: 'report_status', message: '3階です。区分1は5人まで', accepting: true, capacity: [{ triage: 't1', value: 1 }] });
+    expect(last()).toMatchObject({ accepted: false, reason: '言葉の中の数字が報告した人数と違う' });
+  });
+});

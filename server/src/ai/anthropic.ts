@@ -53,7 +53,8 @@ export class AnthropicProvider implements AiProvider {
     const effort = (env.ANTHROPIC_EFFORT ?? 'low') as Effort;
     if (!['low', 'medium', 'high', 'xhigh', 'max'].includes(effort)) throw new Error(`ANTHROPIC_EFFORT「${effort}」は使えない`);
     // 認証情報は SDK が環境変数（ANTHROPIC_API_KEY など）から読む
-    return new AnthropicProvider(new Anthropic(), { model, reviewModel: env.ANTHROPIC_REVIEW_MODEL || model, effort });
+    // 部署役の返事は訓練の進行を止めないよう、時間と再試行を短くする（失敗したら進行役が決まった返事で補う）
+    return new AnthropicProvider(new Anthropic({ timeout: 15_000, maxRetries: 1 }), { model, reviewModel: env.ANTHROPIC_REVIEW_MODEL || model, effort });
   }
 
   /** 安全のための断り（refusal）は、推奨の別モデルでサーバー側がやり直す */
