@@ -22,6 +22,8 @@ interface RunOptions {
   /** 登録などを取りやめたときの知らせ */
   cancelledText?: string;
   onAccepted?: (events: DomainEvent[]) => void;
+  /** 版番号が合わなかったときの知らせ（「元に戻す」など、もう一度押せない操作で使う） */
+  conflictText?: string;
 }
 
 interface Ctx {
@@ -96,7 +98,7 @@ export function CommandProvider(props: { mode: Mode; config: HospitalConfig; sta
         if (r.status === 'conflict') {
           setNotice({
             kind: 'conflict',
-            text: `${r.subject.id} はほかの端末で先に更新されました。一覧の最新の内容を確かめて、もう一度操作してください。`,
+            text: opts.conflictText?.replace('{id}', r.subject.id) ?? `${r.subject.id} はほかの端末で先に更新されました。一覧の最新の内容を確かめて、もう一度操作してください。`,
           });
           return 'failed';
         }

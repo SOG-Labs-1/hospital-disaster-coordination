@@ -587,7 +587,8 @@ function applyTransportEvent(state: AppState, e: DomainEvent, correction: Correc
     }
   }
   t.status = transportStatus(t);
-  t.closed = t.status === 'arrived' || t.status === 'cancelled' || t.status === 'declined';
+  // 断られた搬送は終わりにしない（行き先を変えるか中止するかを決めるまで、調整中の一覧と件数に残す）
+  t.closed = t.status === 'arrived' || t.status === 'cancelled';
 }
 
 function applyTransporterEvent(state: AppState, e: DomainEvent, correction: Correction | undefined): void {
@@ -810,7 +811,8 @@ export function pendingForLocation(state: AppState, locationId: string): Locatio
   const supports = openSupports(state);
   return {
     acceptRequests: transports.filter((t) => t.toLocationId === locationId && !t.steps.accepted && !t.steps.declined && !t.steps.departed),
-    departures: transports.filter((t) => t.fromLocationId === locationId && !t.steps.departed),
+    // 断られた搬送は、行き先が決まり直すまで出発させない
+    departures: transports.filter((t) => t.fromLocationId === locationId && !t.steps.departed && !t.steps.declined),
     arrivals: transports.filter((t) => t.toLocationId === locationId && t.steps.departed),
     supportsToReceive: supports.filter((s) => (s.steps.dispatched?.toLocationId ?? s.fromLocationId) === locationId && !s.steps.received),
     supportsToProvide: supports.filter((s) => s.steps.dispatched?.providerLocationId === locationId && !s.steps.received),

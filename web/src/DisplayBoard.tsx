@@ -15,6 +15,7 @@ import {
   type Reported,
 } from '@hdc/shared';
 import { formatTime, minutesSince } from './format';
+import { capacityText } from './LocationBoard';
 import { locationLabel, locationName } from './labels';
 import { itemText } from './SupportPanel';
 import { TriageBadge } from './Triage';
@@ -234,12 +235,14 @@ function Acceptance({ config, state, now }: { config: HospitalConfig; state: App
                     {r.source === 'reported' ? (
                       r.remaining !== null && r.remaining <= 0 ? (
                         // 院内の状況と同じく、空き0以下は ⚠ と二重の枠で示す
-                        <span className="board-over"> ⚠ 空き{r.remaining}{isOld(v.capacity[t.id]) && <OldTag />}</span>
+                        <span className="board-over"> ⚠ 空き{capacityText(r.remaining)}{isOld(v.capacity[t.id]) && <OldTag />}</span>
                       ) : (
                         <> 空き{r.remaining}{isOld(v.capacity[t.id]) && <OldTag />}</>
                       )
                     ) : (
-                      <span className="unknown-value">空き未確認{r.value !== null && `（目安${r.remaining}）`}</span>
+                      <span className={`unknown-value ${r.remaining !== null && r.remaining <= 0 ? 'board-over' : ''}`}>
+                        {r.remaining !== null && r.remaining <= 0 ? '⚠ ' : ''}空き未確認{r.value !== null && r.remaining !== null && `（目安${r.remaining <= 0 ? capacityText(r.remaining) : r.remaining}）`}
+                      </span>
                     )}
                   </span>
                 );

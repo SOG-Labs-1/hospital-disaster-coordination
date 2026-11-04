@@ -186,6 +186,24 @@ export function remainingCapacity(config: HospitalConfig, state: AppState, locat
   return { ...cap, present, incoming, remaining: cap.value === null ? null : cap.value - present - incoming };
 }
 
+/** 患者の所在を動かす記録 */
+const movesPatient = new Set(['TransportDeparted', 'TransportArrived', 'TransportHandedOver']);
+/** 差し替えを認めない記録（担当・権限・重複の確かめが要るもの） */
+const noReplacement = new Set(['TransportAccepted', 'TransportDeclined', 'TransportOrdered', 'TransportStaffAssigned', 'SupportAssigned', 'SupportDispatched']);
+
+/**
+ * eventId より後に、同じ患者の所在を動かす記録（別の搬送の出発・到着・引き渡し、所在の訂正、統合）があれば、その対象の番号を返す。
+ * 記録の id（ULID）は時刻の順に並ぶので、id の大小で前後を判断する
+ */
+function laterLocationChange(state: AppState, eventId: string, patientId: string, transportId: string): string | null {
+  for (const [id, m] of Object.entries(state.eventMeta)) {
+    if (id <= eventId) continue;
+    if (m.subject.kind === 'transport' && m.subject.id !== transportId && movesPatient.has(m.type) && state.transports[m.subject.id]?.patientId === patientId) return m.subject.id;
+    if (m.subject.kind === 'patient' && m.subject.id === patientId && (m.type === 'PatientDetailsCorrected' || m.type === 'PatientsMerged')) return m.subject.id;
+  }
+  return null;
+}
+
 export function decide(
   state: AppState,
   config: HospitalConfig,
@@ -405,6 +423,18 @@ export function decide(
       if (target.type === 'EventCorrected') errors.push('訂正の記録は訂正できない。元の記録に対して新しく訂正する');
       const { retract, replacement } = command.payload;
       if (!retract && !replacement) errors.push('取り消し（retract）か差し替え（replacement）のどちらかを指定する');
+      // 患者の所在を動かした記録（出発・到着・引き渡し）は、その患者の所在が後の記録でさらに動いていたら、取り消しも差し替えもしない
+      // （古い記録だけを消すと、終わった搬送が「搬送中」に戻り、患者の所在と食い違うため）
+      if (target.subject.kind === 'transport' && movesPatient.has(target.type)) {
+        const patientId = state.transports[target.subject.id]?.patientId;
+        const later = patientId ? laterLocationChange(state, command.eventId, patientId, target.subject.id) : null;
+        if (later) errors.push(`後から ${later} の記録が入っているため、この記録は直せない。対応記録から、いまの所在を確かめて記録し直す`);
+      }
+      // 担当・権限・重複を確かめる記録は、差し替えでは確かめが効かないので、取り消して正しい内容で記録し直す
+      if (!retract && replacement && noReplacement.has(target.type)) errors.push('この記録は差し替えできない。取り消して、正しい内容で記録し直す');
+      if (!retract && replacement && target.type === 'PatientRegistered' && ('tagNumber' in replacement || 'hospitalPatientId' in replacement)) {
+        errors.push('タッグ番号・院内患者IDは「登録内容を直す」で直す（同じ番号の患者がいないかを確かめるため）');
+      }
       // 引き渡しの有無は記録時の病院設定で決まるので、差し替えでは変えられない
       if (replacement && 'handover' in replacement) errors.push('到着の引き渡しの有無は差し替えられない');
       if (!retract && replacement) {

@@ -29,7 +29,8 @@ export function HospitalCreate() {
     name: '',
     fictional: false,
     staleAfterMinutes: undefined,
-    locations: [{ name: '災害対策本部', kind: 'headquarters', hasTerminal: true, capacity: {} }],
+    // 本部の場所の名前は、標準の値を読んでから入れる
+    locations: [{ name: '', kind: 'headquarters', hasTerminal: true, capacity: {} }],
     zoneAssignments: [],
     positions: { hqChief: true, hqTransport: false, locationLeads: true },
     staff: [],
@@ -39,7 +40,12 @@ export function HospitalCreate() {
 
   useEffect(() => {
     fetch('/api/hospital-template').then(
-      async (r) => (r.ok ? setTemplate(await r.json()) : setError('この環境では病院を作れません')),
+      async (r) => {
+        if (!r.ok) return setError('この環境では病院を作れません');
+        const t: HospitalTemplate = await r.json();
+        setTemplate(t);
+        setDraft((d) => (d.locations[0] && !d.locations[0].name ? { ...d, locations: [{ ...d.locations[0], name: t.firstHeadquartersName }, ...d.locations.slice(1)] } : d));
+      },
       () => setError('サーバーに届かなかった'),
     );
   }, []);
@@ -58,7 +64,11 @@ export function HospitalCreate() {
       new Set(draft.locations.map((l) => l.name.trim())).size !== draft.locations.length && '場所の名前が重なっています',
     ].filter(Boolean) as string[],
     [],
-    [!draft.positions.hqChief && !draft.positions.hqTransport && `${pt.hqChief.name}か${pt.hqTransport.name}のどちらかを入れてください（搬送の指示を出す役職）`].filter(Boolean) as string[],
+    // 搬送の指示を出せる役職（雛形の権限に direct-transport があるもの）を1つ以上選んでいるか
+    [
+      !([draft.positions.hqChief && pt.hqChief, draft.positions.hqTransport && pt.hqTransport].some((x) => x && x.permissions.includes('direct-transport'))) &&
+        `${[pt.hqChief, pt.hqTransport].filter((x) => x.permissions.includes('direct-transport')).map((x) => x.name).join('か')}のどちらかを入れてください（搬送の指示を出す役職）`,
+    ].filter(Boolean) as string[],
     [
       draft.staff.length === 0 && '入力者を1人以上入れてください',
       draft.staff.some((s) => s.name.trim().length < 2) && 'フルネームのない入力者がいます',
@@ -108,7 +118,7 @@ export function HospitalCreate() {
               <span>
                 病院名<em className="required">必須</em>
               </span>
-              <input value={draft.name} onChange={(e) => set({ name: e.target.value })} autoComplete="off" placeholder="例：みなと中央病院(仮)" />
+              <input value={draft.name} onChange={(e) => set({ name: e.target.value })} autoComplete="off" placeholder="例：〇〇総合病院(仮)" />
             </label>
             <label className="field">
               <span>確認が古いと見なすまでの時間（分。空欄＝標準の{template.staleAfterMinutes}分）</span>

@@ -128,7 +128,7 @@ export function TransportPanel(props: Props) {
 
         {closed.length > 0 && (
           <details className="panel closed-transports">
-            <summary>終わった搬送（到着・中止・断り） {closed.length}件</summary>
+            <summary>終わった搬送（到着・中止） {closed.length}件</summary>
             <ol className="transport-list">
               {[...closed].reverse().map((t) => (
                 <TransportCard key={t.id} transport={t} {...props} readOnly={!isMine(t)} />
@@ -307,6 +307,8 @@ export function TransportCard({
 }: CardProps & { transport: TransportView; focus?: CardFocus; readOnly?: boolean }) {
   const { run, showNotice } = useCommands();
   const [action, setAction] = useState<Action>('none');
+  // 送っている間は、1回で記録されるボタンを押せなくする（二度押しで、成功の知らせが誤りの知らせに置き換わらないように）
+  const [sending, setSending] = useState(false);
   const [report, setReport] = useState<ReportMetaValue>(emptyReportMeta);
   const p = state.patients[t.patientId];
   const version = versionOf(state, { kind: 'transport', id: t.id });
@@ -328,12 +330,16 @@ export function TransportCard({
     ['ordered', 'order'],
     ['departed', 'depart'],
   ] as const;
+  // 出発済みなら、調整の段階が欠けていても次は「到着」（欠けた段階は「未記録」の印で示す）
   const stageNext: 'accept' | 'assign' | 'order' | 'depart' | 'arrive' | undefined = t.steps.declined
     ? undefined
-    : (stagesInOrder.find(([step]) => !t.steps[step] && !optional.has(step) && (canDirect || (step !== 'staffAssigned' && step !== 'ordered')))?.[1] ?? 'arrive');
+    : t.steps.departed
+      ? 'arrive'
+      : (stagesInOrder.find(([step]) => !t.steps[step] && !optional.has(step) && (canDirect || (step !== 'staffAssigned' && step !== 'ordered')))?.[1] ?? 'arrive');
   const next = focus ?? stageNext;
 
   async function send(command: CommandInput, opts: { doneText?: string; overrideLabel?: string; undo?: { text: string; undoneText: string } } = {}) {
+    setSending(true);
     const r = await run(
       (override) => ({ command, meta, expectedVersion: version, override }),
       {
@@ -344,6 +350,7 @@ export function TransportCard({
           : undefined,
       },
     );
+    setSending(false);
     if (r === 'accepted') {
       setAction('none');
       setReport(emptyReportMeta);
@@ -370,18 +377,18 @@ export function TransportCard({
           <div className="transport-actions no-print">
             <div className="button-row" role="group" aria-label={`${t.id} の調整（依頼したこと）`}>
               <span className="action-group-label">調整（依頼したこと）</span>
-              <button type="button" className="btn" disabled={!enteredBy} aria-expanded={action === 'accept'} onClick={() => setAction(action === 'accept' ? 'none' : 'accept')}>
+              <button type="button" className="btn" disabled={sending || !enteredBy} aria-expanded={action === 'accept'} onClick={() => setAction(action === 'accept' ? 'none' : 'accept')}>
                 了承を記録
               </button>
-              <button type="button" className="btn" disabled={!enteredBy} aria-expanded={action === 'decline'} onClick={() => setAction(action === 'decline' ? 'none' : 'decline')}>
+              <button type="button" className="btn" disabled={sending || !enteredBy} aria-expanded={action === 'decline'} onClick={() => setAction(action === 'decline' ? 'none' : 'decline')}>
                 断りを記録
               </button>
               {canDirect && (
                 <>
-                  <button type="button" className="btn" disabled={!enteredBy} aria-expanded={action === 'assign'} onClick={() => setAction(action === 'assign' ? 'none' : 'assign')}>
+                  <button type="button" className="btn" disabled={sending || !enteredBy} aria-expanded={action === 'assign'} onClick={() => setAction(action === 'assign' ? 'none' : 'assign')}>
                     要員を割り当てる
                   </button>
-                  <button type="button" className="btn" disabled={!enteredBy} aria-expanded={action === 'order'} onClick={() => setAction(action === 'order' ? 'none' : 'order')}>
+                  <button type="button" className="btn" disabled={sending || !enteredBy} aria-expanded={action === 'order'} onClick={() => setAction(action === 'order' ? 'none' : 'order')}>
                     指示を記録
                   </button>
                 </>
@@ -391,7 +398,7 @@ export function TransportCard({
                 type="button"
                 className="btn btn-apart"
                 aria-describedby={`ack-hint-${t.id}`}
-                disabled={!enteredBy || !!t.steps.acknowledged}
+                disabled={sending || !enteredBy || !!t.steps.acknowledged}
                 onClick={() =>
                   send(
                     { type: 'AcknowledgeTransport', transportId: t.id, payload: {} },
@@ -409,7 +416,7 @@ export function TransportCard({
               <button
                 type="button"
                 className="btn btn-primary"
-                disabled={!enteredBy || !!t.steps.departed}
+                disabled={sending || !enteredBy || !!t.steps.departed}
                 onClick={recordDeparture}
               >
                 出発を記録
@@ -418,15 +425,15 @@ export function TransportCard({
               <button
                 type="button"
                 className={`btn btn-apart ${t.steps.departed ? 'btn-primary' : ''}`}
-                disabled={!enteredBy}
+                disabled={sending || !enteredBy}
                 onClick={recordArrival}
               >
                 到着を記録
               </button>
-              <button type="button" className="btn" disabled={!enteredBy} aria-expanded={action === 'redirect'} onClick={() => setAction(action === 'redirect' ? 'none' : 'redirect')}>
+              <button type="button" className="btn" disabled={sending || !enteredBy} aria-expanded={action === 'redirect'} onClick={() => setAction(action === 'redirect' ? 'none' : 'redirect')}>
                 行き先を変える
               </button>
-              <button type="button" className="btn" disabled={!enteredBy} aria-expanded={action === 'cancel'} onClick={() => setAction(action === 'cancel' ? 'none' : 'cancel')}>
+              <button type="button" className="btn" disabled={sending || !enteredBy} aria-expanded={action === 'cancel'} onClick={() => setAction(action === 'cancel' ? 'none' : 'cancel')}>
                 中止を記録
               </button>
             </div>
@@ -517,31 +524,31 @@ export function TransportCard({
               <span className="action-group-label">次にすること</span>
               {next === 'accept' && (
                 <>
-                  <button type="button" className="btn btn-primary" disabled={!enteredBy} aria-expanded={action === 'accept'} onClick={() => setAction(action === 'accept' ? 'none' : 'accept')}>
+                  <button type="button" className="btn btn-primary" disabled={sending || !enteredBy} aria-expanded={action === 'accept'} onClick={() => setAction(action === 'accept' ? 'none' : 'accept')}>
                     了承を記録
                   </button>
-                  <button type="button" className="btn" disabled={!enteredBy} aria-expanded={action === 'decline'} onClick={() => setAction(action === 'decline' ? 'none' : 'decline')}>
+                  <button type="button" className="btn" disabled={sending || !enteredBy} aria-expanded={action === 'decline'} onClick={() => setAction(action === 'decline' ? 'none' : 'decline')}>
                     断りを記録
                   </button>
                 </>
               )}
               {next === 'assign' && (
-                <button type="button" className="btn btn-primary" disabled={!enteredBy} aria-expanded={action === 'assign'} onClick={() => setAction(action === 'assign' ? 'none' : 'assign')}>
+                <button type="button" className="btn btn-primary" disabled={sending || !enteredBy} aria-expanded={action === 'assign'} onClick={() => setAction(action === 'assign' ? 'none' : 'assign')}>
                   要員を割り当てる
                 </button>
               )}
               {next === 'order' && (
-                <button type="button" className="btn btn-primary" disabled={!enteredBy} aria-expanded={action === 'order'} onClick={() => setAction(action === 'order' ? 'none' : 'order')}>
+                <button type="button" className="btn btn-primary" disabled={sending || !enteredBy} aria-expanded={action === 'order'} onClick={() => setAction(action === 'order' ? 'none' : 'order')}>
                   指示を記録
                 </button>
               )}
               {next === 'depart' && (
-                <button type="button" className="btn btn-primary" disabled={!enteredBy || !!t.steps.departed} onClick={recordDeparture}>
+                <button type="button" className="btn btn-primary" disabled={sending || !enteredBy || !!t.steps.departed} onClick={recordDeparture}>
                   出発を記録
                 </button>
               )}
               {next === 'arrive' && (
-                <button type="button" className="btn btn-primary" disabled={!enteredBy} onClick={recordArrival}>
+                <button type="button" className="btn btn-primary" disabled={sending || !enteredBy} onClick={recordArrival}>
                   到着を記録
                 </button>
               )}
@@ -559,7 +566,7 @@ export function TransportCard({
           <button
             type="button"
             className="btn btn-primary"
-            disabled={!enteredBy}
+            disabled={sending || !enteredBy}
             onClick={() => send({ type: 'RecordHandover', transportId: t.id, payload: {} }, { undo: { text: `${t.id} の引き渡しを記録しました`, undoneText: `${t.id} の引き渡しの記録を取り消しました` } })}
           >
             引き渡しを記録

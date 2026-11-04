@@ -35,7 +35,10 @@ export function undoNotice(opts: {
             meta,
             expectedVersion: versionAfter,
           }),
-          { doneText: undoneText },
+          {
+            doneText: undoneText,
+            conflictText: '{id} には後から別の記録が入っているため、元に戻せませんでした。対応記録で確かめて、必要なら訂正を記録してください。',
+          },
         ),
     },
   };

@@ -32,8 +32,8 @@ const PINNED_VISIBLE = 4;
  * 各部署の画面の上部に固定表示する「この部署への依頼・この部署が記録すること」。
  * どのタブを開いていても表示し、行ごとの「対応する」で、その行でするべき操作をその場で開く
  */
-export function PinnedRequests(props: Props & { onChangeEnteredBy: (staffId: string) => void }) {
-  const { config, state, terminal, enteredBy, now, onChangeEnteredBy } = props;
+export function PinnedRequests(props: Props & { onChangeEnteredBy: (staffId: string) => void; loaded: boolean }) {
+  const { config, state, terminal, enteredBy, now, onChangeEnteredBy, loaded } = props;
   const [openKey, setOpenKey] = useState<string | null>(null);
   // 並び順を固定する：最初に開いたときの順番を覚え、あとから来た依頼は末尾に足して「新着」と示す。
   // 新しい依頼が来るたびに並び替わると、「対応する」を押す瞬間に指の下の行が入れ替わるため（配置を変えない）
@@ -114,27 +114,29 @@ export function PinnedRequests(props: Props & { onChangeEnteredBy: (staffId: str
     })),
   ];
   const priority = (a: Row, b: Row) => Number(b.decision) - Number(a.decision) || b.elapsed.minutes - a.elapsed.minutes;
-  // 記録の読み込み前（まだ0件）には順番を決めない。読み込んだ時点の依頼は「新着」にせず、優先の順に並べる
-  if (order.current === null && unordered.length > 0) order.current = [...unordered].sort(priority).map((r) => r.key);
+  // 並びと新着の印は、搬送・要請の番号（slot）で覚える。同じ搬送が「到着」→「引き渡し」と次の段階に進んでも、同じ位置のまま開いておける
+  const slot = (r: Row) => ('transport' in r ? r.transport.id : r.support.id);
+  // 記録を読み込み終えた時点の依頼は「新着」にせず、優先の順に並べる。読み込み前（記録の取得中）は並びを決めない
+  if (order.current === null && loaded) order.current = [...unordered].sort(priority).map(slot);
   const known = new Set(order.current ?? []);
-  const arrived = order.current ? unordered.filter((r) => !known.has(r.key)) : [];
+  const arrived = order.current ? unordered.filter((r) => !known.has(slot(r))).map(slot) : [];
   if (order.current && arrived.length) {
-    order.current = [...order.current, ...arrived.map((r) => r.key)];
+    order.current = [...order.current, ...arrived];
     // 描画の途中で状態を変えないよう、新着の印は次の描画で付ける
-    queueMicrotask(() => setFresh((f) => new Set([...f, ...arrived.map((r) => r.key)])));
+    queueMicrotask(() => setFresh((f) => new Set([...f, ...arrived])));
   }
   const position = new Map((order.current ?? []).map((k, i) => [k, i]));
-  const rows = [...unordered].sort((a, b) => position.get(a.key)! - position.get(b.key)!);
+  const rows = [...unordered].sort((a, b) => (position.get(slot(a)) ?? 0) - (position.get(slot(b)) ?? 0));
   const resort = () => {
-    order.current = [...unordered].sort(priority).map((r) => r.key);
+    order.current = [...unordered].sort(priority).map(slot);
     setFresh(new Set());
   };
-  const open = (key: string | null) => {
-    setOpenKey(key);
-    if (key && fresh.has(key)) setFresh((f) => new Set([...f].filter((k) => k !== key)));
+  const open = (r: Row | null) => {
+    setOpenKey(r ? slot(r) : null);
+    if (r && fresh.has(slot(r))) setFresh((f) => new Set([...f].filter((k) => k !== slot(r))));
   };
   // 件数の上限で隠すのは、判断が要らず新着でもない行だけ。判断の依頼と新着は、並びを変えずに常に出す（見落とさないように）
-  const important = (r: Row) => r.decision || fresh.has(r.key);
+  const important = (r: Row) => r.decision || fresh.has(slot(r));
   const shown = (r: Row, i: number) => i < PINNED_VISIBLE || important(r);
   const hidden = rows.filter((r, i) => !shown(r, i));
 
@@ -151,17 +153,17 @@ export function PinnedRequests(props: Props & { onChangeEnteredBy: (staffId: str
       ) : (
         <ul className="pinned-list">
           {visible.map((r) => (
-            <li key={r.key} className={`pinned-row ${r.decision ? 'is-decision' : ''}`} data-testid={`pinned-${r.key}`}>
+            <li key={slot(r)} className={`pinned-row ${r.decision ? 'is-decision' : ''}`} data-testid={`pinned-${r.key}`}>
               <div className="pinned-line">
-                {fresh.has(r.key) && <span className="pinned-new">★ 新着</span>}
+                {fresh.has(slot(r)) && <span className="pinned-new">★ 新着</span>}
                 <span className="pinned-label">{r.label}</span>
                 <span className="pinned-text">{r.text}</span>
                 <span className="pinned-elapsed">{r.elapsed.text}</span>
-                <button type="button" className="btn" aria-expanded={openKey === r.key} onClick={() => open(openKey === r.key ? null : r.key)}>
-                  {openKey === r.key ? '閉じる' : '対応する'}
+                <button type="button" className="btn" aria-expanded={openKey === slot(r)} onClick={() => open(openKey === slot(r) ? null : r)}>
+                  {openKey === slot(r) ? '閉じる' : '対応する'}
                 </button>
               </div>
-              {openKey === r.key && (
+              {openKey === slot(r) && (
                 <>
                   {!enteredBy && localStaff.length > 0 && (
                     // 入力者を選ばないと記録できないので、その場で名前を選べるようにする

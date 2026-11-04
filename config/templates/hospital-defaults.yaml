@@ -112,6 +112,9 @@ checklist:
   - { id: transport-ack, text: 搬送の指示に受領確認を取ったか }
   - { id: support-done, text: 支援要請の完了を確認したか }
 
+# 病院を作る画面で、最初から入れておく本部の場所の名前
+firstHeadquartersName: 災害対策本部
+
 # 病院を作る画面で選べる役職の雛形（名前・説明・権限）。id はプログラムが付ける
 positionTemplates:
   hqChief:

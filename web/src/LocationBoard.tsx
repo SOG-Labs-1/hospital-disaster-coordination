@@ -140,10 +140,12 @@ export function LocationCard({ locationId, config, state, terminal, enteredBy, n
                 {r.remaining === null ? (
                   <span className="cap-remaining unknown-value">空き 未確認</span>
                 ) : fromConfig ? (
-                  // 設定の初期値から計算した空きは、確認済みの数字に見せない（掲示用画面と同じ見せ方）
-                  <span className="cap-remaining unknown-value">空き 未確認（目安{r.remaining}人）</span>
+                  // 設定の初期値から計算した空きは、確認済みの数字に見せない（掲示用画面と同じ見せ方）。超えていれば ⚠ を付ける
+                  <span className={`cap-remaining unknown-value ${over ? 'over' : ''}`}>
+                    {over ? `⚠ 空き 未確認（目安${capacityText(r.remaining)}）` : `空き 未確認（目安${r.remaining}人）`}
+                  </span>
                 ) : (
-                  <span className={`cap-remaining ${over ? 'over' : ''}`}>{over ? `⚠ 空き ${r.remaining}人` : `空き ${r.remaining}人`}</span>
+                  <span className={`cap-remaining ${over ? 'over' : ''}`}>{over ? `⚠ 空き ${capacityText(r.remaining)}` : `空き ${r.remaining}人`}</span>
                 )}
                 <span className="cap-detail">
                   受け入れ枠{' '}
@@ -376,7 +378,7 @@ function ZoneForm({ config, state, locationId, terminal, enteredBy, now, onDone 
       </div>
       <label className="field">
         <span>メモ（任意）</span>
-        <input value={note} onChange={(e) => setNote(e.target.value)} autoComplete="off" placeholder="例：患者が増えたため講堂を開く" />
+        <input value={note} onChange={(e) => setNote(e.target.value)} autoComplete="off" placeholder="例：患者が増えたため、この場所も使う" />
       </label>
       <div className="button-row">
         <button type="submit" className="btn btn-primary" disabled={!changed}>
@@ -388,4 +390,9 @@ function ZoneForm({ config, state, locationId, terminal, enteredBy, now, onDone 
       </div>
     </form>
   );
+}
+
+/** 空きが0以下のときの言い方。負の数ではなく「N人超過」と書く */
+export function capacityText(remaining: number): string {
+  return remaining < 0 ? `${-remaining}人超過` : `${remaining}人（満）`;
 }

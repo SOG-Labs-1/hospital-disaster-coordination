@@ -196,6 +196,7 @@ function Headquarters({ config, terminal, mode, otherHospitals }: { config: Hosp
               terminal={terminal}
               enteredBy={enteredBy}
               now={now}
+              loaded={lastSyncedAt !== null}
               onChangeEnteredBy={(id) => {
                 setEnteredBy(id);
                 saveEnteredBy(terminal, id);
@@ -330,7 +331,16 @@ function NoticeBar({ enteredBy }: { enteredBy: string | null }) {
       </span>
       <span className="button-row">
         {notice.action && (
-          <button type="button" className="btn" onClick={notice.action.onClick}>
+          <button
+            type="button"
+            className="btn"
+            onClick={() => {
+              // 「元に戻す」は一度だけ。押したら知らせから操作を外す（二度押しで「先に更新されました」と出ないように）
+              const act = notice.action!;
+              showNotice({ ...notice, action: undefined });
+              act.onClick();
+            }}
+          >
             {notice.action.label}
           </button>
         )}

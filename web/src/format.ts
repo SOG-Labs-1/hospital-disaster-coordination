@@ -16,8 +16,11 @@ export function minutesSince(iso: string, now: Date): number {
   return Math.max(0, Math.floor((now.getTime() - Date.parse(iso)) / 60000));
 }
 
-/** 今より何分以上先の時刻なら、前日の時刻とみなすか（サーバーが受け付ける時計のずれより少し小さく） */
-const FUTURE_TOLERANCE_MS = 4 * 60_000;
+/**
+ * 今より12時間以上先の時刻なら、前日の時刻とみなす（0:10 に「23:50」と入れたとき）。
+ * 端末の時計が数分ずれているだけなら今日のまま（約24時間前と記録しない）
+ */
+const FUTURE_TOLERANCE_MS = 12 * 60 * 60_000;
 
 /**
  * 時刻入力（HH:MM）を日付つきの時刻にする。空欄なら undefined（＝今）。

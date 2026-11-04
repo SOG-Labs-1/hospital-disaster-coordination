@@ -259,8 +259,25 @@ describe('提案の検証（点検の指摘への対応）', () => {
 describe('医療的な判断を含む言葉の確認（返事・断りの理由・振り返りの説明文で共通）', () => {
   it('診断・治療の指示・区分の変更を含む文を見つける', async () => {
     const { containsMedicalAdvice } = await import('./simulator');
-    expect(containsMedicalAdvice('呼吸が苦しそうなので処置してください')).toBe(true);
-    expect(containsMedicalAdvice('区分を上げた方がよい')).toBe(true);
-    expect(containsMedicalAdvice('ベッドが満床のため受け入れできません')).toBe(false);
+    for (const text of [
+      '呼吸が苦しそうなので処置してください',
+      '区分を上げた方がよい',
+      'トリアージを赤に変更',
+      '赤に上げたほうがいいです',
+      '黄から赤に変えるべきです',
+      '区分は赤が妥当です',
+      '骨折の疑いがあります',
+      '止血を優先してください',
+      '輸液を始めてください',
+      '酸素を投与してください',
+    ]) expect(containsMedicalAdvice(text), text).toBe(true);
+    // 部署の連絡としてふつうの文は止めない
+    for (const text of [
+      'ベッドが満床のため受け入れできません',
+      '救急外来です。赤の患者が1名到着しました',
+      '手術室です。受け入れを了承します。準備に10分かかります',
+      '処置室の受け入れ枠は残り2名です',
+      '搬送要員が出発しました',
+    ]) expect(containsMedicalAdvice(text), text).toBe(false);
   });
 });

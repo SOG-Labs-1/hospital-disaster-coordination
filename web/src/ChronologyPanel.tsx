@@ -255,7 +255,7 @@ function MessageForm({ config, terminal, enteredBy }: Props) {
       </div>
       <label className="field">
         <span>内容<em className="required">必須</em></span>
-        <input value={text} onChange={(e) => setText(e.target.value)} autoComplete="off" placeholder="例：3階東病棟、受け入れ準備に10分かかる" />
+        <input value={text} onChange={(e) => setText(e.target.value)} autoComplete="off" placeholder="例：○○病棟、受け入れ準備に10分かかる" />
       </label>
       <div className="field-row">
         <label className="field">

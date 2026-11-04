@@ -78,7 +78,8 @@ test('病院Bの設定で、登録から搬送・引き渡しまでが動く', a
   // 2階病棟の上部の依頼欄に「引き渡しの記録」が出て、そこから記録できる
   const handover = ward.getByTestId(`pinned-handover-${transportId}`);
   await expect(handover).toContainText('到着済み', { timeout: 5000 });
-  await handover.getByRole('button', { name: '対応する' }).click();
+  // 同じ搬送が「到着」から「引き渡し」に進んでも、行は同じ位置で開いたまま（続けて引き渡しを記録できる）
+  await expect(handover.getByRole('button', { name: '閉じる' })).toBeVisible();
   await handover.getByRole('button', { name: '引き渡しを記録' }).click();
   await expect(ward.getByTestId(`pinned-handover-${transportId}`)).toHaveCount(0);
   await hq.getByRole('tab', { name: /^(● )?患者/ }).click();

@@ -200,6 +200,11 @@ export const HospitalConfigSchema = HospitalConfigBaseSchema.superRefine((c, ctx
   const issue = (path: (string | number)[], message: string) =>
     ctx.addIssue({ code: 'custom', path, message });
 
+  // 搬送の指示と要員の割り当ては、その役職がいる場所の端末から行う。場所のない指示役は、どの端末でも使えなくなるので許さない
+  c.positions.forEach((p, i) => {
+    if (p.permissions.includes('direct-transport') && !p.locationId) issue(['positions', i, 'locationId'], `搬送の指示ができる役職「${p.name}」には、いる場所（locationId）を書く`);
+  });
+
   const lists = {
     locations: c.locations,
     zones: c.zones,

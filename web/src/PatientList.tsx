@@ -3,6 +3,7 @@ import { activePatients, activeTransportsForPatient, findPatientsByIdentifier, s
 import { locationName } from './labels';
 import { formatTime, minutesSince } from './format';
 import { TriageBadge } from './Triage';
+import { undoNotice } from './undo';
 import { useCommands } from './useCommands';
 
 interface Props {
@@ -109,25 +110,19 @@ function PatientRow({ patient: p, hiddenOnScreen, config, state, terminal, enter
       }),
       {
         // 押し間違えてもすぐ戻せるように、変更の知らせに「元に戻す」を添える（取り消しは訂正イベントで記録する）
-        onAccepted: ([changed]) => {
-          if (!changed) return;
-          showNotice({
-            kind: 'done',
-            text: `${p.id} の区分を ${triageLabel(before)} → ${triageLabel(triage)} に変えました`,
-            action: {
-              label: '元に戻す',
-              onClick: () =>
-                run(
-                  () => ({
-                    command: { type: 'CorrectEvent', eventId: changed.id, payload: { reason: '変更の直後に元に戻した', retract: true } },
-                    meta,
-                    expectedVersion: expectedVersion + 1,
-                  }),
-                  { doneText: `${p.id} の区分を ${triageLabel(before)} に戻しました` },
-                ),
-            },
-          });
-        },
+        // 入力者と理由（記録から何分後か）は、ほかの「元に戻す」と同じ形で残す
+        onAccepted: ([changed]) =>
+          changed &&
+          showNotice(
+            undoNotice({
+              run,
+              event: changed,
+              meta,
+              versionAfter: expectedVersion + 1,
+              text: `${p.id} の区分を ${triageLabel(before)} → ${triageLabel(triage)} に変えました`,
+              undoneText: `${p.id} の区分を ${triageLabel(before)} に戻しました`,
+            }),
+          ),
       },
     );
     if (r === 'accepted') setEditing('none');

@@ -241,6 +241,8 @@ const statusLabels: Record<SupportView['status'], { symbol: string; text: string
 export function SupportCard({ support: s, config, state, terminal, enteredBy, now, focus }: Props & { support: SupportView; focus?: 'receive' }) {
   const { run, showNotice } = useCommands();
   const [action, setAction] = useState<Action>('none');
+  // 送っている間は、1回で記録されるボタンを押せなくする（二度押しで、成功の知らせが誤りの知らせに置き換わらないように）
+  const [sending, setSending] = useState(false);
   const [report, setReport] = useState<ReportMetaValue>(emptyReportMeta);
   const version = versionOf(state, { kind: 'support', id: s.id });
   const baseMeta = { enteredBy: enteredBy ?? '', terminal, reportedBy: null };
@@ -252,10 +254,12 @@ export function SupportCard({ support: s, config, state, terminal, enteredBy, no
   const stepLabel = (st: SupportStep) => config.supportPolicy.stepLabels[st] ?? st;
 
   async function send(command: CommandInput, opts: { doneText?: string; undo?: { text: string; undoneText: string } } = {}) {
+    setSending(true);
     const r = await run(() => ({ command, meta, expectedVersion: version }), {
       doneText: opts.doneText,
       onAccepted: opts.undo ? ([event]) => event && showNotice(undoNotice({ run, event, meta: baseMeta, versionAfter: version + 1, ...opts.undo! })) : undefined,
     });
+    setSending(false);
     if (r === 'accepted') {
       setAction('none');
       setReport(emptyReportMeta);
@@ -337,7 +341,7 @@ export function SupportCard({ support: s, config, state, terminal, enteredBy, no
       )}
       {!s.closed && focus === 'receive' && (
         <div className="button-row focused-actions no-print">
-          <button type="button" className="btn btn-primary" disabled={!enteredBy || !!s.steps.received} onClick={recordReceived}>
+          <button type="button" className="btn btn-primary" disabled={sending || !enteredBy || !!s.steps.received} onClick={recordReceived}>
             受け取り
           </button>
         </div>
@@ -346,16 +350,16 @@ export function SupportCard({ support: s, config, state, terminal, enteredBy, no
         <>
           <div className="transport-actions no-print">
             <div className="button-row" role="group" aria-label={`${s.id} の対応`}>
-              <button type="button" className="btn" disabled={!enteredBy} aria-expanded={action === 'assign'} onClick={() => setAction(action === 'assign' ? 'none' : 'assign')}>
+              <button type="button" className="btn" disabled={sending || !enteredBy} aria-expanded={action === 'assign'} onClick={() => setAction(action === 'assign' ? 'none' : 'assign')}>
                 受付（担当を付ける）
               </button>
-              <button type="button" className="btn" disabled={!enteredBy} aria-expanded={action === 'dispatch'} onClick={() => setAction(action === 'dispatch' ? 'none' : 'dispatch')}>
+              <button type="button" className="btn" disabled={sending || !enteredBy} aria-expanded={action === 'dispatch'} onClick={() => setAction(action === 'dispatch' ? 'none' : 'dispatch')}>
                 手配を指示
               </button>
               <button
                 type="button"
                 className="btn btn-primary"
-                disabled={!enteredBy || !!s.steps.received}
+                disabled={sending || !enteredBy || !!s.steps.received}
                 onClick={recordReceived}
               >
                 受け取り
@@ -364,7 +368,7 @@ export function SupportCard({ support: s, config, state, terminal, enteredBy, no
               <button
                 type="button"
                 className={`btn btn-apart ${s.steps.received ? 'btn-primary' : ''}`}
-                disabled={!enteredBy}
+                disabled={sending || !enteredBy}
                 onClick={() =>
                   send(
                     { type: 'CompleteSupport', supportId: s.id, payload: {} },
@@ -374,7 +378,7 @@ export function SupportCard({ support: s, config, state, terminal, enteredBy, no
               >
                 完了
               </button>
-              <button type="button" className="btn" disabled={!enteredBy} aria-expanded={action === 'cancel'} onClick={() => setAction(action === 'cancel' ? 'none' : 'cancel')}>
+              <button type="button" className="btn" disabled={sending || !enteredBy} aria-expanded={action === 'cancel'} onClick={() => setAction(action === 'cancel' ? 'none' : 'cancel')}>
                 中止を記録
               </button>
             </div>

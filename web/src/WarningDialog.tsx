@@ -98,6 +98,7 @@ export function WarningDialog(props: {
         }}
       >
         <h3>{reasonTitle}</h3>
+        {codes.length > 1 && <p className="hint">警告が2つ以上出ているため、両方に当てはまる理由だけを出しています。当てはまるものがなければ「その他」を選んで書いてください。</p>}
         <fieldset className="reason-list">
           <legend className="visually-hidden">理由</legend>
           {reasons.map((r) => (

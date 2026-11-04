@@ -52,6 +52,8 @@ export const HospitalTemplateSchema = z.object({
   warningReasons: z.array(WarningReasonSchema).min(1),
   resources: z.array(ResourceSchema).default([]),
   checklist: z.array(ChecklistItemSchema).default([]),
+  /** 病院を作る画面で、最初から入れておく本部の場所の名前 */
+  firstHeadquartersName: z.string().min(1),
   /** 病院を作る画面で選べる役職の雛形（名前・説明・権限）。id はプログラムが付ける */
   positionTemplates: z.object({
     hqChief: PositionTemplateSchema.extend({ nameWhenAlsoTransport: z.string().min(1) }),

@@ -16,6 +16,11 @@ const hospitalIds = resolveHospitalIds(process.env.HOSPITALS);
 const defaultHospitalId = process.env.DEFAULT_HOSPITAL || undefined;
 const port = Number(process.env.SERVER_PORT ?? 4000);
 const dataDir = process.env.DATA_DIR ?? join(repoRoot, 'data');
+// 録画専用の起動（DEMO_CAPTURE=1）は、通常の保存先 data/ では動かさない（架空のデモ用データが、消せない災害運用の記録に混ざるため）
+if (process.env.DEMO_CAPTURE === '1' && dataDir === join(repoRoot, 'data')) {
+  console.error('DEMO_CAPTURE=1 のときは、DATA_DIR に録画専用の保存先を指定してください（通常の data/ には書き込みません）');
+  process.exit(1);
+}
 
 // リポジトリの病院設定（架空のデモ用）と、画面から作った病院設定（data/hospitals。git の管理外）
 const createdDir = join(dataDir, 'hospitals');

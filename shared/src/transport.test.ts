@@ -106,7 +106,8 @@ describe('調整（依頼したこと）', () => {
 
   it('断りと了承は後の記録が有効になる', () => {
     stepCmd({ type: 'DeclineTransport', transportId: 'T-001', payload: { decidedBy: leadB, reason: '満床' } });
-    expect(state().transports['T-001']).toMatchObject({ status: 'declined', closed: true });
+    // 断られても終わりにしない（行き先を変えるか中止するまで、調整中に残す）
+    expect(state().transports['T-001']).toMatchObject({ status: 'declined', closed: false });
     stepCmd({ type: 'AcceptTransport', transportId: 'T-001', payload: { decidedBy: leadB } });
     expect(state().transports['T-001']).toMatchObject({ status: 'accepted', closed: false });
   });
@@ -349,5 +350,35 @@ describe('部署の端末で数える「関係する搬送」', () => {
     expect(activeTransportsForLocation(state(), 'loc-a').map((t) => t.id)).toEqual(['T-001']);
     expect(activeTransportsForLocation(state(), 'loc-b').map((t) => t.id)).toEqual(['T-001']);
     expect(activeTransportsForLocation(state(), 'hq')).toEqual([]);
+  });
+});
+
+describe('所在を動かした記録の訂正', () => {
+  const retract = (eventId: string, subjectId: string) =>
+    send({ command: { type: 'CorrectEvent', eventId, payload: { reason: '押し間違い', retract: true } }, meta, expectedVersion: versionOf(state(), { kind: 'transport', id: subjectId }) });
+
+  it('同じ患者が後の搬送でさらに動いていたら、前の到着は取り消せない（終わった搬送が「搬送中」に戻らない）', () => {
+    registerPatient('t1', 'loc-a');
+    request('P-001', 'loc-b');
+    stepCmd({ type: 'RecordArrival', transportId: 'T-001', payload: {} });
+    const firstArrival = events.at(-1)!.id;
+    request('P-001', 'hq');
+    stepCmd({ type: 'RecordArrival', transportId: 'T-002', payload: {} });
+    expect(retract(firstArrival, 'T-001')).toMatchObject({ status: 'rejected' });
+    expect(state().transports['T-001']!.closed).toBe(true);
+    // いちばん新しい到着は取り消せる
+    expect(retract(events.at(-1)!.id, 'T-002').status).toBe('accepted');
+  });
+
+  it('担当・権限を確かめる記録（指示）は差し替えできない', () => {
+    registerPatient();
+    request();
+    stepCmd({ type: 'OrderTransport', transportId: 'T-001', payload: { orderedBy: hq } });
+    const r = send({
+      command: { type: 'CorrectEvent', eventId: events.at(-1)!.id, payload: { reason: '聞き間違い', replacement: { orderedBy: leadB } } },
+      meta,
+      expectedVersion: versionOf(state(), { kind: 'transport', id: 'T-001' }),
+    });
+    expect(r.status).toBe('rejected');
   });
 });
