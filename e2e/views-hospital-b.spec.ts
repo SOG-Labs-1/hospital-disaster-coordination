@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
-// 病院B（ひなた台中央病院(仮)）：同じ仕組みが設定だけで動くことを確かめる
+// 病院B（Hackathon中央病院(仮)）：同じ仕組みが設定だけで動くことを確かめる
 // 待合を黄・緑の両方に使う、本部長が搬送調整を兼任、受け入れは担当者なら誰でも、到着と引き渡しを分ける
 
 async function open(page: Page, query: string, staff?: string) {
@@ -13,19 +13,19 @@ test('病院を選ぶ画面から病院Bを選び、記録は病院Aと分かれ
   const page = await (await browser.newContext()).newPage();
   await page.goto('/?hospital=');
   await expect(page.getByRole('heading', { name: '病院を選んでください' })).toBeVisible();
-  await page.getByRole('button', { name: 'ひなた台中央病院(仮)' }).click();
+  await page.getByRole('button', { name: 'Hackathon中央病院(仮)' }).click();
   await expect(page.getByRole('heading', { name: 'この端末を置いた場所を選んでください' })).toBeVisible();
-  await expect(page.getByText('病院：ひなた台中央病院(仮)')).toBeVisible();
+  await expect(page.getByText('病院：Hackathon中央病院(仮)')).toBeVisible();
   await page.getByRole('button', { name: '本部（1階事務室）' }).click();
   await expect(page.getByTestId('sync-status')).toContainText('同期中');
-  await expect(page.getByRole('banner')).toContainText('ひなた台中央病院(仮)');
+  await expect(page.getByRole('banner')).toContainText('Hackathon中央病院(仮)');
   await page.getByRole('tab', { name: /^(▼ )?患者/ }).click();
   await expect(page.getByTestId('patient-count')).toHaveText('0人'); // 病院Aの患者は出ない
 });
 
 test('病院Bの設定で、登録から搬送・引き渡しまでが動く', async ({ browser }) => {
   const hq = await (await browser.newContext()).newPage();
-  await open(hq, 'hospital=hinata&terminal=hq', '内田 千夏');
+  await open(hq, 'hospital=hackathon&terminal=hq', '内田 千夏');
   await hq.getByRole('tab', { name: /^(▼ )?患者/ }).click();
 
   // 待合は黄ゾーンと緑ゾーンの両方
@@ -50,7 +50,7 @@ test('病院Bの設定で、登録から搬送・引き渡しまでが動く', a
 
   // 2階病棟の端末：受け入れは担当者なら誰でも判断できる（職員の名前で選ぶ）
   const ward = await (await browser.newContext()).newPage();
-  await open(ward, 'hospital=hinata&terminal=ward-2', '坂本 由香');
+  await open(ward, 'hospital=hackathon&terminal=ward-2', '坂本 由香');
   const row = ward.getByTestId(`pinned-accept-${transportId}`);
   await row.getByRole('button', { name: '対応する' }).click();
   await row.getByRole('button', { name: '了承を記録' }).click();
@@ -85,8 +85,8 @@ test('病院Bの設定で、登録から搬送・引き渡しまでが動く', a
 
 test('病院Bの掲示用画面', async ({ browser }) => {
   const board = await (await browser.newContext({ viewport: { width: 1920, height: 1080 } })).newPage();
-  await board.goto('/?hospital=hinata&view=board');
-  await expect(board.getByTestId('display-board')).toContainText('ひなた台中央病院(仮)');
+  await board.goto('/?hospital=hackathon&view=board');
+  await expect(board.getByTestId('display-board')).toContainText('Hackathon中央病院(仮)');
   await expect(board.getByTestId('board-place-waiting')).toContainText('外来待合（黄ゾーン・緑ゾーン）');
-  await board.screenshot({ path: 'test-results/board-hinata.png' });
+  await board.screenshot({ path: 'test-results/board-hackathon.png' });
 });

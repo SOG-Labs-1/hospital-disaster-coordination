@@ -86,7 +86,7 @@ test('掲示用画面：操作できる部品がなく、記録が変わると�
   await expect(board.getByTestId('board-moving')).toContainText('救急外来（赤ゾーン） ▶ 3階東病棟', { timeout: 5000 });
   await expect(board.getByTestId('board-acceptance')).toContainText('救急外来（赤ゾーン）');
   // 設定の初期値は確認済みの数字に見せず「未確認（目安）」と出す
-  await expect(board.getByTestId('board-place-auditorium')).toContainText('残り未確認（目安');
+  await expect(board.getByTestId('board-place-auditorium')).toContainText('空き未確認（目安');
 
   // 勝手に画面が切り替わらない
   expect(board.url()).toBe(url);

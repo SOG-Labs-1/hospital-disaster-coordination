@@ -173,6 +173,8 @@ const HospitalConfigBaseSchema = z.object({
   supportKinds: z.array(SupportKindSchema).default([]),
   supportPolicy: SupportPolicySchema.default({ unassignedAlertMinutes: 10, undeliveredAlertMinutes: 20, stepLabels: {} }),
   transportPolicy: TransportPolicySchema.default({ optionalSteps: [], handoverOnArrival: true, acceptanceDecidedBy: 'location-lead', stepLabels: {} }),
+  /** 患者の登録で入力できる任意の識別情報。メディカルID（災害診療記録）は使わない病院が多いので既定は出さない */
+  patientFields: z.object({ medicalId: z.boolean().default(false) }).default({ medicalId: false }),
   /** 確認からこの分数を過ぎた情報に「古い」印を付ける */
   staleAfterMinutes: z.number().int().positive(),
 });

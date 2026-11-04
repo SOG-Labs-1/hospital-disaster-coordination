@@ -228,9 +228,9 @@ function Acceptance({ config, state, now }: { config: HospitalConfig; state: App
                     {t.label}
                     {/* 設定の初期値は確認済みの数字に見せない（未確認を先に、目安を後に） */}
                     {r.source === 'reported' ? (
-                      <> 残り{r.remaining}{isOld(v.capacity[t.id]) && <OldTag />}</>
+                      <> 空き{r.remaining}{isOld(v.capacity[t.id]) && <OldTag />}</>
                     ) : (
-                      <span className="unknown-value">残り未確認{r.value !== null && `（目安${r.remaining}）`}</span>
+                      <span className="unknown-value">空き未確認{r.value !== null && `（目安${r.remaining}）`}</span>
                     )}
                   </span>
                 );

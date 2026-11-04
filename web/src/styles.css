@@ -250,6 +250,8 @@ h3 { font-size: var(--text); }
 }
 .tab.is-selected { color: #ffffff; background: var(--ink); border-color: var(--ink); }
 .tab-count { margin-left: 8px; font-size: var(--text-small); padding: 0 6px; border: 2px solid currentColor; border-radius: var(--radius); }
+.tab-count-alert { color: var(--danger); background: #fff; border-color: var(--danger); border-style: double; border-width: 3px; }
+.tab.is-selected .tab-count-alert { color: var(--danger); }
 .tab-panel { margin: var(--gap) 0; }
 .tab-panel > .layout, .tab-panel > .stack { margin: 0 20px; }
 .stack { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
@@ -317,6 +319,7 @@ h3 { font-size: var(--text); }
 .capacity-table thead th { font-size: var(--text-small); background: #f3f6f9; white-space: nowrap; }
 .capacity-table td:nth-child(n+3) { white-space: nowrap; }
 .capacity-table .triage-desc { display: none; }
+.capacity-caption { caption-side: bottom; text-align: left; font-size: var(--text-small); color: var(--ink-muted); padding-top: 4px; }
 .capacity-table .over { font-weight: 700; color: var(--danger); border: 3px double var(--danger); }
 .staff-count { display: block; }
 .away { font-weight: 700; }

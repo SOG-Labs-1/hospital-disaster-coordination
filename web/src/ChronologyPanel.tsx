@@ -32,7 +32,7 @@ const kindLabels: Record<EventDescription['kind'], string> = {
 };
 
 /**
- * クロノロジー：すべての記録を時刻順に並べる。現場で確認した時刻と入力時刻、報告元と入力者、
+ * 対応記録（クロノロジー）：すべての記録を時刻順に並べる。現場で確認した時刻と入力時刻、報告元と入力者、
  * 訂正・取り消しの関係を示す。記録は追記のみなので、訂正された記録も消さずに印を付けて残す
  */
 export function ChronologyPanel(props: Props) {
@@ -72,7 +72,7 @@ export function ChronologyPanel(props: Props) {
       <section className="panel" aria-labelledby="chrono-title">
         <div className="panel-head">
           <h2 id="chrono-title">
-            クロノロジー <span className="count" data-testid="chrono-count">{filtered.length}件</span>
+            対応記録 <span className="count" data-testid="chrono-count">{filtered.length}件</span>
           </h2>
           <button type="button" className="btn no-print" onClick={() => window.print()}>
             印刷する

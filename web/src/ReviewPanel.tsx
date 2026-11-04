@@ -103,7 +103,7 @@ function Finding({ finding: f }: { finding: Review['findings'][number] }) {
       </div>
       <p className="finding-detail">{f.detail}</p>
       {f.explanation && <p className="finding-explanation">{f.explanation.text}</p>}
-      {f.evidence.length > 0 && <p className="finding-evidence">根拠：{f.evidence.join('、')}（クロノロジー・無線の受信で確かめられます）</p>}
+      {f.evidence.length > 0 && <p className="finding-evidence">根拠：{f.evidence.join('、')}（対応記録・無線の受信で確かめられます）</p>}
       {f.note && !editing && <p className="finding-note">参加者の補足：{f.note}</p>}
       {editing ? (
         <div className="action-form no-print">

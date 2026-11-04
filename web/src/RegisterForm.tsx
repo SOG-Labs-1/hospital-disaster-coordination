@@ -142,7 +142,7 @@ export function RegisterForm(props: { config: HospitalConfig; terminal: string; 
       </label>
 
       <details className="more">
-        <summary>報告元・確認時刻・メディカルID</summary>
+        <summary>報告元・確認時刻{config.patientFields.medicalId ? '・メディカルID' : ''}</summary>
         <div className="field-row">
           <label className="field">
             <span>報告元の場所</span>
@@ -165,10 +165,13 @@ export function RegisterForm(props: { config: HospitalConfig; terminal: string; 
             <span>現場で確認した時刻（空欄＝今）</span>
             <input type="time" value={form.observedTime} onChange={(e) => set('observedTime', e.target.value)} />
           </label>
-          <label className="field">
-            <span>メディカルID</span>
-            <input value={form.medicalId} onChange={(e) => set('medicalId', e.target.value)} placeholder="生年月日8桁＋性別＋カナ7文字" autoComplete="off" />
-          </label>
+          {/* メディカルID（災害診療記録）は、病院設定で使うことにした病院だけ出す */}
+          {config.patientFields.medicalId && (
+            <label className="field">
+              <span>メディカルID</span>
+              <input value={form.medicalId} onChange={(e) => set('medicalId', e.target.value)} placeholder="生年月日8桁＋性別＋カナ7文字" autoComplete="off" />
+            </label>
+          )}
         </div>
       </details>
 

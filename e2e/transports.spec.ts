@@ -179,7 +179,7 @@ test('院内の状況：受け入れ可否と人数を確認時刻つきで記�
   await expect(ward.getByTestId('capacity-yellow')).not.toContainText('設定の初期値');
   await expect(ward).toContainText('看護師 4人');
   await expect(ward).toContainText('医師 未確認（');
-  await expect(ward).toContainText('技師 未確認'); // 報告のない職種も「未確認」と出る
+  await expect(ward).toContainText('事務 未確認'); // 報告のない職種も「未確認」と出る
   await expect(hq.getByTestId('attention-list')).not.toContainText('5階西病棟');
   await hq.screenshot({ path: 'test-results/locations.png', fullPage: true });
 });

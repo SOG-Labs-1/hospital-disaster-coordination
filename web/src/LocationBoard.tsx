@@ -121,14 +121,14 @@ export function LocationCard({ locationId, config, state, terminal, enteredBy, n
 
       {triages.length > 0 && (
         <table className="capacity-table">
-          <caption className="visually-hidden">{location.name}の区分ごとの受け入れ</caption>
+          <caption className="capacity-caption">空き ＝ 受け入れ枠 − いま居る人数 − 向かっている人数（了承済み・移動中）</caption>
           <thead>
             <tr>
               <th scope="col">区分</th>
-              <th scope="col">受け入れ可能</th>
-              <th scope="col">いる</th>
-              <th scope="col">向かう</th>
-              <th scope="col">残り</th>
+              <th scope="col">受け入れ枠</th>
+              <th scope="col">いま居る</th>
+              <th scope="col">向かっている</th>
+              <th scope="col">空き</th>
             </tr>
           </thead>
           <tbody>

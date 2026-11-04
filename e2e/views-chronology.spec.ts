@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-// クロノロジー：すべての記録が時刻順に並び、取り消しも消さずに印を付けて残る。連絡メモを残せる
+// 対応記録：すべての記録が時刻順に並び、取り消しも消さずに印を付けて残る。連絡メモを残せる
 
 test('記録が時刻順に並び、取り消し・連絡メモ・入力の遅れが分かる', async ({ browser }) => {
   const hq = await (await browser.newContext()).newPage();
@@ -24,7 +24,7 @@ test('記録が時刻順に並び、取り消し・連絡メモ・入力の遅�
   await expect(hq.getByTestId('notice')).toContainText('戻しました');
 
   // 5分前に無線で受けた連絡を、関係する患者の番号つきで残す
-  await hq.getByRole('tab', { name: /クロノロジー/ }).click();
+  await hq.getByRole('tab', { name: /対応記録/ }).click();
   const msg = hq.getByRole('form', { name: '連絡メモを残す' });
   await msg.getByLabel('発信元').selectOption({ label: '講堂' });
   await msg.getByLabel(/^内容/).fill('講堂の患者が歩いて外来ホールへ移りたいと言っている');

@@ -182,7 +182,7 @@ function Headquarters({ config, terminal, mode }: { config: HospitalConfig; term
                 {t.label}
                 {t.id === 'transports' && activeTransportCount(state) > 0 && <span className="tab-count">{activeTransportCount(state)}件</span>}
                 {t.id === 'supports' && openSupports(state).length > 0 && (
-                  <span className="tab-count">
+                  <span className="tab-count tab-count-alert">
                     {openSupports(state).some((s) => supportAlert(s, config.supportPolicy, now)) && '⏱ '}
                     {openSupports(state).length}件
                   </span>
@@ -253,7 +253,7 @@ const allTabs: { id: Tab; label: string; printTitle: string }[] = [
   { id: 'transports', label: '搬送', printTitle: '搬送一覧' },
   { id: 'supports', label: '支援要請', printTitle: '支援要請一覧' },
   { id: 'locations', label: '院内の状況', printTitle: '院内の状況' },
-  { id: 'chronology', label: 'クロノロジー', printTitle: 'クロノロジー' },
+  { id: 'chronology', label: '対応記録', printTitle: '対応記録' },
   { id: 'training', label: '訓練', printTitle: '訓練の振り返り' },
 ];
 

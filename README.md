@@ -25,7 +25,7 @@
 
 | 画面 | 開き方 | 内容 |
 | --- | --- | --- |
-| 本部 | `?hospital=claude&terminal=hq` | 患者・搬送・支援要請・院内の状況・クロノロジーのタブ。主要画面に白黒で読める印刷 |
+| 本部 | `?hospital=claude&terminal=hq` | 患者・搬送・支援要請・院内の状況・対応記録のタブ。主要画面に白黒で読める印刷 |
 | 各部署 | `?hospital=claude&terminal=or` など | 上部に「この部署への依頼・記録すること」を固定表示、「この部署」タブ |
 | 掲示用 | `?hospital=claude&view=board` | 本部の大型モニター用。操作なし・自動更新・配置は固定 |
 | 訓練 | `?hospital=claude&terminal=hq&mode=training` | 無線の受信、訓練タブ（シナリオの開始・一時停止・2倍速・部署への連絡・振り返り） |
@@ -65,7 +65,7 @@ npm run dev
 
 ブラウザで http://localhost:5173/?hospital=claude&terminal=hq を開きます。`terminal` は端末を置く場所のIDです（病院設定の `locations` の id）。訓練モードは `&mode=training` を付けます。
 
-`config/hospitals/` の病院設定（架空の「Claude総合病院(仮)」と「ひなた台中央病院(仮)」）はすべて読み込まれ、URL の `hospital` で選びます（例：`?hospital=hinata&terminal=hq`）。指定しないと病院を選ぶ画面が出ます。記録は病院ごと・実運用／訓練ごとに別のファイルに保存します。
+`config/hospitals/` の病院設定（架空の「Claude総合病院(仮)」と「Hackathon中央病院(仮)」）はすべて読み込まれ、URL の `hospital` で選びます（例：`?hospital=hinata&terminal=hq`）。指定しないと病院を選ぶ画面が出ます。記録は病院ごと・実運用／訓練ごとに別のファイルに保存します。
 
 掲示用画面（本部の大型モニター）は `?hospital=claude&view=board` で開きます。
 
@@ -116,10 +116,10 @@ npm run validate:config -- config/hospitals/claude.yaml
 - 開発環境の土台（npm workspaces、TypeScript、Vitest、Playwright）
 - Claude Code の設定（Skills、サブエージェント、フック）
 - 記録（イベント）の仕組み：イベントの型、病院設定のスキーマ、集計、追記保存、コマンドAPI（競合検知と警告）、Server-Sent Events での配信
-- 病院設定A（架空「Claude総合病院(仮)」）と病院設定B（架空「ひなた台中央病院(仮)」）、病院の切り替え
+- 病院設定A（架空「Claude総合病院(仮)」）と病院設定B（架空「Hackathon中央病院(仮)」）、病院の切り替え
 - 患者の登録と一覧（重複の警告、区分の履歴と取り消し、印刷）
 - 搬送（調整と事実の記録、重複・稼働中・受け入れ枠超過の警告、搬送要員）、院内の状況（未確認と0の区別）
-- 支援要請（未対応・未完了の表示）、各部署の画面、掲示用画面、クロノロジーと連絡メモ
+- 支援要請（未対応・未完了の表示）、各部署の画面、掲示用画面、対応記録（時系列の記録）と連絡メモ
 - AI訓練モード：シナリオ、シミュレーター、mock と Claude API の部署役（strict tool use）、無線の受信、振り返り
 - サブエージェント（ux-reviewer・invariant-auditor）による点検と、指摘の修正
 

@@ -33,7 +33,7 @@ export function RadioInbox({ config, snapshot, terminal, enteredBy, now }: Props
   }
 
   /**
-   * 聞いた内容を、クロノロジーの連絡メモとして記録する（参加者の操作として）。
+   * 聞いた内容を、対応記録の連絡メモとして記録する（参加者の操作として）。
    * 部署役の言葉をそのまま記録にしないよう、下書きとして出して参加者が確かめ・直してから残す
    */
   async function logIt(m: TrainingSnapshot['inbox'][number], text: string) {
@@ -278,7 +278,7 @@ function MessageToRole({ snapshot }: { config: HospitalConfig; snapshot: Trainin
           ))}
         </ul>
       )}
-      <p className="hint">本部から伝えたことは、ボードには残りません。記録に残すときはクロノロジーの連絡メモを使います。</p>
+      <p className="hint">本部から伝えたことは、ボードには残りません。記録に残すときは対応記録の連絡メモを使います。</p>
     </section>
   );
 }

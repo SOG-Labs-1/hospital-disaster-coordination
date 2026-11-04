@@ -27,7 +27,7 @@ test('訓練を始め、無線の連絡を聞いてボードに入力し、終�
   await hq.getByRole('tab', { name: /^(▼ )?患者/ }).click();
   await expect(hq.getByTestId('patient-count')).toHaveText('0人');
 
-  // 聞いた連絡をクロノロジーに残し、患者を登録して、手術室への搬送を依頼する
+  // 聞いた連絡を対応記録に残し、患者を登録して、手術室への搬送を依頼する
   // 部署役の言葉は下書きとして出し、参加者が確かめてから残す
   await first.getByRole('button', { name: '連絡メモに残す' }).click();
   const draft = first.getByRole('form', { name: '連絡メモの下書き' });

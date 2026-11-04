@@ -51,8 +51,8 @@ test('登録内容を理由つきで直し、同じ患者だった2件をまと�
   await expect(hq.getByTestId(`patient-${c}`)).toHaveCount(0);
   await expect(keep).toContainText(`${c} をこの患者にまとめた`);
 
-  // クロノロジーには、訂正と統合が元の記録とともに残る
-  await hq.getByRole('tab', { name: /クロノロジー/ }).click();
+  // 対応記録には、訂正と統合が元の記録とともに残る
+  await hq.getByRole('tab', { name: /対応記録/ }).click();
   const table = hq.getByTestId('chrono-table');
   await expect(table).toContainText('登録内容を訂正：タッグ番号→616、所在→外来ホール（理由：無線の聞き間違い）');
   await expect(table).toContainText(`${c} を ${b} にまとめた（同じ患者。理由：付き添いの家族が同じ人だと確認）`);

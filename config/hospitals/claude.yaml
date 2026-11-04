@@ -82,7 +82,6 @@ professions:
   - { id: nurse, name: 看護師 }
   - { id: transporter, name: 搬送要員 }
   - { id: clerk, name: 事務 }
-  - { id: technician, name: 技師 }
 
 positions:
   - { id: hq-chief, name: 本部長, locationId: hq, permissions: [direct-transport, assign-support] }
