@@ -282,18 +282,17 @@ export function TransportCard({ transport: t, config, state, terminal, enteredBy
   const status = statusLabels[t.status];
   const radioPlaces = [t.fromLocationId, t.toLocationId].filter((id) => !hasTerminal(config, id));
   const handoverPending = !!t.steps.arrived && !t.steps.arrived.handover && !t.steps.handedOver;
-  // 本部の画面では、段階から「次にすること」を決めて大きく出す（部署の画面は focus で決まる）。断られた搬送はすべての操作を出す
+  // 本部の画面では、段階から「次にすること」を決めて大きく出す（部署の画面は focus で決まる）。断られた搬送はすべての操作を出す。
+  // 病院設定で省略できる段階（optionalSteps）は、未記録でも飛ばして次の段階を出す
+  const stagesInOrder = [
+    ['accepted', 'accept'],
+    ['staffAssigned', 'assign'],
+    ['ordered', 'order'],
+    ['departed', 'depart'],
+  ] as const;
   const stageNext: 'accept' | 'assign' | 'order' | 'depart' | 'arrive' | undefined = t.steps.declined
     ? undefined
-    : !t.steps.accepted
-      ? 'accept'
-      : !t.steps.staffAssigned
-        ? 'assign'
-        : !t.steps.ordered
-          ? 'order'
-          : !t.steps.departed
-            ? 'depart'
-            : 'arrive';
+    : (stagesInOrder.find(([step]) => !t.steps[step] && !optional.has(step))?.[1] ?? 'arrive');
   const next = focus ?? stageNext;
 
   async function send(command: CommandInput, opts: { doneText?: string; overrideLabel?: string; undo?: { text: string; undoneText: string } } = {}) {

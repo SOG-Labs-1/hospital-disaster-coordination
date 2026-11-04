@@ -37,6 +37,11 @@ export interface AppOptions {
   training?: { scenarios: Scenario[]; provider: AiProvider; tickMs?: number; replyTimeoutMs?: number };
   /** 画面から病院を作る（標準の値と、作った病院設定の保存先）。省略すると作れない */
   hospitalCreation?: { template: HospitalTemplate; dir: string };
+  /**
+   * 映像の録画専用に起動したサーバーであることの目印（/api/health で返す）。
+   * デモ用データのスクリプトは、この目印があるサーバーにだけ書き込む（通常の記録に架空のデモ用データを混ぜない）
+   */
+  demoCapture?: boolean;
 }
 
 export interface App {
@@ -174,7 +179,7 @@ export function createApp(options: AppOptions): App {
     const url = new URL(req.url ?? '/', 'http://localhost');
     const path = url.pathname;
 
-    if (path === '/api/health') return json(res, 200, { ok: true, serverTime: now().toISOString() });
+    if (path === '/api/health') return json(res, 200, { ok: true, serverTime: now().toISOString(), ...(options.demoCapture ? { demoCapture: true } : {}) });
     if (path === '/api/hospitals' && req.method === 'GET')
       return json(res, 200, { hospitals: hospitals.map((h) => ({ id: h.id, name: h.name })), defaultHospitalId: defaultHospitalId(), canCreate: !!options.hospitalCreation });
     if (path === '/api/hospital-template' && req.method === 'GET') {

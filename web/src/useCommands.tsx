@@ -11,6 +11,8 @@ export interface Notice {
   text: string;
   /** 「元に戻す」など、知らせに添える操作 */
   action?: { label: string; onClick: () => void };
+  /** 操作をした入力者。入力者が替わったら、操作の付いた知らせは消す（別の人の名前で取り消さないように） */
+  owner?: string;
 }
 
 interface RunOptions {

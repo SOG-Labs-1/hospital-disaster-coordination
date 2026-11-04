@@ -87,6 +87,11 @@ describe('タッグ番号・院内患者IDの重複警告', () => {
     expect(state.patients['P-002']!.overrides).toEqual([{ eventId: events[1]!.id, codes: ['DUPLICATE_TAG_NUMBER'], reason: '別人と確認' }]);
   });
 
+  it('病院設定にない理由の選択肢では再送を受け付けない', () => {
+    register({ tagNumber: '12' });
+    expect(register({ tagNumber: '12' }, { override: { codes: ['DUPLICATE_TAG_NUMBER'], reasonId: 'no-such-reason', reason: '別人と確認' } }).status).toBe('rejected');
+  });
+
   it('理由が空なら再送を受け付けない', () => {
     register({ tagNumber: '12' });
     expect(register({ tagNumber: '12' }, { override: { codes: ['DUPLICATE_TAG_NUMBER'], reason: '  ' } }).status).toBe('rejected');

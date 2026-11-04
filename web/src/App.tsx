@@ -70,10 +70,11 @@ export function App() {
     return boardMode ? <DisplayBoard config={config} mode={boardMode} /> : <ModeSetup />;
   }
 
-  const terminal = readTerminal();
-  if (!terminal || !config.locations.some((l) => l.id === terminal)) return <TerminalSetup config={config} otherHospitals={(list?.hospitals.length ?? 1) > 1} />;
+  // 災害運用か訓練かを先に決める（決まらないまま端末の場所の画面に「災害運用」と出さないように）
   const mode = readMode();
   if (!mode) return <ModeSetup />;
+  const terminal = readTerminal();
+  if (!terminal || !config.locations.some((l) => l.id === terminal)) return <TerminalSetup config={config} mode={mode} otherHospitals={(list?.hospitals.length ?? 1) > 1} />;
   return <Headquarters config={config} terminal={terminal} mode={mode} otherHospitals={(list?.hospitals.length ?? 1) > 1} />;
 }
 
@@ -168,7 +169,7 @@ function Headquarters({ config, terminal, mode, otherHospitals }: { config: Hosp
         <div className="sticky-head">
           <TopBar config={cfg} mode={mode} terminalName={terminalName} status={status} lastSyncedAt={lastSyncedAt} otherHospitals={otherHospitals} />
           <div className="no-print">
-            <NoticeBar />
+            <NoticeBar enteredBy={enteredBy} />
           </div>
         </div>
         <div className="print-header print-only">
@@ -309,9 +310,13 @@ function activeTransportCount(state: import('@hdc/shared').AppState): number {
   return state.transportOrder.filter((id) => !state.transports[id]!.closed && !state.transports[id]!.retracted).length;
 }
 
-function NoticeBar() {
+function NoticeBar({ enteredBy }: { enteredBy: string | null }) {
   const { notice, showNotice } = useCommands();
-  if (!notice) return null;
+  const stale = !!notice?.action && notice.owner !== undefined && notice.owner !== enteredBy;
+  useEffect(() => {
+    if (stale) showNotice(null);
+  }, [stale, showNotice]);
+  if (!notice || stale) return null;
   const symbol = { done: '✓', conflict: '⟳', error: '⚠', info: 'ⓘ' }[notice.kind];
   return (
     <div className={`notice notice-${notice.kind}`} role={notice.kind === 'done' ? 'status' : 'alert'} data-testid="notice">

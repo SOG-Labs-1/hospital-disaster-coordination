@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { warningCodes } from './warning-codes';
 import { parse as parseYaml } from 'yaml';
 
 // 病院設定（config/hospitals/*.yaml）のスキーマ。
@@ -102,7 +103,7 @@ export const WarningReasonSchema = z.object({
    * この理由を出す警告の種類（警告コード）。省略するとすべての警告で出す。
    * 警告ごとに合う理由だけを出して、迷わず選べるようにする
    */
-  appliesTo: z.array(z.string().min(1)).optional(),
+  appliesTo: z.array(z.enum(warningCodes)).optional(),
 });
 
 export const ResourceSchema = z.object({ id, name: z.string().min(1), unit: z.string().min(1) });

@@ -5,6 +5,7 @@ import {
   formatIssues,
   HospitalConfigSchema,
   locationKinds,
+  permissionKeys,
   ProfessionSchema,
   ResourceSchema,
   SupportKindSchema,
@@ -32,6 +33,12 @@ export const locationKindLabels: Record<(typeof locationKinds)[number], string> 
   other: 'その他',
 };
 
+const PositionTemplateSchema = z.object({
+  name: z.string().min(1),
+  description: z.string().min(1),
+  permissions: z.array(z.enum(permissionKeys)).min(1),
+});
+
 /** 標準の値（config/templates/hospital-defaults.yaml） */
 export const HospitalTemplateSchema = z.object({
   staleAfterMinutes: z.number().int().positive(),
@@ -45,6 +52,12 @@ export const HospitalTemplateSchema = z.object({
   warningReasons: z.array(WarningReasonSchema).min(1),
   resources: z.array(ResourceSchema).default([]),
   checklist: z.array(ChecklistItemSchema).default([]),
+  /** 病院を作る画面で選べる役職の雛形（名前・説明・権限）。id はプログラムが付ける */
+  positionTemplates: z.object({
+    hqChief: PositionTemplateSchema.extend({ nameWhenAlsoTransport: z.string().min(1) }),
+    hqTransport: PositionTemplateSchema,
+    locationLead: PositionTemplateSchema.extend({ nameSuffix: z.string().min(1) }),
+  }),
 });
 export type HospitalTemplate = z.infer<typeof HospitalTemplateSchema>;
 
@@ -144,16 +157,21 @@ export function buildHospitalConfig(input: HospitalDraftInput, template: Hospita
   );
   const zoneAssignments = d.zoneAssignments.map((z) => ({ zoneId: z.zoneId, locationId: locationIds[z.locationIndex]!, from: null, until: null }));
 
+  // 役職の名前と権限は標準の値（positionTemplates）から取る。id はプログラムが付ける
+  const pt = template.positionTemplates;
   const positions = [
     ...(d.positions.hqChief
-      ? [{ id: 'hq-chief', name: d.positions.hqTransport ? '本部長' : '本部長（搬送調整を兼任）', locationId: hqId, permissions: ['direct-transport', 'assign-support', 'register-patient'] }]
+      ? [{ id: 'hq-chief', name: d.positions.hqTransport ? pt.hqChief.name : pt.hqChief.nameWhenAlsoTransport, locationId: hqId, permissions: pt.hqChief.permissions }]
       : []),
-    ...(d.positions.hqTransport ? [{ id: 'hq-transport', name: '搬送調整担当', locationId: hqId, permissions: ['direct-transport'] }] : []),
+    ...(d.positions.hqTransport ? [{ id: 'hq-transport', name: pt.hqTransport.name, locationId: hqId, permissions: pt.hqTransport.permissions }] : []),
     ...(d.positions.locationLeads
-      ? locations.filter((l) => l.kind !== 'headquarters').map((l) => ({ id: `lead-${l.id}`, name: `${l.name}責任者`, locationId: l.id, permissions: ['accept-transport'] }))
+      ? locations.filter((l) => l.kind !== 'headquarters').map((l) => ({ id: `lead-${l.id}`, name: `${l.name}${pt.locationLead.nameSuffix}`, locationId: l.id, permissions: pt.locationLead.permissions }))
       : []),
   ];
-  if (!positions.some((p) => p.permissions.includes('direct-transport'))) errors.push('搬送の指示を出せる役職（本部長か搬送調整担当）を1つ以上入れる');
+  if (!positions.some((p) => p.permissions.includes('direct-transport'))) {
+    const directors = [pt.hqChief, pt.hqTransport].filter((p) => p.permissions.includes('direct-transport')).map((p) => p.name);
+    errors.push(`搬送の指示を出せる役職（${directors.join('か')}）を1つ以上入れる`);
+  }
 
   const staff = d.staff.map((s, i) => ({ id: `st-${i + 1}`, name: s.name, professionId: s.professionId, locationId: locationIds[s.locationIndex]!, ...(s.staffNumber ? { staffNumber: s.staffNumber } : {}) }));
   const transporters = d.transporters.map((name, i) => ({ id: `tr-${i + 1}`, name }));

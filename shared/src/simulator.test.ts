@@ -255,3 +255,12 @@ describe('提案の検証（点検の指摘への対応）', () => {
     expect(last()).toMatchObject({ accepted: false, reason: '言葉の中の数字が報告した人数と違う' });
   });
 });
+
+describe('医療的な判断を含む言葉の確認（返事・断りの理由・振り返りの説明文で共通）', () => {
+  it('診断・治療の指示・区分の変更を含む文を見つける', async () => {
+    const { containsMedicalAdvice } = await import('./simulator');
+    expect(containsMedicalAdvice('呼吸が苦しそうなので処置してください')).toBe(true);
+    expect(containsMedicalAdvice('区分を上げた方がよい')).toBe(true);
+    expect(containsMedicalAdvice('ベッドが満床のため受け入れできません')).toBe(false);
+  });
+});

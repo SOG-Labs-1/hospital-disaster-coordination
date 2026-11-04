@@ -153,7 +153,7 @@ vite.config.ts.timestamp-*
 .env
 .env.*
 !.env.example
-# SQLite の保存先（実運用・訓練の記録）
+# SQLite の保存先（災害運用・訓練の記録）
 data/
 # Playwright
 test-results/

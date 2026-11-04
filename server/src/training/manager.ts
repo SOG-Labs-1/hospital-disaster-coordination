@@ -2,6 +2,7 @@ import {
   advance,
   buildReview,
   buildRoleContext,
+  containsMedicalAdvice,
   reduceSim,
   resolveProposals,
   simMsAt,
@@ -193,8 +194,9 @@ export class TrainingManager {
         // 失敗したときは追記しない（前の説明文を残す。照合の結果は説明文がなくても見られる）
         if (!explanations) return this.deps.onChange?.();
         const byId = new Map(findings.map((f) => [f.id, f]));
+        // 医療的な判断を含む説明文は捨てる（照合の結果はプログラムが出すので、説明文がなくても見られる）
         const valid = explanations
-          .filter((x) => byId.has(x.findingId) && x.text.trim())
+          .filter((x) => byId.has(x.findingId) && x.text.trim() && !containsMedicalAdvice(x.text))
           .map((x) => ({ findingId: x.findingId, text: x.text.trim(), evidence: x.evidence.filter((e) => byId.get(x.findingId)!.evidence.includes(e)) }));
         this.recordExplanations(valid);
       });

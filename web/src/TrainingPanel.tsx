@@ -23,9 +23,9 @@ export function RadioInbox({ config, snapshot, terminal, enteredBy, now }: Props
   const { run, showNotice } = useCommands();
   const unheard = [...snapshot.inbox].filter((m) => !m.heard).reverse();
   const heard = snapshot.inbox.filter((m) => m.heard).reverse();
-  if (!snapshot.run) return null;
-
+  // フックは早期の return より前に置く（訓練が始まった瞬間にフックの数が変わると React が止まるため）
   const [draft, setDraft] = useState<{ messageId: string; text: string } | null>(null);
+  if (!snapshot.run) return null;
 
   async function markHeard(messageId: string) {
     const r = await trainingPost('heard', { messageId });

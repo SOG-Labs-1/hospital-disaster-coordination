@@ -581,11 +581,18 @@ export const allowedActions: Record<Stimulus['kind'], Proposal['action'][]> = {
  */
 const MEDICAL_ADVICE = /診断|処方|投与して|投与すべき|治療して|治療すべき|手術すべき|処置して|処置すべき|(トリアージ|区分)を(変更|変え|上げ|下げ)/;
 
+/** AI が書いた文に、医療的な判断を含む言葉があるか（部署役の返事・断りの理由・振り返りの説明文に使う） */
+export function containsMedicalAdvice(text: string): boolean {
+  return MEDICAL_ADVICE.test(text);
+}
+
 export function validateProposal(view: SimView, config: HospitalConfig, role: string, p: Proposal, stimulus?: Stimulus): string | null {
   const loc = view.locations[role];
   if (!loc) return '部署が見つからない';
   if (stimulus && !allowedActions[stimulus.kind].includes(p.action)) return `この連絡への返事として「${p.action}」はできない`;
   if (MEDICAL_ADVICE.test(p.message)) return '医療的な判断を含む言葉がある';
+  // 断りの理由など、返事以外の文も同じように確かめる
+  if ('reason' in p && typeof p.reason === 'string' && MEDICAL_ADVICE.test(p.reason)) return '理由に医療的な判断を含む言葉がある';
   const t = 'transportId' in p ? view.transports[p.transportId] : undefined;
   switch (p.action) {
     case 'reply_message':

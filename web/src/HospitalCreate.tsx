@@ -47,6 +47,8 @@ export function HospitalCreate() {
   if (error) return <main className="setup"><p className="inline-alert">⚠ {error}</p></main>;
   if (!template) return <main className="setup"><p>読み込み中…</p></main>;
 
+  // 役職の名前と説明は標準の値（positionTemplates）から取る
+  const pt = template.positionTemplates;
   // 段階ごとに、先へ進めない理由
   const problems: string[][] = [
     [!draft.name.trim() && '病院名を書いてください', !draft.fictional && '「架空の病院です」を確かめてください'].filter(Boolean) as string[],
@@ -56,7 +58,7 @@ export function HospitalCreate() {
       new Set(draft.locations.map((l) => l.name.trim())).size !== draft.locations.length && '場所の名前が重なっています',
     ].filter(Boolean) as string[],
     [],
-    [!draft.positions.hqChief && !draft.positions.hqTransport && '本部長か搬送調整担当のどちらかを入れてください（搬送の指示を出す役職）'].filter(Boolean) as string[],
+    [!draft.positions.hqChief && !draft.positions.hqTransport && `${pt.hqChief.name}か${pt.hqTransport.name}のどちらかを入れてください（搬送の指示を出す役職）`].filter(Boolean) as string[],
     [
       draft.staff.length === 0 && '入力者を1人以上入れてください',
       draft.staff.some((s) => s.name.trim().length < 2) && 'フルネームのない入力者がいます',
@@ -247,9 +249,9 @@ export function HospitalCreate() {
             <p className="hint">搬送の指示や受け入れの判断をする役職です。名前は作ったあとに病院設定のファイルで変えられます。</p>
             {(
               [
-                ['hqChief', '本部長', '搬送の指示・支援の手配をする（搬送調整担当がいなければ兼任）'],
-                ['hqTransport', '搬送調整担当（本部）', '搬送の指示をする専任の担当'],
-                ['locationLeads', '場所ごとの責任者', '本部以外の場所それぞれに置き、受け入れの了承を判断する'],
+                ['hqChief', pt.hqChief.name, pt.hqChief.description],
+                ['hqTransport', `${pt.hqTransport.name}（本部）`, pt.hqTransport.description],
+                ['locationLeads', pt.locationLead.name, pt.locationLead.description],
               ] as const
             ).map(([k, label, desc]) => (
               <label key={k} className="radio">
@@ -348,7 +350,7 @@ export function HospitalCreate() {
                 ))}
               </Row>
               <Row label="役職">
-                {[draft.positions.hqChief && '本部長', draft.positions.hqTransport && '搬送調整担当', draft.positions.locationLeads && '場所ごとの責任者'].filter(Boolean).join('、')}
+                {[draft.positions.hqChief && pt.hqChief.name, draft.positions.hqTransport && pt.hqTransport.name, draft.positions.locationLeads && pt.locationLead.name].filter(Boolean).join('、')}
               </Row>
               <Row label="入力者">{draft.staff.map((s) => `${s.name}（${draft.locations[s.locationIndex]?.name}・${template.professions.find((p) => p.id === s.professionId)?.name}）`).join('、')}</Row>
               <Row label="搬送要員">{draft.transporters.filter((t) => t.trim()).join('、') || 'なし'}</Row>

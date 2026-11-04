@@ -2,7 +2,7 @@
   "name": "hospital-disaster-coordination",
   "private": true,
   "type": "module",
-  "description": "院内災害対応の調整ツール（実運用モード＋AI訓練モード）",
+  "description": "院内災害対応の調整ツール（災害運用モード＋AI訓練モード）",
   "license": "MIT",
   "engines": {
     "node": ">=22.13"

@@ -30,6 +30,8 @@ const provider = await createAiProvider().catch((err) => {
 const app = createApp({ hospitals, dataDir, defaultHospitalId, staticDir: join(repoRoot, 'web/dist'),
   training: { scenarios, provider },
   hospitalCreation: { template: loadHospitalTemplate(), dir: createdDir },
+  // 映像の録画専用の起動（video/capture/record.ts が DEMO_CAPTURE=1 を渡す）
+  demoCapture: process.env.DEMO_CAPTURE === '1',
 });
 
 app.server.listen(port, () => {

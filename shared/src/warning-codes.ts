@@ -1,0 +1,10 @@
+// 警告の種類（重複などを知らせるが、理由を記録すれば実行できる）。病院設定の警告の理由（appliesTo）からも参照する
+export const warningCodes = {
+  DUPLICATE_TAG_NUMBER: 'DUPLICATE_TAG_NUMBER',
+  DUPLICATE_HOSPITAL_PATIENT_ID: 'DUPLICATE_HOSPITAL_PATIENT_ID',
+  DUPLICATE_ACTIVE_TRANSPORT: 'DUPLICATE_ACTIVE_TRANSPORT',
+  TRANSPORTER_BUSY: 'TRANSPORTER_BUSY',
+  DUPLICATE_STAFF: 'DUPLICATE_STAFF',
+  CAPACITY_EXCEEDED: 'CAPACITY_EXCEEDED',
+} as const;
+export type WarningCode = keyof typeof warningCodes;

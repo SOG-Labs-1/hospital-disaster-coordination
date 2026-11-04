@@ -125,22 +125,15 @@ export const CommandEnvelopeSchema = z.object({
 export type CommandEnvelope = z.infer<typeof CommandEnvelopeSchema>;
 export type CommandEnvelopeInput = z.input<typeof CommandEnvelopeSchema>;
 
-export const warningCodes = {
-  DUPLICATE_TAG_NUMBER: 'DUPLICATE_TAG_NUMBER',
-  DUPLICATE_HOSPITAL_PATIENT_ID: 'DUPLICATE_HOSPITAL_PATIENT_ID',
-  DUPLICATE_ACTIVE_TRANSPORT: 'DUPLICATE_ACTIVE_TRANSPORT',
-  TRANSPORTER_BUSY: 'TRANSPORTER_BUSY',
-  DUPLICATE_STAFF: 'DUPLICATE_STAFF',
-  CAPACITY_EXCEEDED: 'CAPACITY_EXCEEDED',
-} as const;
-export type WarningCode = keyof typeof warningCodes;
+import { warningCodes, type WarningCode } from './warning-codes';
+export { warningCodes, type WarningCode };
 
 /**
  * 出ている警告に合う理由だけを返す。理由の appliesTo が省略されていれば、どの警告にも出す。
  * 出ている警告のすべてに当てはまる理由に絞り、1つもなければ全部を返す（選べなくならないように）
  */
 export function reasonsForWarnings(config: HospitalConfig, codes: readonly string[]) {
-  const fits = config.warningReasons.filter((r) => !r.appliesTo || codes.every((c) => r.appliesTo!.includes(c)));
+  const fits = config.warningReasons.filter((r) => !r.appliesTo || codes.every((c) => (r.appliesTo as readonly string[]).includes(c)));
   return fits.length > 0 ? fits : config.warningReasons;
 }
 
@@ -680,6 +673,10 @@ export function decide(
   // 警告はブロックしない。すべての警告コードを承知した理由つきの再送なら実行する
   if (warnings.length > 0) {
     if (!override || !warnings.every((w) => override.codes.includes(w.code))) return { status: 'warnings', warnings };
+    // 選んだ理由は、病院設定にあり、出ている警告に合うものでなければならない（理由の文は必須なので、選択肢の id は任意）
+    if (override.reasonId && !reasonsForWarnings(config, warnings.map((w) => w.code)).some((r) => r.id === override.reasonId)) {
+      return { status: 'rejected', errors: [`理由「${override.reasonId}」は、この警告には選べない`] };
+    }
   }
 
   const recorded: Override | undefined = warnings.length > 0 ? override : undefined;

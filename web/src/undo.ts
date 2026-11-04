@@ -22,12 +22,14 @@ export function undoNotice(opts: {
   return {
     kind: 'done',
     text,
+    // 元に戻す記録は、元の操作をした入力者のものとして残す。入力者が替わったら、この知らせは消す（知らせのバーで判定）
+    owner: meta.enteredBy,
     action: {
       label: '元に戻す',
       onClick: () =>
         run(
           () => ({
-            command: { type: 'CorrectEvent', eventId: event.id, payload: { reason: '記録の直後に元に戻した', retract: true } },
+            command: { type: 'CorrectEvent', eventId: event.id, payload: { reason: undoReason(event.recordedAt), retract: true } },
             meta,
             expectedVersion: versionAfter,
           }),
@@ -35,4 +37,10 @@ export function undoNotice(opts: {
         ),
     },
   };
+}
+
+/** 取り消しの理由。知らせは消えずに残るので、記録からどれだけ後に元に戻したかを残す */
+export function undoReason(recordedAt: string, now = new Date()): string {
+  const minutes = Math.floor((now.getTime() - Date.parse(recordedAt)) / 60000);
+  return minutes < 1 ? '記録の直後に元に戻した' : `記録から${minutes}分後に元に戻した`;
 }

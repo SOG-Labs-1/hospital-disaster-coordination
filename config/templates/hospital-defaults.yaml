@@ -111,3 +111,20 @@ checklist:
   - { id: patient-location, text: 全患者の所在を確認時刻つきで把握しているか }
   - { id: transport-ack, text: 搬送の指示に受領確認を取ったか }
   - { id: support-done, text: 支援要請の完了を確認したか }
+
+# 病院を作る画面で選べる役職の雛形（名前・説明・権限）。id はプログラムが付ける
+positionTemplates:
+  hqChief:
+    name: 本部長
+    nameWhenAlsoTransport: 本部長（搬送調整を兼任）
+    description: 搬送の指示・支援の手配をする（搬送調整担当がいなければ兼任）
+    permissions: [direct-transport, assign-support, register-patient]
+  hqTransport:
+    name: 搬送調整担当
+    description: 搬送の指示をする専任の担当
+    permissions: [direct-transport]
+  locationLead:
+    name: 場所ごとの責任者
+    nameSuffix: 責任者
+    description: 本部以外の場所それぞれに置き、受け入れの了承を判断する
+    permissions: [accept-transport]

@@ -61,6 +61,8 @@ test('病院Bの設定で、登録から搬送・引き渡しまでが動く', a
   await expect(card.getByTestId('step-accepted')).toContainText('坂本 由香', { timeout: 5000 });
 
   // 本部長（搬送調整を兼任）が指示
+  // 病院Bは要員の割り当てを省略できる設定なので、了承の次は「指示を記録」が大きく出る
+  await expect(card.getByRole('group', { name: /次にすること/ })).toContainText('指示を記録');
   await clickAction(card, '指示を記録');
   await card.getByRole('form', { name: '指示の記録' }).getByRole('button', { name: '指示を記録する' }).click();
   await expect(card.getByTestId('step-ordered')).toContainText('本部長（搬送調整を兼任）');
