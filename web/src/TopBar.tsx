@@ -12,7 +12,7 @@ export function TopBar(props: {
   lastSyncedAt: Date | null;
   otherHospitals: boolean;
 }) {
-  const { config, mode, terminalName, status, lastSyncedAt, otherHospitals } = props;
+  const { config, mode, terminalName, status, lastSyncedAt } = props;
   const sync = {
     connecting: { symbol: '…', text: '接続中…' },
     connected: { symbol: '●', text: '同期中' },
@@ -36,7 +36,7 @@ export function TopBar(props: {
         <div className={`sync sync-${status}`} role="status" aria-live="polite" data-testid="sync-status">
           <span aria-hidden="true">{sync.symbol}</span> {sync.text}
         </div>
-        <TerminalSettings mode={mode} otherHospitals={otherHospitals} />
+        <TerminalSettings mode={mode} />
       </div>
     </header>
   );

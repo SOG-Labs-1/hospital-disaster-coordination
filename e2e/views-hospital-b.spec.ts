@@ -91,7 +91,7 @@ test('病院Bの掲示用画面', async ({ browser }) => {
   await board.screenshot({ path: 'test-results/board-hackathon.png' });
 });
 
-test('入力者を選んでいなくても、上部の「端末の設定」から訓練モードや場所を切り替えられる', async ({ browser }) => {
+test('入力者を選んでいなくても、上部の「端末の設定」から病院や場所を選び直せる。実運用と訓練の切り替えは病院を選ぶ画面だけで行う', async ({ browser }) => {
   const page = await (await browser.newContext()).newPage();
   await page.goto('/?hospital=');
   // 病院を選ぶ画面から、訓練モードで開ける
@@ -100,12 +100,15 @@ test('入力者を選んでいなくても、上部の「端末の設定」か�
   await page.getByRole('button', { name: '災害対策本部（2階会議室）' }).click();
   await expect(page.getByTestId('mode-badge')).toHaveText(/訓練/);
 
-  // 入力者を選ぶ前でも、設定を開いて実運用に戻せる（確かめてから）
+  // 端末の設定には実運用と訓練の切り替えを置かない（誤操作を防ぐ）。病院を選び直して実運用で開く
   await page.getByRole('button', { name: /端末の設定/ }).click();
   const panel = page.getByRole('dialog', { name: '端末の設定' });
-  await panel.getByRole('button', { name: /実運用に戻す/ }).click();
-  await expect(panel).toContainText('実運用の記録になります');
-  await panel.getByRole('button', { name: '実運用に切り替える' }).click();
+  await expect(panel.getByRole('button', { name: /訓練モードに切り替える|実運用に戻す/ })).toHaveCount(0);
+  await panel.getByRole('button', { name: '病院を変える' }).click();
+  await expect(panel).toContainText('「実運用で開く」を押します');
+  await panel.getByRole('button', { name: '病院を選び直す' }).click();
+  await page.locator('.hospital-choice', { hasText: 'Claude総合病院(仮)' }).getByRole('button', { name: /実運用で開く/ }).click();
+  // 端末の場所は覚えているので、選び直さずに実運用で開く
   await expect(page.getByTestId('mode-badge')).toHaveText(/実運用/);
 
   // 場所を選び直す

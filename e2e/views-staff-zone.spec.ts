@@ -8,7 +8,7 @@ test('一覧にない名前を追加して入力を始め、ほかの端末の�
   await expect(er.getByTestId('sync-status')).toContainText('同期中');
   await er.getByRole('button', { name: /一覧にない名前を追加する/ }).click();
   const form = er.getByRole('form', { name: '入力者の追加' });
-  await expect(form.getByLabel(/^部署/)).toHaveValue('er'); // 端末の場所が既定
+  await expect(form.getByTestId('add-staff-location')).toContainText('救急外来'); // 場所は端末の場所（選ばない）
   await expect(form.getByRole('button', { name: '追加して入力を始める' })).toBeDisabled();
   await form.getByLabel(/フルネーム/).fill('架空 一花');
   await form.getByLabel(/職員番号/).fill('E-0701');

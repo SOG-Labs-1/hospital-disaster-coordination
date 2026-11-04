@@ -65,15 +65,19 @@ export function EnteredByPicker(props: {
   );
 }
 
-/** 入力者の追加。フルネーム・部署・職種は必須、職員番号は任意。追加した本人がそのまま入力者になる */
+/**
+ * 入力者の追加。フルネームと職種は必須、職員番号は任意。場所はこの端末の場所（いま働いている場所）を使う。
+ * 普段の所属部署は、この一覧の用途（誰が入力・報告したか）には使わないので聞かない。追加した本人がそのまま入力者になる
+ */
 function AddStaffForm({ config, terminal, onAdded, onCancel }: { config: HospitalConfig; terminal: string; onAdded: (id: string) => void; onCancel: () => void }) {
   const { run } = useCommands();
-  const terminalIsDept = config.locations.some((l) => l.id === terminal);
+  const terminalName = config.locations.find((l) => l.id === terminal)?.name;
+  const terminalIsDept = !!terminalName;
   const [name, setName] = useState('');
   const [locationId, setLocationId] = useState(terminalIsDept ? terminal : '');
   const [professionId, setProfessionId] = useState('');
   const [staffNumber, setStaffNumber] = useState('');
-  const missing = name.trim().length < 2 ? 'フルネームを書くと追加できます。' : !locationId ? '部署を選ぶと追加できます。' : !professionId ? '職種を選ぶと追加できます。' : null;
+  const missing = name.trim().length < 2 ? 'フルネームを書くと追加できます。' : !locationId ? 'いまいる場所を選ぶと追加できます。' : !professionId ? '職種を選ぶと追加できます。' : null;
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -112,19 +116,28 @@ function AddStaffForm({ config, terminal, onAdded, onCancel }: { config: Hospita
         </label>
       </div>
       <div className="field-row">
-        <label className="field">
-          <span>
-            部署<em className="required">必須</em>
-          </span>
-          <select value={locationId} onChange={(e) => setLocationId(e.target.value)}>
-            <option value="">選んでください</option>
-            {config.locations.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        {terminalIsDept ? (
+          // 災害時は「いま働いている場所」が分かればよい。この端末の場所をそのまま使い、選ぶ手間をなくす
+          <p className="field staff-location" data-testid="add-staff-location">
+            <span>場所</span>
+            <strong>{terminalName}</strong>
+            <span className="hint">この端末の場所の人として追加します</span>
+          </p>
+        ) : (
+          <label className="field">
+            <span>
+              いまいる場所<em className="required">必須</em>
+            </span>
+            <select value={locationId} onChange={(e) => setLocationId(e.target.value)}>
+              <option value="">選んでください</option>
+              {config.locations.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <fieldset className="group">
           <legend>
             職種<em className="required">必須</em>

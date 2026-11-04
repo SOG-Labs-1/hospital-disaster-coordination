@@ -46,10 +46,10 @@ test('病棟からの人員の要請を、本部が受付・手配し、病棟�
   // 病棟：届いたことを記録すると、本部の画面に反映される
   const wardCard = ward.getByTestId(`support-${id}`);
   await expect(wardCard.getByTestId('sstep-dispatched')).toContainText('外来ホールから', { timeout: 5000 });
-  await wardCard.getByRole('button', { name: '届いたを記録' }).click();
+  await wardCard.getByRole('button', { name: '受け取り', exact: true }).click();
   await expect(card.getByTestId('sstep-received')).not.toContainText('未記録', { timeout: 5000 });
 
-  await card.getByRole('button', { name: '完了にする' }).click();
+  await card.getByRole('button', { name: '完了', exact: true }).click();
   await expect(hq.getByTestId('support-list').getByTestId(`support-${id}`)).toHaveCount(0);
   await hq.locator('details.closed-transports summary').click();
   await expect(hq.locator('details.closed-transports').getByTestId(`support-${id}`)).toContainText('完了');

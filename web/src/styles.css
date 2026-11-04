@@ -544,3 +544,14 @@ h3 { font-size: var(--text); }
 @media (prefers-reduced-motion: reduce) {
   * { scroll-behavior: auto !important; }
 }
+
+/* 入力者の追加：場所は端末の場所を文字で見せる（選ばせない） */
+.staff-location {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+}
+.staff-location strong {
+  font-size: 1.2em;
+}

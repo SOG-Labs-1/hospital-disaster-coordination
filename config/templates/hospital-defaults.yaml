@@ -86,7 +86,7 @@ supportPolicy:
     requested: 要請
     assigned: 受付（担当）
     dispatched: 手配の指示
-    received: 届いた
+    received: 受け取り
     completed: 完了
 
 warningReasons:

@@ -233,7 +233,7 @@ const statusLabels: Record<SupportView['status'], { symbol: string; text: string
   requested: { symbol: '○', text: '要請あり' },
   assigned: { symbol: '◎', text: '受付済み' },
   dispatched: { symbol: '▶', text: '手配済み' },
-  received: { symbol: '◆', text: '届いた' },
+  received: { symbol: '◆', text: '受け取り済み' },
   completed: { symbol: '■', text: '完了' },
   cancelled: { symbol: '✕', text: '中止' },
 };
@@ -265,7 +265,7 @@ export function SupportCard({ support: s, config, state, terminal, enteredBy, no
   const recordReceived = () =>
     send(
       { type: 'RecordSupportReceived', supportId: s.id, payload: {} },
-      { undo: { text: `${s.id} が届いたことを記録しました`, undoneText: `${s.id} の「届いた」を取り消しました` } },
+      { undo: { text: `${s.id} の受け取りを記録しました`, undoneText: `${s.id} の受け取りを取り消しました` } },
     );
 
   const stepInfo = (st: SupportStep): string | null => {
@@ -307,13 +307,13 @@ export function SupportCard({ support: s, config, state, terminal, enteredBy, no
         <p className="missing-note">
           {alert.kind === 'unassigned'
             ? `⚠ 担当が付かないまま${alert.minutes}分たっています。受付をして担当を決めてください。`
-            : `⚠ 手配の指示から${alert.minutes}分、届いた記録がありません。${locationName(config, to)}に確認してください。`}
+            : `⚠ 手配の指示から${alert.minutes}分、受け取りの記録がありません。${locationName(config, to)}に確認してください。`}
         </p>
       )}
       {!s.closed && !hasTerminal(config, s.fromLocationId) && (
-        <p className="radio-note">〔無線〕{locationName(config, s.fromLocationId)}には端末がありません。届いたかを無線で聞いて、ここに記録してください。</p>
+        <p className="radio-note">〔無線〕{locationName(config, s.fromLocationId)}には端末がありません。受け取ったかを無線で聞いて、ここに記録してください。</p>
       )}
-      {s.steps.completed && !s.steps.received && <p className="missing-note">⚠ 届いた記録がないまま完了</p>}
+      {s.steps.completed && !s.steps.received && <p className="missing-note">⚠ 受け取りの記録がないまま完了</p>}
       {s.steps.cancelled && <p className="override-note">✕ 中止 {formatTime(s.steps.cancelled.observedAt, now)}：{s.steps.cancelled.reason}</p>}
 
       <ol className="steps" aria-label={`${s.id} の段階`}>
@@ -332,7 +332,7 @@ export function SupportCard({ support: s, config, state, terminal, enteredBy, no
       {!s.closed && focus === 'receive' && (
         <div className="button-row focused-actions no-print">
           <button type="button" className="btn btn-primary" disabled={!enteredBy || !!s.steps.received} onClick={recordReceived}>
-            届いたを記録
+            受け取り
           </button>
         </div>
       )}
@@ -352,7 +352,7 @@ export function SupportCard({ support: s, config, state, terminal, enteredBy, no
                 disabled={!enteredBy || !!s.steps.received}
                 onClick={recordReceived}
               >
-                届いたを記録
+                受け取り
               </button>
               <button
                 type="button"
@@ -361,11 +361,11 @@ export function SupportCard({ support: s, config, state, terminal, enteredBy, no
                 onClick={() =>
                   send(
                     { type: 'CompleteSupport', supportId: s.id, payload: {} },
-                    { undo: { text: `${s.id} を完了にしました`, undoneText: `${s.id} の完了を取り消しました` } },
+                    { undo: { text: `${s.id} の完了を記録しました`, undoneText: `${s.id} の完了を取り消しました` } },
                   )
                 }
               >
-                完了にする
+                完了
               </button>
               <button type="button" className="btn" disabled={!enteredBy} aria-expanded={action === 'cancel'} onClick={() => setAction(action === 'cancel' ? 'none' : 'cancel')}>
                 中止を記録
