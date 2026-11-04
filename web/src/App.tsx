@@ -214,7 +214,8 @@ function Headquarters({ config, terminal, mode, otherHospitals }: { config: Hosp
                 className={`tab ${tab === t.id ? 'is-selected' : ''}`}
                 onClick={() => openTab(t.id)}
               >
-                {tab === t.id && <span aria-hidden="true">▼ </span>}
+                {/* ▼ は「押すと入力欄が開く」印に使うので、選んでいるタブは ● で示す */}
+                {tab === t.id && <span aria-hidden="true">● </span>}
                 {t.label}
                 {/* 件数は赤の二重枠で目立たせる。部署の端末では、その部署に関係するものだけを数える（関係のない搬送・要請で目立たせない） */}
                 {t.id === 'transports' && myTransports.length > 0 && (

@@ -14,9 +14,10 @@ export function TopBar(props: {
 }) {
   const { config, mode, terminalName, status, lastSyncedAt } = props;
   const sync = {
-    connecting: { symbol: '…', text: '接続中…' },
-    connected: { symbol: '●', text: '同期中' },
-    disconnected: { symbol: '✕', text: '切断（再接続を試みています）' },
+    // 「接続中」は「つながっている」と読まれやすいので、状態を言い切る言葉にする
+    connecting: { symbol: '…', text: 'つなぎ直しています' },
+    connected: { symbol: '●', text: 'つながっています' },
+    disconnected: { symbol: '✕', text: 'つながっていません（つなぎ直しています）' },
   }[status];
   return (
     <header className={`topbar topbar-${mode}`} role="banner">

@@ -133,11 +133,12 @@ export function PinnedRequests(props: Props & { onChangeEnteredBy: (staffId: str
     setOpenKey(key);
     if (key && fresh.has(key)) setFresh((f) => new Set([...f].filter((k) => k !== key)));
   };
-  const hidden = rows.slice(PINNED_VISIBLE);
-  const hiddenFresh = hidden.filter((r) => fresh.has(r.key)).length;
-  const hiddenDecision = hidden.filter((r) => r.decision).length;
+  // 件数の上限で隠すのは、判断が要らず新着でもない行だけ。判断の依頼と新着は、並びを変えずに常に出す（見落とさないように）
+  const important = (r: Row) => r.decision || fresh.has(r.key);
+  const shown = (r: Row, i: number) => i < PINNED_VISIBLE || important(r);
+  const hidden = rows.filter((r, i) => !shown(r, i));
 
-  const visible = showAll ? rows : rows.slice(0, PINNED_VISIBLE);
+  const visible = showAll ? rows : rows.filter(shown);
   const localStaff = config.staff.filter((s) => s.locationId === terminal);
 
   return (
@@ -182,11 +183,11 @@ export function PinnedRequests(props: Props & { onChangeEnteredBy: (staffId: str
           ))}
         </ul>
       )}
-      {rows.length > PINNED_VISIBLE && (
+      {(hidden.length > 0 || showAll) && rows.length > PINNED_VISIBLE && (
         <button type="button" className="btn btn-quiet" aria-expanded={showAll} onClick={() => setShowAll(!showAll)}>
           {showAll
-            ? `最初の${PINNED_VISIBLE}件だけ表示する`
-            : `ほか ${hidden.length}件を表示${hiddenFresh || hiddenDecision ? `（${[hiddenDecision && `判断が必要 ${hiddenDecision}件`, hiddenFresh && `新着 ${hiddenFresh}件`].filter(Boolean).join('・')}）` : ''}`}
+            ? '表示を減らす（判断が必要なものと新着は出したまま）'
+            : `ほか ${hidden.length}件を表示`}
         </button>
       )}
       {rows.length > 1 && (

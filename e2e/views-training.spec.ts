@@ -24,7 +24,7 @@ test('訓練を始め、無線の連絡を聞いてボードに入力し、終�
   const inbox = hq.getByTestId('radio-inbox');
   const first = inbox.locator('.radio-row', { hasText: 'タッグ101' });
   await expect(first).toContainText('救急外来', { timeout: 40_000 });
-  await hq.getByRole('tab', { name: /^(▼ )?患者/ }).click();
+  await hq.getByRole('tab', { name: /^(● )?患者/ }).click();
   await expect(hq.getByTestId('patient-count')).toHaveText('0人');
 
   // 聞いた連絡を対応記録に残し、患者を登録して、手術室への搬送を依頼する

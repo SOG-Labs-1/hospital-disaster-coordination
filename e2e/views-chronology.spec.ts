@@ -5,9 +5,9 @@ import { expect, test } from '@playwright/test';
 test('記録が時刻順に並び、取り消し・連絡メモ・入力の遅れが分かる', async ({ browser }) => {
   const hq = await (await browser.newContext()).newPage();
   await hq.goto('/?terminal=hq');
-  await expect(hq.getByTestId('sync-status')).toContainText('同期中');
+  await expect(hq.getByTestId('sync-status')).toContainText('つながっています');
   await hq.getByRole('button', { name: /青木 はるか/ }).click();
-  await hq.getByRole('tab', { name: /^(▼ )?患者/ }).click();
+  await hq.getByRole('tab', { name: /^(● )?患者/ }).click();
 
   // 患者を登録し、区分を変えてから「元に戻す」で取り消す
   const form = hq.getByRole('form', { name: '患者を登録する' });

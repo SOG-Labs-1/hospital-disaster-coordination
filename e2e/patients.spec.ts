@@ -6,11 +6,11 @@ async function openTerminal(browser: Browser, terminal: string, staffName: strin
   const context = await browser.newContext();
   const page = await context.newPage();
   await page.goto(`/?terminal=${terminal}&mode=${mode}`);
-  await expect(page.getByTestId('sync-status')).toContainText('同期中');
+  await expect(page.getByTestId('sync-status')).toContainText('つながっています');
   await page.getByRole('button', { name: new RegExp(staffName) }).click();
   await expect(page.getByTestId('entered-by')).toHaveText(staffName);
   // 部署の端末は「この部署」タブが先頭なので、患者のタブを開く
-  await page.getByRole('tab', { name: /^(▼ )?患者/ }).click();
+  await page.getByRole('tab', { name: /^(● )?患者/ }).click();
   return page;
 }
 

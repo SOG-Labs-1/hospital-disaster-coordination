@@ -98,7 +98,7 @@ export function WarningDialog(props: {
         }}
       >
         <h3>{reasonTitle}</h3>
-        <fieldset className="radio-list">
+        <fieldset className="reason-list">
           <legend className="visually-hidden">理由</legend>
           {reasons.map((r) => (
             <label key={r.id} className="radio">
@@ -116,11 +116,12 @@ export function WarningDialog(props: {
             {chosen ? '補足を書くと押せます。' : '理由を1つ選ぶと押せます。'}
           </p>
         )}
-        <div className="button-row">
+        {/* 確定とやめるは、画面が小さくても常に見えるよう下に固定する。いちばん安全な「やめる」も枠付きのボタンにする */}
+        <div className="button-row dialog-actions">
           <button type="submit" className="btn btn-primary" disabled={!canConfirm} aria-describedby={!canConfirm ? 'confirm-hint' : undefined}>
             {confirmLabel}
           </button>
-          <button type="button" className="btn btn-quiet" onClick={onCancel}>
+          <button type="button" className="btn" onClick={onCancel}>
             やめる（記録しない）
           </button>
         </div>

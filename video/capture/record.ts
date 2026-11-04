@@ -247,7 +247,7 @@ async function openPage(url: string, opts: { view?: { width: number; height: num
   await ctx.addInitScript(cursorScript);
   const page = await ctx.newPage();
   await page.goto(`${WEB}${url}`);
-  await page.getByTestId('sync-status').filter({ hasText: '同期中' }).waitFor();
+  await page.getByTestId('sync-status').filter({ hasText: 'つながっています' }).waitFor();
   // 見出しの書体（BIZ UDゴシック）が読み込まれてから撮る
   await page.evaluate(() => document.fonts.ready);
   return page;
@@ -266,7 +266,7 @@ async function tab(page: Page, name: RegExp) {
   await sleep(400);
 }
 
-const PATIENT_TAB = /^(▼ )?患者/;
+const PATIENT_TAB = /^(● )?患者/;
 
 // ---------------- 各クリップ ----------------
 

@@ -47,7 +47,7 @@ export function DisplayBoard({ config: rawConfig, mode }: { config: HospitalConf
       {disconnected && (
         // 切断中は、離れていても分かるように幅いっぱいの警告を出す（画面が生きているように見せない）
         <div className="board-offline" role="alert" data-testid="board-offline">
-          ✕ {status === 'connecting' ? '接続中' : '切断中'}　{lastSyncedAt ? `${hhmm(lastSyncedAt)} 以降の記録は映っていません` : 'まだ記録を受け取っていません'}
+          ✕ {status === 'connecting' ? 'つなぎ直しています' : 'つながっていません'}　{lastSyncedAt ? `${hhmm(lastSyncedAt)} 以降の記録は映っていません` : 'まだ記録を受け取っていません'}
         </div>
       )}
       {lastSyncedAt ? (
@@ -78,7 +78,7 @@ function useClock(): Date {
 
 function BoardHeader(props: { config: HospitalConfig; mode: Mode; now: Date; status: SyncStatus; lastSyncedAt: Date | null }) {
   const { config, mode, now, status, lastSyncedAt } = props;
-  const sync = { connecting: '… 接続中', connected: '● 同期中', disconnected: '✕ 切断' }[status];
+  const sync = { connecting: '… つなぎ直しています', connected: '● つながっています', disconnected: '✕ つながっていません' }[status];
   return (
     <header className={`board-header topbar-${mode}`}>
       <div className={`mode-badge mode-${mode}`} data-testid="mode-badge">
@@ -232,7 +232,12 @@ function Acceptance({ config, state, now }: { config: HospitalConfig; state: App
                     {t.label}
                     {/* 設定の初期値は確認済みの数字に見せない（未確認を先に、目安を後に） */}
                     {r.source === 'reported' ? (
-                      <> 空き{r.remaining}{isOld(v.capacity[t.id]) && <OldTag />}</>
+                      r.remaining !== null && r.remaining <= 0 ? (
+                        // 院内の状況と同じく、空き0以下は ⚠ と二重の枠で示す
+                        <span className="board-over"> ⚠ 空き{r.remaining}{isOld(v.capacity[t.id]) && <OldTag />}</span>
+                      ) : (
+                        <> 空き{r.remaining}{isOld(v.capacity[t.id]) && <OldTag />}</>
+                      )
                     ) : (
                       <span className="unknown-value">空き未確認{r.value !== null && `（目安${r.remaining}）`}</span>
                     )}

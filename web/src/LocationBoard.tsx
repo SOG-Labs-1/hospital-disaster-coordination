@@ -36,10 +36,14 @@ export function LocationBoard(props: Props) {
   const isStale = makeIsStale(config, now);
 
   // 確認が古い・未確認の情報の一覧（情報の整理を促すため）
+  // 受け入れ可否は、患者を受け入れる場所（用途か受け入れ枠のある場所）だけを挙げる（掲示用画面と同じ条件）。本部などで一覧を埋めない
+  const receives = (id: string) => zonesForLocation(config, id, now.toISOString()).length > 0 || config.capacity.some((c) => c.locationId === id);
   const attention = config.locations.flatMap((l) => {
     const v = locationView(state, l.id);
     const items: string[] = [];
-    if (v.accepting.confirmedAt === null || v.accepting.value === null) items.push('受け入れ可否が未確認');
+    if (!receives(l.id)) {
+      // 受け入れをしない場所は、確認が古い数値だけを挙げる
+    } else if (v.accepting.confirmedAt === null || v.accepting.value === null) items.push('受け入れ可否が未確認');
     else if (isStale(v.accepting)) items.push(`受け入れ可否の確認が古い（${minutesSince(v.accepting.confirmedAt, now)}分前）`);
     const staleCount = Object.values(v.capacity).filter(isStale).length + Object.values(v.staff).filter(isStale).length;
     if (staleCount > 0) items.push(`確認が古い数値が${staleCount}件`);

@@ -48,7 +48,7 @@ test('病院を作り、作った病院の端末で入力を始められる', as
   await page.getByRole('button', { name: /架空 作成/ }).click();
   await page.getByRole('tab', { name: /院内の状況/ }).click();
   await expect(page.getByTestId('location-loc-2').getByRole('heading')).toHaveText('処置室（赤ゾーン）');
-  await page.getByRole('tab', { name: /^(▼ )?患者/ }).click();
+  await page.getByRole('tab', { name: /^(● )?患者/ }).click();
   const form = page.getByRole('form', { name: '患者を登録する' });
   await form.getByLabel(/所在/).selectOption({ label: '処置室' });
   await form.getByRole('button', { name: '登録する' }).click();

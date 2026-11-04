@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import {
   activePatients,
+  pendingForLocation,
   transporterStatus,
   versionOf,
   type AppState,
@@ -12,6 +13,7 @@ import {
 } from '@hdc/shared';
 import { formatTime } from './format';
 import {
+  canDirectTransport,
   deciderLabel,
   hasTerminal,
   locationLabel,
@@ -47,6 +49,18 @@ export function TransportPanel(props: Props) {
   const moving = all.filter((t) => !t.closed && t.steps.departed);
   const coordinating = all.filter((t) => (!t.closed && !t.steps.departed) || pendingHandover(t));
   const closed = all.filter((t) => t.closed && !pendingHandover(t));
+  // 部署の端末では、その部署に関係する搬送だけを操作できる形で出し、ほかの部署の搬送は「見るだけ」にまとめる
+  // （関係のない搬送の「次にすること」を、自分の仕事と取り違えないように）。次にすることは上部の依頼一覧と同じ判断で決める
+  const direct = canDirectTransport(config, props.terminal);
+  const pending = direct ? null : pendingForLocation(state, props.terminal);
+  const ids = (list: TransportView[]) => new Set(list.map((t) => t.id));
+  const p = pending && { accept: ids(pending.acceptRequests), handover: ids(pending.handovers), arrive: ids(pending.arrivals), depart: ids(pending.departures) };
+  const focusOf = (t: TransportView): CardFocus | undefined =>
+    !p ? undefined : p.accept.has(t.id) ? 'accept' : p.handover.has(t.id) ? 'handover' : p.arrive.has(t.id) ? 'arrive' : p.depart.has(t.id) ? 'depart' : 'none';
+  const isMine = (t: TransportView) => direct || t.fromLocationId === props.terminal || t.toLocationId === props.terminal;
+  const open = [...moving, ...coordinating];
+  const mine = open.filter(isMine);
+  const others = open.filter((t) => !isMine(t));
 
   return (
     <div className="layout">
@@ -89,16 +103,26 @@ export function TransportPanel(props: Props) {
 
         <section className="panel" aria-labelledby="transports-title">
           <h2 id="transports-title">
-            搬送の調整 <span className="count">{coordinating.length + moving.length}件</span>
+            {direct ? '搬送の調整' : 'この部署に関係する搬送'} <span className="count">{mine.length}件</span>
           </h2>
-          {coordinating.length + moving.length === 0 ? (
-            <p className="empty">進行中の搬送はありません。左の「搬送を依頼する」から記録します。</p>
+          {mine.length === 0 ? (
+            <p className="empty">{direct ? '進行中の搬送はありません。左の「搬送を依頼する」から記録します。' : 'この部署に関係する進行中の搬送はありません。'}</p>
           ) : (
             <ol className="transport-list" data-testid="transport-list">
-              {[...moving, ...coordinating].map((t) => (
-                <TransportCard key={t.id} transport={t} {...props} />
+              {mine.map((t) => (
+                <TransportCard key={t.id} transport={t} {...props} focus={focusOf(t)} />
               ))}
             </ol>
+          )}
+          {others.length > 0 && (
+            <details className="more others-transports">
+              <summary>ほかの部署の搬送 {others.length}件（見るだけ）</summary>
+              <ol className="transport-list">
+                {others.map((t) => (
+                  <TransportCard key={t.id} transport={t} {...props} readOnly />
+                ))}
+              </ol>
+            </details>
           )}
         </section>
 
@@ -107,7 +131,7 @@ export function TransportPanel(props: Props) {
             <summary>終わった搬送（到着・中止・断り） {closed.length}件</summary>
             <ol className="transport-list">
               {[...closed].reverse().map((t) => (
-                <TransportCard key={t.id} transport={t} {...props} />
+                <TransportCard key={t.id} transport={t} {...props} readOnly={!isMine(t)} />
               ))}
             </ol>
           </details>
@@ -268,7 +292,19 @@ const statusLabels: Record<TransportView['status'], { symbol: string; text: stri
   cancelled: { symbol: '✕', text: '中止' },
 };
 
-export function TransportCard({ transport: t, config, state, terminal, enteredBy, now, focus }: CardProps & { transport: TransportView; focus?: 'accept' | 'depart' | 'arrive' | 'handover' }) {
+/** 部署の画面で、その行の「次にすること」。none は次にすることがない（すべて「ほかの操作」に入れる） */
+export type CardFocus = 'accept' | 'depart' | 'arrive' | 'handover' | 'none';
+
+export function TransportCard({
+  transport: t,
+  config,
+  state,
+  terminal,
+  enteredBy,
+  now,
+  focus,
+  readOnly = false,
+}: CardProps & { transport: TransportView; focus?: CardFocus; readOnly?: boolean }) {
   const { run, showNotice } = useCommands();
   const [action, setAction] = useState<Action>('none');
   const [report, setReport] = useState<ReportMetaValue>(emptyReportMeta);
@@ -280,7 +316,7 @@ export function TransportCard({ transport: t, config, state, terminal, enteredBy
   const stepLabel = (s: TransportStep) => config.transportPolicy.stepLabels[s] ?? s;
   const optional = new Set(config.transportPolicy.optionalSteps);
   // 要員の割り当てと指示は、搬送を指示できる役職がいる端末（本部・搬送指揮）だけで出す。部署の端末では出さない
-  const canDirect = config.positions.some((x) => x.locationId === terminal && x.permissions.includes('direct-transport'));
+  const canDirect = canDirectTransport(config, terminal);
   const status = statusLabels[t.status];
   const radioPlaces = [t.fromLocationId, t.toLocationId].filter((id) => !hasTerminal(config, id));
   const handoverPending = !!t.steps.arrived && !t.steps.arrived.handover && !t.steps.handedOver;
@@ -350,9 +386,11 @@ export function TransportCard({ transport: t, config, state, terminal, enteredBy
                   </button>
                 </>
               )}
+              {/* 受領は押すとすぐ記録されるので、入力欄が開くボタン（▼）とは間をあける */}
               <button
                 type="button"
-                className="btn"
+                className="btn btn-apart"
+                aria-describedby={`ack-hint-${t.id}`}
                 disabled={!enteredBy || !!t.steps.acknowledged}
                 onClick={() =>
                   send(
@@ -363,6 +401,7 @@ export function TransportCard({ transport: t, config, state, terminal, enteredBy
               >
                 受領を記録
               </button>
+              <span className="hint" id={`ack-hint-${t.id}`}>受領＝搬送要員が指示を受け取ったことの確認</span>
             </div>
             {!canDirect && <p className="hint">要員の割り当てと指示は、本部（搬送を指示する役職のいる端末）で行います。</p>}
             <div className="button-row" role="group" aria-label={`${t.id} の事実（起きたこと）`}>
@@ -459,13 +498,19 @@ export function TransportCard({ transport: t, config, state, terminal, enteredBy
 
       {!enteredBy && !t.closed && <p className="inline-alert no-print">⚠ 記録するには、先に画面上の一覧から自分の名前を押してください。</p>}
       {/* 無線・電話で受けた報告の欄は、押すとすぐ記録されるボタンより上に置く（先に確認時刻と報告元を入れられるように） */}
-      {(!t.steps.arrived || handoverPending) && !t.steps.cancelled && enteredBy && (
+      {readOnly && !t.closed && <p className="hint no-print">ほかの部署の搬送です（見るだけ）。</p>}
+      {!readOnly && (!t.steps.arrived || handoverPending) && !t.steps.cancelled && enteredBy && (
         <div className="no-print">
           <ReportMetaFields config={config} value={report} onChange={setReport} />
         </div>
       )}
-      {!t.steps.arrived && !t.steps.cancelled &&
-        (next ? (
+      {!readOnly && !t.steps.arrived && !t.steps.cancelled &&
+        (next === 'none' ? (
+          <details className="more no-print">
+            <summary>ほかの操作</summary>
+            {allActions}
+          </details>
+        ) : next ? (
           <>
             {/* その搬送で次にすることだけを大きく出し、ほかは「ほかの操作」に折りたたむ（選択肢を絞って迷いと押し間違いを減らす） */}
             <div className="button-row focused-actions no-print" role="group" aria-label={`${t.id} で次にすること`}>
@@ -509,9 +554,14 @@ export function TransportCard({ transport: t, config, state, terminal, enteredBy
         ) : (
           allActions
         ))}
-      {handoverPending && (
+      {!readOnly && handoverPending && (
         <div className="transport-actions no-print">
-          <button type="button" className="btn btn-primary" disabled={!enteredBy} onClick={() => send({ type: 'RecordHandover', transportId: t.id, payload: {} }, { doneText: `${t.id} の引き渡しを記録しました` })}>
+          <button
+            type="button"
+            className="btn btn-primary"
+            disabled={!enteredBy}
+            onClick={() => send({ type: 'RecordHandover', transportId: t.id, payload: {} }, { undo: { text: `${t.id} の引き渡しを記録しました`, undoneText: `${t.id} の引き渡しの記録を取り消しました` } })}
+          >
             引き渡しを記録
           </button>
         </div>
@@ -834,8 +884,10 @@ function ReasonForm(props: { label: string; submitLabel: string; onCancel: () =>
 // ---- 搬送要員の一覧 ----
 
 function TransporterBoard({ config, state, terminal, enteredBy, now }: Props) {
-  const { run } = useCommands();
+  const { run, showNotice } = useCommands();
   if (config.transporters.length === 0) return null;
+  // 要員の状態を変えるのは、搬送を指示できる端末（本部など）だけ。部署の端末では見るだけ
+  const direct = canDirectTransport(config, terminal);
   return (
     <section className="panel" aria-labelledby="transporters-title" data-testid="transporter-board">
       <h2 id="transporters-title">搬送要員</h2>
@@ -845,14 +897,29 @@ function TransporterBoard({ config, state, terminal, enteredBy, now }: Props) {
           const label = transporterStatusLabels[s.status];
           const activity = state.transporters[tr.id];
           const version = versionOf(state, { kind: 'transporter', id: tr.id });
+          const meta = { enteredBy: enteredBy ?? '', terminal, reportedBy: null };
           const setAvailable = (available: boolean) =>
             run(
               () => ({
                 command: { type: 'SetTransporterAvailability', transporterId: tr.id, payload: { available } },
-                meta: { enteredBy: enteredBy ?? '', terminal, reportedBy: null },
+                meta,
                 expectedVersion: version,
               }),
-              { doneText: available ? `${tr.name} を待機に戻しました` : `${tr.name} を対応不可として記録しました` },
+              {
+                // 1回押すと記録されるので、押し間違えたときのために「元に戻す」を付ける
+                onAccepted: ([event]) =>
+                  event &&
+                  showNotice(
+                    undoNotice({
+                      run,
+                      event,
+                      meta,
+                      versionAfter: version + 1,
+                      text: available ? `${tr.name} を待機に戻しました` : `${tr.name} を対応不可として記録しました`,
+                      undoneText: `${tr.name} の${available ? '待機に戻す' : '対応不可'}の記録を取り消しました`,
+                    }),
+                  ),
+              },
             );
           return (
             <li key={tr.id} className={`transporter transporter-${s.status}`} data-testid={`transporter-${tr.id}`}>
@@ -865,7 +932,7 @@ function TransporterBoard({ config, state, terminal, enteredBy, now }: Props) {
                 {s.lastLocationId ? `最後の到着先：${locationName(config, s.lastLocationId)}` : ''}
                 {s.status === 'unavailable' && activity?.availabilitySince && `（${formatTime(activity.availabilitySince, now)}から）`}
               </span>
-              {s.status === 'unavailable' ? (
+              {!direct ? null : s.status === 'unavailable' ? (
                 <button type="button" className="btn" disabled={!enteredBy} onClick={() => setAvailable(true)}>
                   待機に戻す
                 </button>

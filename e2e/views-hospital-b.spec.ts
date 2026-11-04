@@ -6,7 +6,7 @@ import { clickAction } from './helpers';
 
 async function open(page: Page, query: string, staff?: string) {
   await page.goto(`/?${query}`);
-  await expect(page.getByTestId('sync-status')).toContainText('同期中');
+  await expect(page.getByTestId('sync-status')).toContainText('つながっています');
   if (staff) await page.getByRole('button', { name: new RegExp(staff) }).click();
 }
 
@@ -18,16 +18,16 @@ test('病院を選ぶ画面から病院Bを選び、記録は病院Aと分かれ
   await expect(page.getByRole('heading', { name: 'このパソコンを置いた場所を選んでください' })).toBeVisible();
   await expect(page.getByText('病院：Hackathon中央病院(仮)')).toBeVisible();
   await page.getByRole('button', { name: '本部（1階事務室）' }).click();
-  await expect(page.getByTestId('sync-status')).toContainText('同期中');
+  await expect(page.getByTestId('sync-status')).toContainText('つながっています');
   await expect(page.getByRole('banner')).toContainText('Hackathon中央病院(仮)');
-  await page.getByRole('tab', { name: /^(▼ )?患者/ }).click();
+  await page.getByRole('tab', { name: /^(● )?患者/ }).click();
   await expect(page.getByTestId('patient-count')).toHaveText('0人'); // 病院Aの患者は出ない
 });
 
 test('病院Bの設定で、登録から搬送・引き渡しまでが動く', async ({ browser }) => {
   const hq = await (await browser.newContext()).newPage();
   await open(hq, 'hospital=hackathon&terminal=hq', '内田 千夏');
-  await hq.getByRole('tab', { name: /^(▼ )?患者/ }).click();
+  await hq.getByRole('tab', { name: /^(● )?患者/ }).click();
 
   // 待合は黄ゾーンと緑ゾーンの両方
   const form = hq.getByRole('form', { name: '患者を登録する' });
@@ -73,7 +73,7 @@ test('病院Bの設定で、登録から搬送・引き渡しまでが動く', a
   // 引き渡しが未記録のあいだは、調整中の一覧に残る
   const done = hq.getByTestId('transport-list').getByTestId(`transport-${transportId}`);
   await expect(done).toContainText('引き渡し未記録');
-  await hq.getByRole('tab', { name: /^(▼ )?患者/ }).click();
+  await hq.getByRole('tab', { name: /^(● )?患者/ }).click();
   await expect(hq.getByTestId(`patient-${patientId}`)).toContainText('担当外来待合');
   // 2階病棟の上部の依頼欄に「引き渡しの記録」が出て、そこから記録できる
   const handover = ward.getByTestId(`pinned-handover-${transportId}`);
@@ -81,7 +81,7 @@ test('病院Bの設定で、登録から搬送・引き渡しまでが動く', a
   await handover.getByRole('button', { name: '対応する' }).click();
   await handover.getByRole('button', { name: '引き渡しを記録' }).click();
   await expect(ward.getByTestId(`pinned-handover-${transportId}`)).toHaveCount(0);
-  await hq.getByRole('tab', { name: /^(▼ )?患者/ }).click();
+  await hq.getByRole('tab', { name: /^(● )?患者/ }).click();
   await expect(hq.getByTestId(`patient-${patientId}`)).toContainText('2階病棟');
   await expect(hq.getByTestId(`patient-${patientId}`)).not.toContainText('担当');
 });

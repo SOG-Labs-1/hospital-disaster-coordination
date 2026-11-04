@@ -19,9 +19,11 @@ export function undoNotice(opts: {
   undoneText: string;
 }): Notice {
   const { run, event, meta, versionAfter, text, undoneText } = opts;
+  // 知らせは消えずに残るので、いつの操作かが分かるよう記録した時刻を先頭に付ける
+  const at = new Date(event.recordedAt).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
   return {
     kind: 'done',
-    text,
+    text: `${at} ${text}`,
     // 元に戻す記録は、元の操作をした入力者のものとして残す。入力者が替わったら、この知らせは消す（知らせのバーで判定）
     owner: meta.enteredBy,
     action: {

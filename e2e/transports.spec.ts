@@ -6,7 +6,7 @@ import { clickAction } from './helpers';
 async function openTerminal(browser: Browser, terminal: string, staffName: string): Promise<Page> {
   const page = await (await browser.newContext()).newPage();
   await page.goto(`/?terminal=${terminal}`);
-  await expect(page.getByTestId('sync-status')).toContainText('同期中');
+  await expect(page.getByTestId('sync-status')).toContainText('つながっています');
   await page.getByRole('button', { name: new RegExp(staffName) }).click();
   await expect(page.getByTestId('entered-by')).toHaveText(staffName);
   return page;

@@ -18,9 +18,9 @@ async function register(page: Page, tag: string, location: string, features: str
 test('登録内容を理由つきで直し、同じ患者だった2件をまとめる', async ({ browser }) => {
   const hq = await (await browser.newContext()).newPage();
   await hq.goto('/?hospital=claude&terminal=hq');
-  await expect(hq.getByTestId('sync-status')).toContainText('同期中');
+  await expect(hq.getByTestId('sync-status')).toContainText('つながっています');
   await hq.getByRole('button', { name: /青木 はるか/ }).click();
-  await hq.getByRole('tab', { name: /^(▼ )?患者/ }).click();
+  await hq.getByRole('tab', { name: /^(● )?患者/ }).click();
 
   // 聞き間違いでタッグ番号と場所を誤って登録した
   const a = await register(hq, '610', '講堂', '緑のリュック');

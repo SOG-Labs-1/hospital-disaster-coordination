@@ -6,13 +6,13 @@ import { clickAction } from './helpers';
 async function openTerminal(browser: Browser, terminal: string, staffName: string): Promise<Page> {
   const page = await (await browser.newContext()).newPage();
   await page.goto(`/?terminal=${terminal}`);
-  await expect(page.getByTestId('sync-status')).toContainText('同期中');
+  await expect(page.getByTestId('sync-status')).toContainText('つながっています');
   await page.getByRole('button', { name: new RegExp(staffName) }).click();
   return page;
 }
 
 async function registerAndRequest(hq: Page, tag: string, to: string): Promise<{ patientId: string; transportId: string }> {
-  await hq.getByRole('tab', { name: /^(▼ )?患者/ }).click();
+  await hq.getByRole('tab', { name: /^(● )?患者/ }).click();
   const form = hq.getByRole('form', { name: '患者を登録する' });
   await form.locator('label.triage-choice', { hasText: '赤' }).click();
   await form.getByLabel(/所在/).selectOption({ label: '救急外来' });
@@ -68,7 +68,7 @@ test('掲示用画面：操作できる部品がなく、記録が変わると�
   const board = await (await browser.newContext({ viewport: { width: 1920, height: 1080 } })).newPage();
   await board.goto('/?view=board');
   await expect(board.getByTestId('display-board')).toBeVisible();
-  await expect(board.getByTestId('sync-status')).toContainText('同期中');
+  await expect(board.getByTestId('sync-status')).toContainText('つながっています');
   await expect(board.getByTestId('mode-badge')).toHaveText(/災害運用/);
   // 操作なし：ボタン・入力欄・リンクを置かない
   await expect(board.locator('button, input, select, textarea, a')).toHaveCount(0);
@@ -100,7 +100,7 @@ test('掲示用画面：切断中は幅いっぱいの警告を出し、受け�
   await context.route('**/live/stream', (route) => route.abort());
   const board = await context.newPage();
   await board.goto('/?view=board');
-  await expect(board.getByTestId('board-offline')).toContainText('✕ 切断中');
+  await expect(board.getByTestId('board-offline')).toContainText('✕ つながっていません');
   await expect(board.getByTestId('sync-status')).toContainText('✕');
   // 一度も記録を受け取っていないので、0 と読み違えないよう数値を出さない
   await expect(board.getByTestId('board-waiting')).toBeVisible();

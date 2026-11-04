@@ -6,7 +6,7 @@ async function openTerminal(browser: Browser, terminal: string, staffName: strin
   const page = await (await browser.newContext()).newPage();
   if (opts.fakeClock) await page.clock.install({ time: new Date() });
   await page.goto(`/?terminal=${terminal}`);
-  await expect(page.getByTestId('sync-status')).toContainText('同期中');
+  await expect(page.getByTestId('sync-status')).toContainText('つながっています');
   await page.getByRole('button', { name: new RegExp(staffName) }).click();
   await page.getByRole('tab', { name: /支援要請/ }).click();
   return page;

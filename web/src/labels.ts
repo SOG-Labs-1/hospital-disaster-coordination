@@ -48,3 +48,8 @@ export function patientShort(config: HospitalConfig, p: PatientView | undefined,
   if (!p) return id;
   return [p.id, p.tagNumber && `タッグ${p.tagNumber}`, triageText(config, p.triage)].filter(Boolean).join(' ');
 }
+
+/** その端末の場所に、搬送を指示できる役職（本部・搬送指揮）がいるか。いなければ部署の端末として扱う */
+export function canDirectTransport(config: HospitalConfig, terminal: string): boolean {
+  return config.positions.some((x) => x.locationId === terminal && x.permissions.includes('direct-transport'));
+}

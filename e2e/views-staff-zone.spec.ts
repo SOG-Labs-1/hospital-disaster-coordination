@@ -5,7 +5,7 @@ import { expect, test } from '@playwright/test';
 test('一覧にない名前を追加して入力を始め、ほかの端末の一覧にも出る', async ({ browser }) => {
   const er = await (await browser.newContext()).newPage();
   await er.goto('/?hospital=claude&terminal=er');
-  await expect(er.getByTestId('sync-status')).toContainText('同期中');
+  await expect(er.getByTestId('sync-status')).toContainText('つながっています');
   await er.getByRole('button', { name: /一覧にない名前を追加する/ }).click();
   const form = er.getByRole('form', { name: '入力者の追加' });
   await expect(form.getByTestId('add-staff-location')).toContainText('救急外来'); // 場所は端末の場所（選ばない）
@@ -17,7 +17,7 @@ test('一覧にない名前を追加して入力を始め、ほかの端末の�
   await expect(er.getByTestId('entered-by')).toHaveText('架空 一花');
 
   // 追加した入力者で記録でき、ほかの端末の名前の一覧にも出る
-  await er.getByRole('tab', { name: /^(▼ )?患者/ }).click();
+  await er.getByRole('tab', { name: /^(● )?患者/ }).click();
   const reg = er.getByRole('form', { name: '患者を登録する' });
   await reg.getByLabel('タッグ番号').fill('701');
   await reg.getByRole('button', { name: '登録する' }).click();
