@@ -1,7 +1,12 @@
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { createApp } from './app';
 import { createAiProvider } from './ai';
 import { loadHospitalConfig, loadScenarios, repoRoot, resolveHospitalIds } from './config';
+
+// .env（API キーなど）はサーバーだけが読む。リポジトリにはコミットしない
+const envFile = join(repoRoot, '.env');
+if (existsSync(envFile)) process.loadEnvFile(envFile);
 
 // HOSPITALS: 配信する病院（カンマ区切り。省略時は config/hospitals/ のすべて）
 // DEFAULT_HOSPITAL: 病院を指定せずに開いたときの病院（省略時は病院が1つだけならその病院、複数なら選ぶ画面を出す）
