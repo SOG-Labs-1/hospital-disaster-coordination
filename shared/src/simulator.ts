@@ -579,29 +579,40 @@ export const allowedActions: Record<Stimulus['kind'], Proposal['action'][]> = {
  * 医療的な判断（診断・トリアージ判定・治療の助言）を含む言葉。部署役の返事に含まれていたら却下する。
  * プロンプトでの指示に加えた、出力側の簡単な確認
  */
+// 単語だけでは止めない（「輸液セット」の要請や「点滴中の入院患者」のような、ふつうの連絡を止めないため）。
+// 指示・判断・見立ての言い方だけを止める
 const MEDICAL_ADVICE = new RegExp(
   [
     // 診断・病名の見立て
-    '診断', '疑い(が|の)?(ある|あり|濃厚)', '骨折', '出血して(いる|います)',
-    // 治療・処置の指示
-    '処方', '投与', '投薬', '輸液', '輸血', '点滴', '止血', '酸素を', '治療(を|して|すべき|が必要)', '手術(を|して|すべき|が必要)', '処置(を|して|すべき|が必要)',
+    '診断(する|し|を|は|が|の結果)', '疑い(が|の)?(ある|あり|濃厚)',
+    // 治療・処置の指示や勧め
+    '(処方|投与|投薬|輸液|輸血|点滴|止血|酸素|治療|手術|処置)(を|は)?(すぐ(に)?)?(して|し|始めて|開始して|行って|おこなって|実施して|優先して|投与して)(ください|ほしい|下さい)',
+    '(処方|投与|投薬|輸液|輸血|点滴|止血|治療|手術|処置)(を|は)?(すべき|が必要|した(方|ほう)がよい|した(方|ほう)がいい)',
     // 区分（トリアージ）の判断
-    '(トリアージ|区分)[^。]{0,8}(変更|変え|上げ|下げ|妥当|適切|すべき)', '(赤|黄|緑|黒)(に|へ)(上げ|下げ|変え|変更)', '(赤|黄|緑|黒)が(妥当|適切)',
+    '(トリアージ|区分)を[^。、]{0,6}(変更|変え|上げ|下げ)', '(トリアージ|区分)(は|が)[^。]{0,6}(妥当|適切)', '(赤|黄|緑|黒)(に|へ)(上げ|下げ)', '(赤|黄|緑|黒)(に|へ)(変え|変更)(る|す|し)?(べき|た(方|ほう)が|てください)', '(赤|黄|緑|黒)が(妥当|適切)',
   ].join('|'),
 );
 
-/** AI が書いた文に、医療的な判断を含む言葉があるか（部署役の返事・断りの理由・振り返りの説明文に使う） */
-export function containsMedicalAdvice(text: string): boolean {
-  return MEDICAL_ADVICE.test(text);
+/**
+ * AI が書いた文に、医療的な判断を含む言葉があるか（部署役の返事・断りの理由・振り返りの説明文に使う）。
+ * 病院設定の物品・場所・職種の名前（「輸液セット」「処置室」など）は、確かめる前に取り除く
+ */
+export function containsMedicalAdvice(text: string, config?: HospitalConfig): boolean {
+  let t = text;
+  if (config) {
+    const names = [...config.resources.map((r) => r.name), ...config.locations.map((l) => l.name), ...config.professions.map((p) => p.name)];
+    for (const n of names.sort((x, y) => y.length - x.length)) t = t.split(n).join('□');
+  }
+  return MEDICAL_ADVICE.test(t);
 }
 
 export function validateProposal(view: SimView, config: HospitalConfig, role: string, p: Proposal, stimulus?: Stimulus): string | null {
   const loc = view.locations[role];
   if (!loc) return '部署が見つからない';
   if (stimulus && !allowedActions[stimulus.kind].includes(p.action)) return `この連絡への返事として「${p.action}」はできない`;
-  if (MEDICAL_ADVICE.test(p.message)) return '医療的な判断を含む言葉がある';
+  if (containsMedicalAdvice(p.message, config)) return '医療的な判断を含む言葉がある';
   // 断りの理由など、返事以外の文も同じように確かめる
-  if ('reason' in p && typeof p.reason === 'string' && MEDICAL_ADVICE.test(p.reason)) return '理由に医療的な判断を含む言葉がある';
+  if ('reason' in p && typeof p.reason === 'string' && containsMedicalAdvice(p.reason, config)) return '理由に医療的な判断を含む言葉がある';
   const t = 'transportId' in p ? view.transports[p.transportId] : undefined;
   switch (p.action) {
     case 'reply_message':

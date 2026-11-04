@@ -183,7 +183,10 @@ export interface AppState {
   versions: Record<string, number>;
   /** 発行済みの患者管理番号の数（取り消し分も含む） */
   registeredCount: number;
+  /** 記録の要約。追記した順に並ぶ（前後の判断に使う） */
   eventMeta: Record<string, EventMeta>;
+  /** 取り消された記録の id */
+  retractedEventIds: Record<string, true>;
   eventCount: number;
   lastEventId: string | null;
   lastRecordedAt: string | null;
@@ -208,6 +211,7 @@ export function emptyState(): AppState {
     versions: {},
     registeredCount: 0,
     eventMeta: {},
+    retractedEventIds: {},
     eventCount: 0,
     lastEventId: null,
     lastRecordedAt: null,
@@ -268,6 +272,7 @@ export function reduce(events: readonly DomainEvent[]): AppState {
   }
 
   const state = emptyState();
+  for (const [id, c] of corrections) if (c.retract) state.retractedEventIds[id] = true;
   for (const e of events) applyEvent(state, e, corrections.get(e.id));
   return state;
 }

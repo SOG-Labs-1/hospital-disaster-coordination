@@ -370,6 +370,26 @@ describe('所在を動かした記録の訂正', () => {
     expect(retract(events.at(-1)!.id, 'T-002').status).toBe('accepted');
   });
 
+  it('後の搬送の出発を取り消した・中止したなら、前の到着は取り消せる（押し間違いを挟んでも直せる）', () => {
+    registerPatient('t1', 'loc-a');
+    request('P-001', 'loc-b');
+    stepCmd({ type: 'RecordArrival', transportId: 'T-001', payload: {} });
+    const firstArrival = events.at(-1)!.id;
+    request('P-001', 'hq');
+    stepCmd({ type: 'RecordDeparture', transportId: 'T-002', payload: {} });
+    expect(retract(events.at(-1)!.id, 'T-002').status).toBe('accepted');
+    expect(retract(firstArrival, 'T-001').status).toBe('accepted');
+  });
+
+  it('名前だけを直した訂正は、到着の取り消しを止めない（所在を直したときだけ止める）', () => {
+    registerPatient('t1', 'loc-a');
+    request('P-001', 'loc-b');
+    stepCmd({ type: 'RecordArrival', transportId: 'T-001', payload: {} });
+    const arrival = events.at(-1)!.id;
+    expect(send({ command: { type: 'CorrectPatientDetails', patientId: 'P-001', payload: { fields: { name: '架空 太郎' }, reason: '聞き取り' } }, meta, expectedVersion: versionOf(state(), { kind: 'patient', id: 'P-001' }) }).status).toBe('accepted');
+    expect(retract(arrival, 'T-001').status).toBe('accepted');
+  });
+
   it('担当・権限を確かめる記録（指示）は差し替えできない', () => {
     registerPatient();
     request();

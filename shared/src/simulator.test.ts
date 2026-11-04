@@ -278,6 +278,15 @@ describe('医療的な判断を含む言葉の確認（返事・断りの理由�
       '手術室です。受け入れを了承します。準備に10分かかります',
       '処置室の受け入れ枠は残り2名です',
       '搬送要員が出発しました',
+      '区分別の受け入れ枠を変えました',
+      '右足から出血しています',
+      '点滴中の入院患者が3名います',
+      '手術を終えた患者がいるため準備に10分かかります',
+      '酸素を使っている入院患者の移動に人手が要ります',
     ]) expect(containsMedicalAdvice(text), text).toBe(false);
+    // 病院設定の物品の名前（輸液セット）は取り除いてから確かめる
+    const config = { resources: [{ id: 'infusion-set', name: '輸液セット', unit: 'セット' }], locations: [], professions: [] } as unknown as Parameters<typeof containsMedicalAdvice>[1];
+    expect(containsMedicalAdvice('輸液セットを10セット送ってください', config)).toBe(false);
+    expect(containsMedicalAdvice('応援（輸液セット 10）が届きました', config)).toBe(false);
   });
 });

@@ -130,7 +130,7 @@ function ModeSetup() {
 }
 
 function Headquarters({ config, terminal, mode, otherHospitals }: { config: HospitalConfig; terminal: string; mode: Mode; otherHospitals: boolean }) {
-  const { events, state, status, lastSyncedAt } = useEventLog(mode);
+  const { events, state, status, lastSyncedAt, loaded } = useEventLog(mode);
   // 病院設定に、記録で足した内容（画面から追加した入力者・場所の用途の変更）を合わせる
   const cfg = useMemo(() => effectiveConfig(config, state), [config, state]);
   // 画面から追加した入力者は記録を読み込んでから一覧に入るので、保存した名前はそのまま持ち、一覧にいるときだけ使う
@@ -196,7 +196,7 @@ function Headquarters({ config, terminal, mode, otherHospitals }: { config: Hosp
               terminal={terminal}
               enteredBy={enteredBy}
               now={now}
-              loaded={lastSyncedAt !== null}
+              loaded={loaded}
               onChangeEnteredBy={(id) => {
                 setEnteredBy(id);
                 saveEnteredBy(terminal, id);

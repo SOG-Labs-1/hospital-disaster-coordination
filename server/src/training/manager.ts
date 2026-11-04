@@ -196,7 +196,7 @@ export class TrainingManager {
         const byId = new Map(findings.map((f) => [f.id, f]));
         // 医療的な判断を含む説明文は捨てる（照合の結果はプログラムが出すので、説明文がなくても見られる）
         const valid = explanations
-          .filter((x) => byId.has(x.findingId) && x.text.trim() && !containsMedicalAdvice(x.text))
+          .filter((x) => byId.has(x.findingId) && x.text.trim() && !containsMedicalAdvice(x.text, this.deps.config))
           .map((x) => ({ findingId: x.findingId, text: x.text.trim(), evidence: x.evidence.filter((e) => byId.get(x.findingId)!.evidence.includes(e)) }));
         this.recordExplanations(valid);
       });

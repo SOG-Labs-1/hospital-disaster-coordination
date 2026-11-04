@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { openSupports, pendingForLocation, type AppState, type HospitalConfig, type SupportView, type TransportView } from '@hdc/shared';
 import { minutesSince } from './format';
 import { locationLabel, locationName, patientShort } from './labels';
@@ -115,9 +115,14 @@ export function PinnedRequests(props: Props & { onChangeEnteredBy: (staffId: str
   ];
   const priority = (a: Row, b: Row) => Number(b.decision) - Number(a.decision) || b.elapsed.minutes - a.elapsed.minutes;
   // 並びと新着の印は、搬送・要請の番号（slot）で覚える。同じ搬送が「到着」→「引き渡し」と次の段階に進んでも、同じ位置のまま開いておける
-  const slot = (r: Row) => ('transport' in r ? r.transport.id : r.support.id);
+  // 支援は「届くはず」と「送るはず」が同じ要請で2行になりうるので、行ごとの key を使う
+  const slot = (r: Row) => ('transport' in r ? r.transport.id : r.key);
   // 記録を読み込み終えた時点の依頼は「新着」にせず、優先の順に並べる。読み込み前（記録の取得中）は並びを決めない
   if (order.current === null && loaded) order.current = [...unordered].sort(priority).map(slot);
+  // 一覧から消えた行は並びと開閉から外す。同じ搬送が別の段階の依頼として戻ってきたら、新着として末尾に足す
+  // （例：了承して消えた行が、出発のあと「到着の記録」として戻る）。到着→引き渡しのように同じ描画で入れ替わるときは位置を引き継ぐ
+  const present = new Set(unordered.map(slot));
+  if (order.current) order.current = order.current.filter((k) => present.has(k));
   const known = new Set(order.current ?? []);
   const arrived = order.current ? unordered.filter((r) => !known.has(slot(r))).map(slot) : [];
   if (order.current && arrived.length) {
@@ -131,6 +136,10 @@ export function PinnedRequests(props: Props & { onChangeEnteredBy: (staffId: str
     order.current = [...unordered].sort(priority).map(slot);
     setFresh(new Set());
   };
+  const openGone = openKey !== null && !present.has(openKey);
+  useEffect(() => {
+    if (openGone) setOpenKey(null);
+  }, [openGone]);
   const open = (r: Row | null) => {
     setOpenKey(r ? slot(r) : null);
     if (r && fresh.has(slot(r))) setFresh((f) => new Set([...f].filter((k) => k !== slot(r))));

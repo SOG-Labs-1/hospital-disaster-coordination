@@ -192,14 +192,28 @@ const movesPatient = new Set(['TransportDeparted', 'TransportArrived', 'Transpor
 const noReplacement = new Set(['TransportAccepted', 'TransportDeclined', 'TransportOrdered', 'TransportStaffAssigned', 'SupportAssigned', 'SupportDispatched']);
 
 /**
- * eventId より後に、同じ患者の所在を動かす記録（別の搬送の出発・到着・引き渡し、所在の訂正、統合）があれば、その対象の番号を返す。
- * 記録の id（ULID）は時刻の順に並ぶので、id の大小で前後を判断する
+ * eventId より後に、同じ患者の所在を動かす記録（別の搬送の到着・引き渡し、所在の訂正、統合）があれば、その対象の番号を返す。
+ * 前後は記録を追記した順（eventMeta の並び）で判断する。取り消された記録と、中止された搬送の記録は数えない
  */
 function laterLocationChange(state: AppState, eventId: string, patientId: string, transportId: string): string | null {
+  let after = false;
   for (const [id, m] of Object.entries(state.eventMeta)) {
-    if (id <= eventId) continue;
-    if (m.subject.kind === 'transport' && m.subject.id !== transportId && movesPatient.has(m.type) && state.transports[m.subject.id]?.patientId === patientId) return m.subject.id;
-    if (m.subject.kind === 'patient' && m.subject.id === patientId && (m.type === 'PatientDetailsCorrected' || m.type === 'PatientsMerged')) return m.subject.id;
+    if (id === eventId) {
+      after = true;
+      continue;
+    }
+    if (!after || state.retractedEventIds[id]) continue;
+    if (m.subject.kind === 'transport' && m.subject.id !== transportId) {
+      const t = state.transports[m.subject.id];
+      // 出発は所在を変えないので、別の搬送は到着・引き渡しだけを数える
+      if (t?.patientId === patientId && !t.steps.cancelled && (m.type === 'TransportArrived' || m.type === 'TransportHandedOver')) return m.subject.id;
+    }
+    if (m.subject.kind === 'patient' && m.subject.id === patientId) {
+      if (m.type === 'PatientsMerged') return m.subject.id;
+      // 登録内容の訂正は、所在を直したときだけ数える
+      const fields = (m.payload as { fields?: Record<string, unknown> } | undefined)?.fields;
+      if (m.type === 'PatientDetailsCorrected' && fields && ('locationId' in fields || 'departmentLocationId' in fields)) return m.subject.id;
+    }
   }
   return null;
 }

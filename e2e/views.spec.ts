@@ -53,8 +53,9 @@ test('部署の画面：届いた依頼が上部に固定表示され、その�
   await clickAction(hq.getByTestId(`transport-${transportId}`), '出発を記録');
   const arriveRow = or.getByTestId(`pinned-arrive-${transportId}`);
   await expect(arriveRow).toContainText('救急外来から移動中', { timeout: 5000 });
-  // 了承で開いた行は、同じ搬送が「到着の記録」に進んでも開いたまま
-  await expect(arriveRow.getByRole('button', { name: '閉じる' })).toBeVisible();
+  // 了承のあと一覧から消えた搬送が、到着の依頼として戻ってきたので「新着」で閉じた状態
+  await expect(arriveRow).toContainText('★ 新着');
+  await arriveRow.getByRole('button', { name: '対応する' }).click();
   await arriveRow.getByRole('button', { name: '到着を記録' }).click();
   await expect(or.getByTestId(`pinned-arrive-${transportId}`)).toHaveCount(0);
 

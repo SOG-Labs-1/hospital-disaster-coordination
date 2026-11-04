@@ -503,7 +503,7 @@ export function TransportCard({
         })}
       </ol>
 
-      {!enteredBy && !t.closed && <p className="inline-alert no-print">⚠ 記録するには、先に画面上の一覧から自分の名前を押してください。</p>}
+      {!readOnly && !enteredBy && !t.closed && <p className="inline-alert no-print">⚠ 記録するには、先に画面上の一覧から自分の名前を押してください。</p>}
       {/* 無線・電話で受けた報告の欄は、押すとすぐ記録されるボタンより上に置く（先に確認時刻と報告元を入れられるように） */}
       {readOnly && !t.closed && <p className="hint no-print">ほかの部署の搬送です（見るだけ）。</p>}
       {!readOnly && (!t.steps.arrived || handoverPending) && !t.steps.cancelled && enteredBy && (

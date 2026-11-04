@@ -12,6 +12,8 @@ export function useEventLog(mode: Mode) {
   const [events, setEvents] = useState<DomainEvent[]>([]);
   const [status, setStatus] = useState<SyncStatus>('connecting');
   const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
+  /** 最初の記録の読み込みを終えたか（途中で届いた1件で「読み込み済み」としない） */
+  const [loaded, setLoaded] = useState(false);
   const known = useRef(new Set<string>());
 
   useEffect(() => {
@@ -40,6 +42,7 @@ export function useEventLog(mode: Mode) {
         if (closed) return;
         setStatus('connected');
         setLastSyncedAt(new Date());
+        setLoaded(true);
       } catch {
         setStatus('disconnected');
       }
@@ -69,5 +72,5 @@ export function useEventLog(mode: Mode) {
   }, [mode]);
 
   const state = useMemo(() => reduce(events), [events]);
-  return { events, state, status, lastSyncedAt };
+  return { events, state, status, lastSyncedAt, loaded };
 }
