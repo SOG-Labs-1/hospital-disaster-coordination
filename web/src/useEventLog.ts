@@ -44,6 +44,17 @@ export function useEventLog(mode: Mode) {
         setStatus('disconnected');
       }
     });
+    // 訓練で新しい回が始まると、ボード（記録のファイル）が切り替わる。持っている記録を捨てて読み直す
+    source.addEventListener('reset', async () => {
+      known.current = new Set();
+      setEvents([]);
+      try {
+        add(await fetchEvents(mode));
+        setLastSyncedAt(new Date());
+      } catch {
+        setStatus('disconnected');
+      }
+    });
     source.addEventListener('domain-event', (msg) => {
       add([JSON.parse((msg as MessageEvent).data) as DomainEvent]);
       setLastSyncedAt(new Date());

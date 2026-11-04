@@ -13,6 +13,8 @@ import { RegisterForm } from './RegisterForm';
 import { readEnteredBy, readHospital, readMode, readTerminal, saveEnteredBy, setHospitalInUrl, setModeInUrl, setSessionHospital } from './session';
 import { TerminalSetup } from './TerminalSetup';
 import { TopBar } from './TopBar';
+import { setTrainingHospital, useTraining } from './training';
+import { RadioInbox, TrainingTab } from './TrainingPanel';
 import { SupportPanel } from './SupportPanel';
 import { TransportPanel } from './TransportPanel';
 import { CommandProvider, useCommands } from './useCommands';
@@ -39,6 +41,7 @@ export function App() {
         if (!hospitalId) return setNeedPick(true);
         setApiHospital(hospitalId);
         setSessionHospital(hospitalId);
+        setTrainingHospital(hospitalId);
         const c = await fetchConfig();
         if (!stopped) setConfig(c);
       } catch (e) {
@@ -110,11 +113,13 @@ function Headquarters({ config, terminal, mode }: { config: HospitalConfig; term
     const saved = readEnteredBy(terminal);
     return config.staff.some((s) => s.id === saved) ? saved : null;
   });
-  const now = useNow(30_000);
+  const now = useNow(mode === 'training' ? 1_000 : 30_000);
   const printedAt = usePrintTime();
   // 本部以外の端末は「各部署の画面」：上部に依頼を固定表示し、「この部署」タブを先頭に置く
   const isDepartment = config.locations.find((l) => l.id === terminal)?.kind !== 'headquarters';
-  const tabs = isDepartment ? allTabs : allTabs.filter((t) => t.id !== 'department');
+  // 訓練モードの本部端末だけ、無線の受信と「訓練」タブを出す（参加者の役は本部）
+  const training = useTraining(mode === 'training' && !isDepartment);
+  const tabs = allTabs.filter((t) => (t.id !== 'department' || isDepartment) && (t.id !== 'training' || (mode === 'training' && !isDepartment && !!training)));
   const [tab, setTab] = useState<Tab>(() => readTab(`${config.id}.${terminal}`, tabs));
   const [preselect, setPreselect] = useState<string | null>(null);
   const clearPreselect = useCallback(() => setPreselect(null), []);
@@ -146,6 +151,7 @@ function Headquarters({ config, terminal, mode }: { config: HospitalConfig; term
             }}
           />
           <NoticeBar />
+          {training && <RadioInbox config={config} snapshot={training} terminal={terminal} enteredBy={enteredBy} now={now} />}
           {isDepartment && (
             <PinnedRequests
               config={config}
@@ -228,6 +234,7 @@ function Headquarters({ config, terminal, mode }: { config: HospitalConfig; term
             />
           )}
           {tab === 'supports' && <SupportPanel config={config} state={state} terminal={terminal} enteredBy={enteredBy} now={now} />}
+          {tab === 'training' && training && <TrainingTab config={config} snapshot={training} terminal={terminal} enteredBy={enteredBy} now={now} />}
           {tab === 'chronology' && <ChronologyPanel config={config} events={events} terminal={terminal} enteredBy={enteredBy} now={now} />}
           {tab === 'locations' && <LocationBoard config={config} state={state} terminal={terminal} enteredBy={enteredBy} now={now} />}
         </main>
@@ -236,7 +243,7 @@ function Headquarters({ config, terminal, mode }: { config: HospitalConfig; term
   );
 }
 
-type Tab = 'department' | 'patients' | 'transports' | 'supports' | 'locations' | 'chronology';
+type Tab = 'department' | 'patients' | 'transports' | 'supports' | 'locations' | 'chronology' | 'training';
 const allTabs: { id: Tab; label: string; printTitle: string }[] = [
   { id: 'department', label: 'この部署', printTitle: '部署の状況' },
   { id: 'patients', label: '患者', printTitle: '患者一覧' },
@@ -244,6 +251,7 @@ const allTabs: { id: Tab; label: string; printTitle: string }[] = [
   { id: 'supports', label: '支援要請', printTitle: '支援要請一覧' },
   { id: 'locations', label: '院内の状況', printTitle: '院内の状況' },
   { id: 'chronology', label: 'クロノロジー', printTitle: 'クロノロジー' },
+  { id: 'training', label: '訓練', printTitle: '訓練の振り返り' },
 ];
 
 function readTab(terminal: string, tabs: { id: Tab }[]): Tab {
