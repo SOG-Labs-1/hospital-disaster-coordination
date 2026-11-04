@@ -19,7 +19,7 @@ export const ReporterSchema = z.object({
 export type Reporter = z.infer<typeof ReporterSchema>;
 
 export const SubjectSchema = z.object({
-  kind: z.enum(['patient']),
+  kind: z.enum(['patient', 'transport', 'transporter', 'location']),
   id: z.string().min(1),
 });
 export type Subject = z.infer<typeof SubjectSchema>;
@@ -93,12 +93,91 @@ export const EventCorrectedPayload = z.object({
   replacement: z.record(z.string(), z.unknown()).optional(),
 });
 
+// ---- 搬送 ----
+// 「調整・指示（依頼したこと）」と「事実（起きたこと）」を別のイベントで記録する。
+// 調整が未記録でも事実は記録でき、欠けた段階は画面で「未記録」と示す。
+
+/** 判断した人（受け入れ了承・指示など）。入力者（enteredBy）とは別に記録する */
+export const DeciderSchema = z.object({
+  positionId: z.string().optional(),
+  staffId: z.string().optional(),
+  name: z.string().trim().optional(),
+  /** 責任者の代行として判断した */
+  asDeputy: z.boolean().default(false),
+});
+export type Decider = z.infer<typeof DeciderSchema>;
+
+export const EscortSchema = z.object({ professionId: z.string(), count: z.number().int().min(1) });
+
+export const TransportRequestedPayload = z.object({
+  patientId: z.string().min(1),
+  fromLocationId: z.string().min(1),
+  toLocationId: z.string().min(1),
+  methodId: z.string().optional(),
+  escorts: z.array(EscortSchema).default([]),
+  note: optionalText,
+});
+export const TransportAcceptedPayload = z.object({ decidedBy: DeciderSchema, note: optionalText });
+export const TransportDeclinedPayload = z.object({ decidedBy: DeciderSchema, reason: z.string().trim().min(1) });
+export const TransportStaffAssignedPayload = z.object({
+  transporterIds: z.array(z.string()).min(1),
+  teamId: z.string().optional(),
+});
+export const TransportOrderedPayload = z.object({ orderedBy: DeciderSchema, note: optionalText });
+export const TransportAcknowledgedPayload = z.object({ note: optionalText });
+export const TransportCancelledPayload = z.object({ reason: z.string().trim().min(1) });
+export const TransportRedirectedPayload = z.object({ toLocationId: z.string().min(1), reason: z.string().trim().min(1) });
+export const TransportDepartedPayload = z.object({ note: optionalText });
+/** 到着。病院設定で到着＝引き渡しの場合は、所在と担当部署が同時に移る */
+export const TransportArrivedPayload = z.object({
+  note: optionalText,
+  /** この到着で引き渡し（担当部署の移動）も済んだか。記録時の病院設定で決まる */
+  handover: z.boolean().default(true),
+});
+/** 引き渡し（到着と分ける病院だけで使う） */
+export const TransportHandedOverPayload = z.object({ note: optionalText });
+
+// ---- 搬送要員 ----
+export const TransporterAvailabilityChangedPayload = z.object({
+  available: z.boolean(),
+  note: optionalText,
+});
+
+// ---- 場所 ----
+/** 数値の報告。null は「未確認」。確認時刻はイベントの observedAt */
+const reportedCount = z.number().int().min(0).nullable();
+
+export const LocationStatusReportedPayload = z.object({
+  /** 受け入れ可否。null は未確認 */
+  accepting: z.boolean().nullable().optional(),
+  /** 区分ごとの受け入れ可能人数（報告した区分だけ更新する） */
+  capacity: z.array(z.object({ triage: z.string(), value: reportedCount })).default([]),
+  note: optionalText,
+});
+export const StaffCountReportedPayload = z.object({
+  counts: z.array(z.object({ professionId: z.string(), value: reportedCount })).min(1),
+});
+
 export const payloadSchemas = {
   PatientRegistered: PatientRegisteredPayload,
   PatientIdentifierAdded: PatientIdentifierAddedPayload,
   PatientTriageChanged: PatientTriageChangedPayload,
   PatientNoteUpdated: PatientNoteUpdatedPayload,
   EventCorrected: EventCorrectedPayload,
+  TransportRequested: TransportRequestedPayload,
+  TransportAccepted: TransportAcceptedPayload,
+  TransportDeclined: TransportDeclinedPayload,
+  TransportStaffAssigned: TransportStaffAssignedPayload,
+  TransportOrdered: TransportOrderedPayload,
+  TransportAcknowledged: TransportAcknowledgedPayload,
+  TransportCancelled: TransportCancelledPayload,
+  TransportRedirected: TransportRedirectedPayload,
+  TransportDeparted: TransportDepartedPayload,
+  TransportArrived: TransportArrivedPayload,
+  TransportHandedOver: TransportHandedOverPayload,
+  TransporterAvailabilityChanged: TransporterAvailabilityChangedPayload,
+  LocationStatusReported: LocationStatusReportedPayload,
+  StaffCountReported: StaffCountReportedPayload,
 } as const;
 
 export type EventType = keyof typeof payloadSchemas;

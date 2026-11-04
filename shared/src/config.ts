@@ -93,6 +93,33 @@ export const ResourceSchema = z.object({ id, name: z.string().min(1), unit: z.st
 
 export const ChecklistItemSchema = z.object({ id, text: z.string().min(1) });
 
+/** 搬送要員（1人ずつ登録する） */
+export const TransporterSchema = z.object({ id, name: z.string().min(1) });
+
+/** よく組む搬送班。まとめて割り当てられる */
+export const TransporterTeamSchema = z.object({ id, name: z.string().min(1), members: z.array(id).min(1) });
+
+/** 搬送手段（独歩・車いす・ストレッチャーなど） */
+export const TransportMethodSchema = z.object({ id, name: z.string().min(1) });
+
+/** 搬送の段階。コードはこの id で段階を扱い、必須か省略可かは病院設定で決める */
+export const transportSteps = ['requested', 'accepted', 'staffAssigned', 'ordered', 'acknowledged', 'departed', 'arrived'] as const;
+export type TransportStep = (typeof transportSteps)[number];
+
+export const TransportPolicySchema = z.object({
+  /** 記録がなくても先へ進めてよい段階（未記録でも「省略可」と表示する） */
+  optionalSteps: z.array(z.enum(transportSteps)).default([]),
+  /** true なら到着と同時に引き渡し（所在と担当部署が同時に移る）。false なら引き渡しを別に記録する */
+  handoverOnArrival: z.boolean().default(true),
+  /**
+   * 受け入れ了承を判断できる人。
+   * location-lead: 到着先の場所の責任者（accept-transport 権限のある役職）とその代行者
+   * anyone-at-location: 到着先の場所の担当者なら誰でも
+   * どちらでも入力は誰でもよく、判断者と入力者を両方記録する
+   */
+  acceptanceDecidedBy: z.enum(['location-lead', 'anyone-at-location']).default('location-lead'),
+});
+
 const HospitalConfigBaseSchema = z.object({
   id,
   name: z.string().min(1),
@@ -109,6 +136,10 @@ const HospitalConfigBaseSchema = z.object({
   warningReasons: z.array(WarningReasonSchema).min(1),
   resources: z.array(ResourceSchema).default([]),
   checklist: z.array(ChecklistItemSchema).default([]),
+  transporters: z.array(TransporterSchema).default([]),
+  transporterTeams: z.array(TransporterTeamSchema).default([]),
+  transportMethods: z.array(TransportMethodSchema).default([]),
+  transportPolicy: TransportPolicySchema.default({ optionalSteps: [], handoverOnArrival: true, acceptanceDecidedBy: 'location-lead' }),
   /** 確認からこの分数を過ぎた情報に「古い」印を付ける */
   staleAfterMinutes: z.number().int().positive(),
 });
@@ -134,6 +165,9 @@ export const HospitalConfigSchema = HospitalConfigBaseSchema.superRefine((c, ctx
     warningReasons: c.warningReasons,
     resources: c.resources,
     checklist: c.checklist,
+    transporters: c.transporters,
+    transporterTeams: c.transporterTeams,
+    transportMethods: c.transportMethods,
   };
   for (const [key, list] of Object.entries(lists)) {
     for (const d of duplicates(list.map((x) => x.id))) issue([key], `id「${d}」が重複している`);
@@ -143,6 +177,14 @@ export const HospitalConfigSchema = HospitalConfigBaseSchema.superRefine((c, ctx
   const zoneIds = new Set(c.zones.map((z) => z.id));
   const triageIds = new Set(c.triageCategories.map((t) => t.id));
   const professionIds = new Set(c.professions.map((p) => p.id));
+  const transporterIds = new Set(c.transporters.map((t) => t.id));
+  c.transporterTeams.forEach((t, i) =>
+    t.members.forEach((m, j) => {
+      if (!transporterIds.has(m)) issue(['transporterTeams', i, 'members', j], `搬送要員「${m}」が transporters にない`);
+    }),
+  );
+  if (c.transportPolicy.optionalSteps.some((s) => s === 'requested' || s === 'arrived'))
+    issue(['transportPolicy', 'optionalSteps'], '要請と到着は省略可にできない');
 
   c.zones.forEach((z, i) =>
     z.triage.forEach((t, j) => {
@@ -174,6 +216,7 @@ export type HospitalConfig = z.infer<typeof HospitalConfigSchema>;
 export type Location = z.infer<typeof LocationSchema>;
 export type TriageCategory = z.infer<typeof TriageCategorySchema>;
 export type Staff = z.infer<typeof StaffSchema>;
+export type Transporter = z.infer<typeof TransporterSchema>;
 
 export type ConfigParseResult =
   | { ok: true; config: HospitalConfig }

@@ -111,10 +111,39 @@ staff:
   - { id: w3e-01, name: 中島 綾, professionId: nurse, locationId: ward-3e }
   - { id: w4e-01, name: 野村 拓也, professionId: nurse, locationId: ward-4e }
 
+# 搬送要員（1人ずつ。すべて架空の名前）
+transporters:
+  - { id: tr-01, name: Alex Turner }
+  - { id: tr-02, name: Bianca Reyes }
+  - { id: tr-03, name: Carter Lowell }
+  - { id: tr-04, name: Dana Whitfield }
+  - { id: tr-05, name: Elliot Marsh }
+  - { id: tr-06, name: Fiona Gale }
+
+# よく組む搬送班
+transporterTeams:
+  - { id: team-a, name: 搬送A班, members: [tr-01, tr-02] }
+  - { id: team-b, name: 搬送B班, members: [tr-03, tr-04] }
+
+transportMethods:
+  - { id: walk, name: 独歩 }
+  - { id: wheelchair, name: 車いす }
+  - { id: stretcher, name: ストレッチャー }
+  - { id: litter, name: 担架 }
+
+transportPolicy:
+  # 受領確認は記録がなくても先へ進めてよい
+  optionalSteps: [acknowledged]
+  # 到着＝引き渡し（所在と担当部署が同時に移る）
+  handoverOnArrival: true
+  # 受け入れ了承の判断は到着先の責任者と代行者。入力は誰でもよい
+  acceptanceDecidedBy: location-lead
+
 warningReasons:
   - { id: confirmed-different, label: 別の患者であることを確認した }
   - { id: tag-misread, label: タッグ番号の読み違いの可能性があり、後で確認する }
   - { id: hq-instruction, label: 本部の指示による }
+  - { id: urgent, label: 緊急のため、了承済みとして進める }
   - { id: other, label: その他（理由を書く）, requiresDetail: true }
 
 resources:
