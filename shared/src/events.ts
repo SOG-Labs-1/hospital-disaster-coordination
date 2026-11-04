@@ -19,7 +19,7 @@ export const ReporterSchema = z.object({
 export type Reporter = z.infer<typeof ReporterSchema>;
 
 export const SubjectSchema = z.object({
-  kind: z.enum(['patient', 'transport', 'transporter', 'location', 'support', 'message']),
+  kind: z.enum(['patient', 'transport', 'transporter', 'location', 'support', 'message', 'staff']),
   id: z.string().min(1),
 });
 export type Subject = z.infer<typeof SubjectSchema>;
@@ -219,6 +219,22 @@ export const MessageLoggedPayload = z.object({
   relatedIds: z.array(z.string()).default([]),
 });
 
+// ---- 入力者（職員）の追加 ----
+/** 画面から追加した入力者。病院設定の職員一覧に加えて、名前の一覧から選べる */
+export const StaffRegisteredPayload = z.object({
+  name: z.string().trim().min(2, 'フルネームで書く'),
+  locationId: z.string().min(1),
+  professionId: z.string().min(1),
+  staffNumber: z.string().trim().optional(),
+});
+
+// ---- 場所と災害時の用途（ゾーン）の対応の変更 ----
+/** その場所の用途を、確認時刻（observedAt）から変える。空の配列なら用途なし */
+export const ZoneAssignmentChangedPayload = z.object({
+  zoneIds: z.array(z.string()),
+  note: optionalText,
+});
+
 // ---- 搬送要員 ----
 export const TransporterAvailabilityChangedPayload = z.object({
   available: z.boolean(),
@@ -267,6 +283,8 @@ export const payloadSchemas = {
   SupportCompleted: SupportCompletedPayload,
   SupportCancelled: SupportCancelledPayload,
   MessageLogged: MessageLoggedPayload,
+  StaffRegistered: StaffRegisteredPayload,
+  ZoneAssignmentChanged: ZoneAssignmentChangedPayload,
   LocationStatusReported: LocationStatusReportedPayload,
   StaffCountReported: StaffCountReportedPayload,
 } as const;

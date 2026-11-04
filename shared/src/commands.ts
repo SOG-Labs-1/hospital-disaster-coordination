@@ -21,6 +21,7 @@ import {
 } from './events';
 import {
   activeTransportsForPatient,
+  effectiveConfig,
   findPatientsByIdentifier,
   formatMessageId,
   formatPatientId,
@@ -100,6 +101,10 @@ export const CommandSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('CancelSupport'), supportId: z.string(), payload: payloadSchemas.SupportCancelled }),
   // 連絡メモ
   z.object({ type: z.literal('LogMessage'), payload: payloadSchemas.MessageLogged }),
+  // 入力者（職員）の追加。meta.enteredBy に 'self' を指定すると、追加した本人を入力者として記録する
+  z.object({ type: z.literal('RegisterStaff'), payload: payloadSchemas.StaffRegistered }),
+  // 場所の用途（ゾーン）の変更
+  z.object({ type: z.literal('ChangeZoneAssignment'), locationId: z.string(), payload: payloadSchemas.ZoneAssignmentChanged }),
 ]);
 export type Command = z.infer<typeof CommandSchema>;
 export type CommandInput = z.input<typeof CommandSchema>;
@@ -125,6 +130,7 @@ export const warningCodes = {
   DUPLICATE_HOSPITAL_PATIENT_ID: 'DUPLICATE_HOSPITAL_PATIENT_ID',
   DUPLICATE_ACTIVE_TRANSPORT: 'DUPLICATE_ACTIVE_TRANSPORT',
   TRANSPORTER_BUSY: 'TRANSPORTER_BUSY',
+  DUPLICATE_STAFF: 'DUPLICATE_STAFF',
   CAPACITY_EXCEEDED: 'CAPACITY_EXCEEDED',
 } as const;
 export type WarningCode = keyof typeof warningCodes;
@@ -153,7 +159,7 @@ export interface DecideContext {
 const FUTURE_TOLERANCE_MS = 5 * 60 * 1000;
 
 /** 版番号の確認をしないコマンド（対象を新しく作る、または事実の報告を足すだけのもの） */
-const versionFree = new Set<Command['type']>(['RegisterPatient', 'RequestTransport', 'RequestSupport', 'ReportLocationStatus', 'ReportStaffCount', 'LogMessage']);
+const versionFree = new Set<Command['type']>(['RegisterPatient', 'RequestTransport', 'RequestSupport', 'ReportLocationStatus', 'ReportStaffCount', 'LogMessage', 'RegisterStaff']);
 
 /** 受け入れ可能人数。報告があればその値、報告が一度もなければ病院設定の初期値。未確認と報告されていれば null */
 export function effectiveCapacity(
@@ -190,11 +196,16 @@ export function decide(
   }
   const { command, meta, expectedVersion, override } = parsed.data;
   const errors: string[] = [];
+  // 画面から追加した入力者・場所の用途の変更を、病院設定に合わせて扱う
+  config = effectiveConfig(config, state);
+  // 入力者の追加は、まだ一覧にいない本人が行うことがある（'self' は追加した本人）
+  const newStaffId = command.type === 'RegisterStaff' ? `ST-${String(state.staffOrder.length + 1).padStart(3, '0')}` : null;
+  if (newStaffId && meta.enteredBy === 'self') meta.enteredBy = newStaffId;
 
   const locationIds = new Set(config.locations.map((l) => l.id));
   const triageIds = new Set(config.triageCategories.map((t) => t.id));
   const locationName = (id: string) => config.locations.find((l) => l.id === id)?.name ?? id;
-  if (!config.staff.some((s) => s.id === meta.enteredBy)) errors.push(`入力者「${meta.enteredBy}」が病院設定にない`);
+  if (meta.enteredBy !== newStaffId && !config.staff.some((s) => s.id === meta.enteredBy)) errors.push(`入力者「${meta.enteredBy}」が病院設定にない`);
   if (!locationIds.has(meta.terminal)) errors.push(`端末の場所「${meta.terminal}」が病院設定にない`);
   if (meta.reportedBy?.locationId && !locationIds.has(meta.reportedBy.locationId))
     errors.push(`報告元の場所「${meta.reportedBy.locationId}」が病院設定にない`);
@@ -592,6 +603,33 @@ export function decide(
       }
       if (command.type === 'RecordSupportReceived' && s.steps.received) errors.push(`${s.id} の受け取りは記録済み`);
       event = make(type, command.payload);
+      break;
+    }
+
+    // ---- 入力者の追加 ----
+    case 'RegisterStaff': {
+      subject = { kind: 'staff', id: newStaffId! };
+      const p = command.payload;
+      if (!locationIds.has(p.locationId)) errors.push(`部署「${p.locationId}」が病院設定にない`);
+      if (!config.professions.some((x) => x.id === p.professionId)) errors.push(`職種「${p.professionId}」が病院設定にない`);
+      const norm = (v?: string) => (v ?? '').normalize('NFKC').replace(/\s+/g, '');
+      const same = config.staff.filter(
+        (s) => (p.staffNumber && norm((s as { staffNumber?: string }).staffNumber) === norm(p.staffNumber)) || (norm(s.name) === norm(p.name) && s.locationId === p.locationId),
+      );
+      if (same.length)
+        warnings.push({
+          code: 'DUPLICATE_STAFF',
+          message: `同じ名前または職員番号の入力者がすでにいます（${same.map((s) => s.name).join('、')}）`,
+          relatedPatientIds: [],
+        });
+      event = make('StaffRegistered', command.payload);
+      break;
+    }
+    case 'ChangeZoneAssignment': {
+      subject = { kind: 'location', id: command.locationId };
+      if (!locationIds.has(command.locationId)) errors.push(`場所「${command.locationId}」が病院設定にない`);
+      for (const z of command.payload.zoneIds) if (!config.zones.some((x) => x.id === z)) errors.push(`用途「${z}」が病院設定にない`);
+      event = make('ZoneAssignmentChanged', command.payload);
       break;
     }
 

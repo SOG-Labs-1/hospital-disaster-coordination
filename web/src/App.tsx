@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { flushSync } from 'react-dom';
-import { modeLabels, modes, openSupports, supportAlert, type HospitalConfig, type Mode } from '@hdc/shared';
+import { effectiveConfig, modeLabels, modes, openSupports, supportAlert, type HospitalConfig, type Mode } from '@hdc/shared';
 import { fetchConfig, fetchHospitals, setApiHospital, type HospitalList } from './api';
 import { ChronologyPanel } from './ChronologyPanel';
 import { DepartmentTab, PinnedRequests } from './DepartmentPanel';
@@ -118,11 +118,18 @@ function ModeSetup() {
 
 function Headquarters({ config, terminal, mode, otherHospitals }: { config: HospitalConfig; terminal: string; mode: Mode; otherHospitals: boolean }) {
   const { events, state, status, lastSyncedAt } = useEventLog(mode);
-  const [enteredBy, setEnteredBy] = useState<string | null>(() => {
-    const saved = readEnteredBy(terminal);
-    return config.staff.some((s) => s.id === saved) ? saved : null;
-  });
-  const now = useNow(mode === 'training' ? 1_000 : 30_000);
+  // 病院設定に、記録で足した内容（画面から追加した入力者・場所の用途の変更）を合わせる
+  const cfg = useMemo(() => effectiveConfig(config, state), [config, state]);
+  // 画面から追加した入力者は記録を読み込んでから一覧に入るので、保存した名前はそのまま持ち、一覧にいるときだけ使う
+  const [savedEnteredBy, setEnteredBy] = useState<string | null>(() => readEnteredBy(terminal));
+  const enteredBy = cfg.staff.some((s) => s.id === savedEnteredBy) ? savedEnteredBy : null;
+  const tick = useNow(mode === 'training' ? 1_000 : 30_000);
+  // 新しい記録が届いたらすぐに時刻を進める。端末の時計が少し遅れていても、最新の記録の時刻より前にはしない
+  // （例：いま変えた場所の用途が、次の時計の刻みまで画面に出ない、を防ぐ）
+  const now = useMemo(() => {
+    const latest = state.lastRecordedAt ? Date.parse(state.lastRecordedAt) : 0;
+    return new Date(Math.max(Date.now(), tick.getTime(), latest));
+  }, [tick, state]);
   const printedAt = usePrintTime();
   // 本部以外の端末は「各部署の画面」：上部に依頼を固定表示し、「この部署」タブを先頭に置く
   const isDepartment = config.locations.find((l) => l.id === terminal)?.kind !== 'headquarters';
@@ -143,15 +150,15 @@ function Headquarters({ config, terminal, mode, otherHospitals }: { config: Hosp
   }, [mode, config.name]);
 
   return (
-    <CommandProvider mode={mode} config={config} state={state}>
+    <CommandProvider mode={mode} config={cfg} state={state}>
       <div className={`app app-${mode}`}>
-        <TopBar config={config} mode={mode} terminalName={terminalName} status={status} lastSyncedAt={lastSyncedAt} otherHospitals={otherHospitals} />
+        <TopBar config={cfg} mode={mode} terminalName={terminalName} status={status} lastSyncedAt={lastSyncedAt} otherHospitals={otherHospitals} />
         <div className="print-header print-only">
           【{modeLabels[mode]}】{config.name} {tabs.find((t) => t.id === tab)!.printTitle}　出力 {formatDateTime(printedAt)}　（時刻は現場で確認した時刻）
         </div>
         <div className="no-print">
           <EnteredByPicker
-            config={config}
+            config={cfg}
             terminal={terminal}
             value={enteredBy}
             onChange={(id) => {
@@ -160,10 +167,10 @@ function Headquarters({ config, terminal, mode, otherHospitals }: { config: Hosp
             }}
           />
           <NoticeBar />
-          {training && <RadioInbox config={config} snapshot={training} terminal={terminal} enteredBy={enteredBy} now={now} />}
+          {training && <RadioInbox config={cfg} snapshot={training} terminal={terminal} enteredBy={enteredBy} now={now} />}
           {isDepartment && (
             <PinnedRequests
-              config={config}
+              config={cfg}
               state={state}
               terminal={terminal}
               enteredBy={enteredBy}
@@ -202,7 +209,7 @@ function Headquarters({ config, terminal, mode, otherHospitals }: { config: Hosp
         <main id="tab-panel" role="tabpanel" aria-labelledby={`tab-${tab}`} className="tab-panel">
           {tab === 'department' && (
             <DepartmentTab
-              config={config}
+              config={cfg}
               state={state}
               terminal={terminal}
               enteredBy={enteredBy}
@@ -216,10 +223,10 @@ function Headquarters({ config, terminal, mode, otherHospitals }: { config: Hosp
           {tab === 'patients' && (
             <div className="layout">
               <div className="no-print">
-                <RegisterForm config={config} terminal={terminal} enteredBy={enteredBy} />
+                <RegisterForm config={cfg} terminal={terminal} enteredBy={enteredBy} />
               </div>
               <PatientList
-                config={config}
+                config={cfg}
                 state={state}
                 terminal={terminal}
                 enteredBy={enteredBy}
@@ -233,7 +240,7 @@ function Headquarters({ config, terminal, mode, otherHospitals }: { config: Hosp
           )}
           {tab === 'transports' && (
             <TransportPanel
-              config={config}
+              config={cfg}
               state={state}
               terminal={terminal}
               enteredBy={enteredBy}
@@ -242,12 +249,12 @@ function Headquarters({ config, terminal, mode, otherHospitals }: { config: Hosp
               onPreselectUsed={clearPreselect}
             />
           )}
-          {tab === 'supports' && <SupportPanel config={config} state={state} terminal={terminal} enteredBy={enteredBy} now={now} />}
+          {tab === 'supports' && <SupportPanel config={cfg} state={state} terminal={terminal} enteredBy={enteredBy} now={now} />}
           {tab === 'training' && training && (
-            <TrainingTab config={config} snapshot={training} terminal={terminal} enteredBy={enteredBy} now={now} review={<ReviewPanel snapshot={training} now={now} />} />
+            <TrainingTab config={cfg} snapshot={training} terminal={terminal} enteredBy={enteredBy} now={now} review={<ReviewPanel snapshot={training} now={now} />} />
           )}
-          {tab === 'chronology' && <ChronologyPanel config={config} events={events} terminal={terminal} enteredBy={enteredBy} now={now} />}
-          {tab === 'locations' && <LocationBoard config={config} state={state} terminal={terminal} enteredBy={enteredBy} now={now} />}
+          {tab === 'chronology' && <ChronologyPanel config={cfg} events={events} terminal={terminal} enteredBy={enteredBy} now={now} />}
+          {tab === 'locations' && <LocationBoard config={cfg} state={state} terminal={terminal} enteredBy={enteredBy} now={now} />}
         </main>
       </div>
     </CommandProvider>

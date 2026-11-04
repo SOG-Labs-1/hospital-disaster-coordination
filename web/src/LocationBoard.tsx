@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from 'react';
 import {
   escortsAway,
+  versionOf,
+  zonesForLocation,
   incomingTransports,
   locationView,
   patientsAtLocation,
@@ -89,6 +91,7 @@ function ReportedValue<T>({ r, now, isStale, format }: { r: Reported<T> | undefi
 
 export function LocationCard({ locationId, config, state, terminal, enteredBy, now, isStale }: Props & { locationId: string; isStale: (r: Reported<unknown> | undefined) => boolean }) {
   const [reporting, setReporting] = useState(false);
+  const [zoning, setZoning] = useState(false);
   const location = config.locations.find((l) => l.id === locationId)!;
   const v = locationView(state, locationId);
   const present = patientsAtLocation(state, locationId);
@@ -188,7 +191,13 @@ export function LocationCard({ locationId, config, state, terminal, enteredBy, n
       <button type="button" className="btn no-print" disabled={!enteredBy} aria-expanded={reporting} onClick={() => setReporting(!reporting)}>
         状況の報告を記録
       </button>
+      {config.zones.length > 0 && (
+        <button type="button" className="btn btn-quiet no-print" disabled={!enteredBy} aria-expanded={zoning} onClick={() => setZoning(!zoning)}>
+          用途（ゾーン）を変える
+        </button>
+      )}
       {reporting && <ReportForm config={config} locationId={locationId} terminal={terminal} enteredBy={enteredBy!} onDone={() => setReporting(false)} />}
+      {zoning && <ZoneForm config={config} state={state} locationId={locationId} terminal={terminal} enteredBy={enteredBy!} now={now} onDone={() => setZoning(false)} />}
     </section>
   );
 }
@@ -326,5 +335,59 @@ function CountInput({ value, onChange, label }: { value: string; onChange: (v: s
         {unknown && '✓ '}未確認
       </button>
     </span>
+  );
+}
+
+/**
+ * 場所の用途（ゾーン）の変更。例：講堂を緑ゾーンとして開く、救急外来に黄ゾーンを足す。
+ * 変更は記録として残り、この時刻からの用途になる（それより前の記録の用途は変わらない）
+ */
+function ZoneForm({ config, state, locationId, terminal, enteredBy, now, onDone }: { config: HospitalConfig; state: AppState; locationId: string; terminal: string; enteredBy: string; now: Date; onDone: () => void }) {
+  const { run } = useCommands();
+  const current = zonesForLocation(config, locationId, now.toISOString());
+  const [zoneIds, setZoneIds] = useState<string[]>(current);
+  const [note, setNote] = useState('');
+  const name = config.locations.find((l) => l.id === locationId)!.name;
+  const changed = zoneIds.length !== current.length || zoneIds.some((z) => !current.includes(z));
+  const toggle = (z: string) => setZoneIds((xs) => (xs.includes(z) ? xs.filter((x) => x !== z) : [...xs, z]));
+
+  async function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (!changed) return;
+    const r = await run(
+      () => ({
+        command: { type: 'ChangeZoneAssignment', locationId, payload: { zoneIds, note: note.trim() || undefined } },
+        meta: { enteredBy, terminal, reportedBy: null },
+        expectedVersion: versionOf(state, { kind: 'location', id: locationId }),
+      }),
+      { doneText: `${name}の用途を変えました` },
+    );
+    if (r === 'accepted') onDone();
+  }
+
+  return (
+    <form className="action-form no-print" aria-label={`${name}の用途の変更`} onSubmit={onSubmit}>
+      <p className="hint">いまの時刻から、この場所の用途が変わります。前の記録の用途は変わりません。用途を全部外すこともできます。</p>
+      <div className="button-row" role="group" aria-label="用途">
+        {config.zones.map((z) => (
+          <button key={z.id} type="button" className={`chip ${zoneIds.includes(z.id) ? 'is-selected' : ''}`} aria-pressed={zoneIds.includes(z.id)} onClick={() => toggle(z.id)}>
+            {zoneIds.includes(z.id) && '✓ '}
+            {z.name}
+          </button>
+        ))}
+      </div>
+      <label className="field">
+        <span>メモ（任意）</span>
+        <input value={note} onChange={(e) => setNote(e.target.value)} autoComplete="off" placeholder="例：患者が増えたため講堂を開く" />
+      </label>
+      <div className="button-row">
+        <button type="submit" className="btn btn-primary" disabled={!changed}>
+          用途を変える
+        </button>
+        <button type="button" className="btn btn-quiet" onClick={onDone}>
+          やめる
+        </button>
+      </div>
+    </form>
   );
 }

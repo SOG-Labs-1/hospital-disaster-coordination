@@ -1,6 +1,7 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   activePatients,
+  effectiveConfig,
   activeTransports,
   locationView,
   modeLabels,
@@ -28,8 +29,11 @@ const hhmm = (d: Date | string) => new Date(d).toLocaleTimeString('ja-JP', { hou
  * 掲示用画面（本部の大型モニター）。操作なし・自動更新・勝手に切り替わらない。
  * 配置は画面の高さに対して固定し、記録が変わったときに値だけが変わる
  */
-export function DisplayBoard({ config, mode }: { config: HospitalConfig; mode: Mode }) {
+export function DisplayBoard({ config: rawConfig, mode }: { config: HospitalConfig; mode: Mode }) {
+  const config = rawConfig;
   const { state, status, lastSyncedAt } = useEventLog(mode);
+  // 場所の用途の変更などを合わせた設定で表示する
+  const cfg = useMemo(() => effectiveConfig(config, state), [config, state]);
   const now = useClock();
   const disconnected = status !== 'connected';
 
@@ -39,7 +43,7 @@ export function DisplayBoard({ config, mode }: { config: HospitalConfig; mode: M
 
   return (
     <div className={`board board-${mode} ${disconnected ? 'board-disconnected' : ''}`} data-testid="display-board">
-      <BoardHeader config={config} mode={mode} now={now} status={status} lastSyncedAt={lastSyncedAt} />
+      <BoardHeader config={cfg} mode={mode} now={now} status={status} lastSyncedAt={lastSyncedAt} />
       {disconnected && (
         // 切断中は、離れていても分かるように幅いっぱいの警告を出す（画面が生きているように見せない）
         <div className="board-offline" role="alert" data-testid="board-offline">
@@ -48,10 +52,10 @@ export function DisplayBoard({ config, mode }: { config: HospitalConfig; mode: M
       )}
       {lastSyncedAt ? (
         <main className="board-grid">
-          <PatientCounts config={config} state={state} />
-          <MovingTransports config={config} state={state} now={now} />
-          <Attention config={config} state={state} now={now} />
-          <Acceptance config={config} state={state} now={now} />
+          <PatientCounts config={cfg} state={state} />
+          <MovingTransports config={cfg} state={state} now={now} />
+          <Attention config={cfg} state={state} now={now} />
+          <Acceptance config={cfg} state={state} now={now} />
         </main>
       ) : (
         // 一度も記録を受け取っていないときは、0 と読み違えないよう数値を出さない

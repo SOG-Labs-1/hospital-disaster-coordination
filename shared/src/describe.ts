@@ -63,6 +63,8 @@ export const eventTypeLabels: Record<EventType, string> = {
   SupportCompleted: '要請の完了',
   SupportCancelled: '要請の中止',
   MessageLogged: '連絡メモ',
+  StaffRegistered: '入力者の追加',
+  ZoneAssignmentChanged: '場所の用途の変更',
 };
 
 export function describeEvent(e: DomainEvent, config: HospitalConfig, lookup: (eventId: string) => DomainEvent | undefined = () => undefined): EventDescription {
@@ -188,6 +190,15 @@ export function describeEvent(e: DomainEvent, config: HospitalConfig, lookup: (e
       return d('support', 'fact', `要請を完了${e.payload.note ? `：${e.payload.note}` : ''}`);
     case 'SupportCancelled':
       return d('support', 'coordination', `要請を中止：${e.payload.reason}`);
+    case 'StaffRegistered': {
+      const p = e.payload;
+      const prof = config.professions.find((x) => x.id === p.professionId)?.name ?? p.professionId;
+      return d('location', 'record', `入力者を追加：${p.name}（${loc(p.locationId)}・${prof}${p.staffNumber ? `・職員番号 ${p.staffNumber}` : ''}）`, p.name);
+    }
+    case 'ZoneAssignmentChanged': {
+      const names = e.payload.zoneIds.map((z) => config.zones.find((x) => x.id === z)?.name ?? z);
+      return d('location', 'record', `用途を変更：${names.length ? names.join('・') : '用途なし'}${e.payload.note ? `（${e.payload.note}）` : ''}`, loc(id));
+    }
     case 'MessageLogged': {
       const p = e.payload;
       const route = [p.fromLocationId && `${loc(p.fromLocationId)}から`, p.toLocationId && `${loc(p.toLocationId)}へ`].filter(Boolean).join('');

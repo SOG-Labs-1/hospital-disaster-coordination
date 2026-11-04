@@ -42,6 +42,8 @@ export const ZoneAssignmentSchema = z.object({
   locationId: id,
   /** 開始時刻。省略時は災害対応の開始時点から */
   from: isoDateTime.nullable().default(null),
+  /** 終了時刻（この時刻からは使わない）。省略時は終わりなし */
+  until: isoDateTime.nullable().default(null),
 });
 
 export const TriageCategorySchema = z.object({
@@ -81,6 +83,8 @@ export const StaffSchema = z.object({
   professionId: id,
   /** 主にいる場所。入力者の一覧を端末ごとに絞り込むのに使う */
   locationId: id.optional(),
+  /** 職員番号（任意） */
+  staffNumber: z.string().optional(),
 });
 
 export const CapacitySchema = z.object({
@@ -277,6 +281,6 @@ export function parseHospitalConfig(yamlText: string): ConfigParseResult {
 export function zonesForLocation(config: HospitalConfig, locationId: string, at: string): string[] {
   const t = Date.parse(at);
   return config.zoneAssignments
-    .filter((a) => a.locationId === locationId && (a.from === null || Date.parse(a.from) <= t))
+    .filter((a) => a.locationId === locationId && (a.from === null || Date.parse(a.from) <= t) && (a.until === null || t < Date.parse(a.until)))
     .map((a) => a.zoneId);
 }

@@ -1,3 +1,4 @@
+import type { HospitalConfig } from './config';
 import {
   payloadSchemas,
   type Decider,
@@ -171,6 +172,11 @@ export interface AppState {
   supportOrder: string[];
   requestedSupportCount: number;
   messageCount: number;
+  /** 画面から追加した入力者 */
+  staff: Record<string, { id: string; name: string; locationId: string; professionId: string; staffNumber?: string; retracted: boolean }>;
+  staffOrder: string[];
+  /** 場所の用途の変更（記録の順） */
+  zoneChanges: { locationId: string; zoneIds: string[]; at: string; eventId: string }[];
   /** 登録順 */
   patientOrder: string[];
   /** 対象ごとの版番号＝その対象のイベント件数 */
@@ -195,6 +201,9 @@ export function emptyState(): AppState {
     supportOrder: [],
     requestedSupportCount: 0,
     messageCount: 0,
+    staff: {},
+    staffOrder: [],
+    zoneChanges: [],
     patientOrder: [],
     versions: {},
     registeredCount: 0,
@@ -324,6 +333,17 @@ function applyEvent(state: AppState, e: DomainEvent, correction: Correction | un
     return;
   }
 
+  if (e.type === 'StaffRegistered') {
+    const p = effectivePayload(e, correction) ?? e.payload;
+    state.staff[e.subject.id] = { id: e.subject.id, ...p, staffNumber: p.staffNumber || undefined, retracted: correction?.retract ?? false };
+    state.staffOrder.push(e.subject.id);
+    return;
+  }
+  if (e.type === 'ZoneAssignmentChanged') {
+    const p = effectivePayload(e, correction);
+    if (p) state.zoneChanges.push({ locationId: e.subject.id, zoneIds: p.zoneIds, at: e.observedAt, eventId: e.id });
+    return;
+  }
   if (e.subject.kind === 'transport') return applyTransportEvent(state, e, correction);
   if (e.subject.kind === 'transporter') return applyTransporterEvent(state, e, correction);
   if (e.subject.kind === 'location') return applyLocationEvent(state, e, correction);
@@ -784,4 +804,35 @@ export function pendingForLocation(state: AppState, locationId: string): Locatio
     supportsToProvide: supports.filter((s) => s.steps.dispatched?.providerLocationId === locationId && !s.steps.received),
     handovers: handoverPending(state).filter((t) => t.toLocationId === locationId),
   };
+}
+
+// ---- 病院設定と記録を合わせた設定 ----
+
+const effectiveCache = new WeakMap<AppState, { config: HospitalConfig; result: HospitalConfig }>();
+
+/**
+ * 病院設定に、記録で足した内容を合わせる（画面から追加した入力者、場所の用途の変更）。
+ * 病院設定のファイルは変えず、記録から毎回作り直す
+ */
+export function effectiveConfig(config: HospitalConfig, state: AppState): HospitalConfig {
+  const cached = effectiveCache.get(state);
+  if (cached && cached.config === config) return cached.result;
+  const staff = [
+    ...config.staff,
+    ...state.staffOrder
+      .map((id) => state.staff[id]!)
+      .filter((s) => !s.retracted)
+      .map((s) => ({ id: s.id, name: s.name, professionId: s.professionId, locationId: s.locationId, staffNumber: s.staffNumber })),
+  ];
+  let zoneAssignments = [...config.zoneAssignments];
+  for (const c of [...state.zoneChanges].sort((a, b) => Date.parse(a.at) - Date.parse(b.at))) {
+    // その時刻に使われている対応を終わらせ、新しい対応を始める
+    zoneAssignments = zoneAssignments.map((a) =>
+      a.locationId === c.locationId && (a.until === null || Date.parse(a.until) > Date.parse(c.at)) && (a.from === null || Date.parse(a.from) <= Date.parse(c.at)) ? { ...a, until: c.at } : a,
+    );
+    for (const zoneId of c.zoneIds) zoneAssignments.push({ zoneId, locationId: c.locationId, from: c.at, until: null });
+  }
+  const result = { ...config, staff, zoneAssignments };
+  effectiveCache.set(state, { config, result });
+  return result;
 }
