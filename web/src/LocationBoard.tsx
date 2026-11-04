@@ -24,9 +24,14 @@ interface Props {
 }
 
 /** 院内全体の状況。場所ごとの受け入れ可否・受け入れ可能人数・人員。未確認と0を区別し、古い確認に印を付ける */
+/** 確認から病院設定の分数を過ぎた報告か */
+export function makeIsStale(config: HospitalConfig, now: Date) {
+  return (r: Reported<unknown> | undefined) => !!r?.confirmedAt && minutesSince(r.confirmedAt, now) >= config.staleAfterMinutes;
+}
+
 export function LocationBoard(props: Props) {
   const { config, state, now } = props;
-  const isStale = (r: Reported<unknown> | undefined) => !!r?.confirmedAt && minutesSince(r.confirmedAt, now) >= config.staleAfterMinutes;
+  const isStale = makeIsStale(config, now);
 
   // 確認が古い・未確認の情報の一覧（情報の整理を促すため）
   const attention = config.locations.flatMap((l) => {
@@ -82,7 +87,7 @@ function ReportedValue<T>({ r, now, isStale, format }: { r: Reported<T> | undefi
   );
 }
 
-function LocationCard({ locationId, config, state, terminal, enteredBy, now, isStale }: Props & { locationId: string; isStale: (r: Reported<unknown> | undefined) => boolean }) {
+export function LocationCard({ locationId, config, state, terminal, enteredBy, now, isStale }: Props & { locationId: string; isStale: (r: Reported<unknown> | undefined) => boolean }) {
   const [reporting, setReporting] = useState(false);
   const location = config.locations.find((l) => l.id === locationId)!;
   const v = locationView(state, locationId);

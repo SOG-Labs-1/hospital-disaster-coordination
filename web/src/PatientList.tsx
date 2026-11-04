@@ -12,10 +12,13 @@ interface Props {
   enteredBy: string | null;
   now: Date;
   onRequestTransport: (patientId: string) => void;
+  /** 表示する患者を絞る（部署の画面など）。省略時は全員 */
+  only?: (p: PatientView) => boolean;
+  title?: string;
 }
 
-export function PatientList({ config, state, terminal, enteredBy, now, onRequestTransport }: Props) {
-  const patients = activePatients(state);
+export function PatientList({ config, state, terminal, enteredBy, now, onRequestTransport, only, title = '患者一覧' }: Props) {
+  const patients = only ? activePatients(state).filter(only) : activePatients(state);
   const [filter, setFilter] = useState<string>('all');
   const matches = (p: PatientView) => filter === 'all' || (p.triage ?? 'none') === filter;
   const shownCount = patients.filter(matches).length;
@@ -25,7 +28,7 @@ export function PatientList({ config, state, terminal, enteredBy, now, onRequest
     <section className="panel patients" aria-labelledby="patients-title">
       <div className="panel-head">
         <h2 id="patients-title">
-          患者一覧 <span className="count" data-testid="patient-count">{patients.length}人</span>
+          {title} <span className="count" data-testid="patient-count">{patients.length}人</span>
         </h2>
         <button type="button" className="btn no-print" onClick={() => window.print()}>
           印刷する

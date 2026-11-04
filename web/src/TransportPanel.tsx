@@ -26,12 +26,15 @@ import { TriageBadge } from './Triage';
 import { undoNotice } from './undo';
 import { useCommands } from './useCommands';
 
-interface Props {
+interface CardProps {
   config: HospitalConfig;
   state: AppState;
   terminal: string;
   enteredBy: string | null;
   now: Date;
+}
+
+interface Props extends CardProps {
   preselectPatientId: string | null;
   onPreselectUsed: () => void;
 }
@@ -263,7 +266,7 @@ const statusLabels: Record<TransportView['status'], { symbol: string; text: stri
   cancelled: { symbol: '✕', text: '中止' },
 };
 
-function TransportCard({ transport: t, config, state, terminal, enteredBy, now }: Props & { transport: TransportView }) {
+export function TransportCard({ transport: t, config, state, terminal, enteredBy, now }: CardProps & { transport: TransportView }) {
   const { run, showNotice } = useCommands();
   const [action, setAction] = useState<Action>('none');
   const [report, setReport] = useState<ReportMetaValue>(emptyReportMeta);

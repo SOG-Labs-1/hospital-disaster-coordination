@@ -238,7 +238,7 @@ const statusLabels: Record<SupportView['status'], { symbol: string; text: string
   cancelled: { symbol: '✕', text: '中止' },
 };
 
-function SupportCard({ support: s, config, state, terminal, enteredBy, now }: Props & { support: SupportView }) {
+export function SupportCard({ support: s, config, state, terminal, enteredBy, now }: Props & { support: SupportView }) {
   const { run, showNotice } = useCommands();
   const [action, setAction] = useState<Action>('none');
   const [report, setReport] = useState<ReportMetaValue>(emptyReportMeta);

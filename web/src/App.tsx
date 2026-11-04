@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { modeLabels, modes, openSupports, supportAlert, type HospitalConfig, type Mode } from '@hdc/shared';
 import { fetchConfig } from './api';
+import { DepartmentTab, PinnedRequests } from './DepartmentPanel';
+import { DisplayBoard } from './DisplayBoard';
 import { EnteredByPicker } from './EnteredByPicker';
 import { formatDateTime } from './format';
 import { LocationBoard } from './LocationBoard';
@@ -40,6 +42,12 @@ export function App() {
   if (!config && error) return <main className="setup"><p className="inline-alert">⚠ {error}。サーバーが起動しているか確認してください。</p></main>;
   if (!config) return <main className="setup"><p>読み込み中…</p></main>;
 
+  // 掲示用画面（本部の大型モニター）は端末の場所も入力者も使わない
+  if (new URLSearchParams(location.search).get('view') === 'board') {
+    const boardMode = readMode();
+    return boardMode ? <DisplayBoard config={config} mode={boardMode} /> : <ModeSetup />;
+  }
+
   const terminal = readTerminal();
   if (!terminal || !config.locations.some((l) => l.id === terminal)) return <TerminalSetup config={config} />;
   const mode = readMode();
@@ -72,7 +80,10 @@ function Headquarters({ config, terminal, mode }: { config: HospitalConfig; term
   });
   const now = useNow(30_000);
   const printedAt = usePrintTime();
-  const [tab, setTab] = useState<Tab>(() => readTab(terminal));
+  // 本部以外の端末は「各部署の画面」：上部に依頼を固定表示し、「この部署」タブを先頭に置く
+  const isDepartment = config.locations.find((l) => l.id === terminal)?.kind !== 'headquarters';
+  const tabs = isDepartment ? allTabs : allTabs.filter((t) => t.id !== 'department');
+  const [tab, setTab] = useState<Tab>(() => readTab(terminal, tabs));
   const [preselect, setPreselect] = useState<string | null>(null);
   const clearPreselect = useCallback(() => setPreselect(null), []);
   const openTab = (t: Tab) => {
@@ -103,6 +114,7 @@ function Headquarters({ config, terminal, mode }: { config: HospitalConfig; term
             }}
           />
           <NoticeBar />
+          {isDepartment && <PinnedRequests config={config} state={state} terminal={terminal} enteredBy={enteredBy} now={now} />}
           <nav className="tabs" role="tablist" aria-label="画面の切り替え">
             {tabs.map((t) => (
               <button
@@ -129,6 +141,19 @@ function Headquarters({ config, terminal, mode }: { config: HospitalConfig; term
           </nav>
         </div>
         <main id="tab-panel" role="tabpanel" aria-labelledby={`tab-${tab}`} className="tab-panel">
+          {tab === 'department' && (
+            <DepartmentTab
+              config={config}
+              state={state}
+              terminal={terminal}
+              enteredBy={enteredBy}
+              now={now}
+              onRequestTransport={(patientId) => {
+                setPreselect(patientId);
+                openTab('transports');
+              }}
+            />
+          )}
           {tab === 'patients' && (
             <div className="layout">
               <div className="no-print">
@@ -166,20 +191,21 @@ function Headquarters({ config, terminal, mode }: { config: HospitalConfig; term
   );
 }
 
-type Tab = 'patients' | 'transports' | 'supports' | 'locations';
-const tabs: { id: Tab; label: string; printTitle: string }[] = [
+type Tab = 'department' | 'patients' | 'transports' | 'supports' | 'locations';
+const allTabs: { id: Tab; label: string; printTitle: string }[] = [
+  { id: 'department', label: 'この部署', printTitle: '部署の状況' },
   { id: 'patients', label: '患者', printTitle: '患者一覧' },
   { id: 'transports', label: '搬送', printTitle: '搬送一覧' },
   { id: 'supports', label: '支援要請', printTitle: '支援要請一覧' },
   { id: 'locations', label: '院内の状況', printTitle: '院内の状況' },
 ];
 
-function readTab(terminal: string): Tab {
+function readTab(terminal: string, tabs: { id: Tab }[]): Tab {
   try {
     const t = localStorage.getItem(`hdc.tab.${terminal}`);
-    return tabs.some((x) => x.id === t) ? (t as Tab) : 'patients';
+    return tabs.some((x) => x.id === t) ? (t as Tab) : tabs[0]!.id;
   } catch {
-    return 'patients';
+    return tabs[0]!.id;
   }
 }
 function saveTab(terminal: string, tab: Tab) {

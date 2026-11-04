@@ -316,6 +316,7 @@ h3 { font-size: var(--text); }
 .capacity-table th, .capacity-table td { border: 1px solid var(--line); padding: 4px 8px; text-align: left; }
 .capacity-table thead th { font-size: var(--text-small); background: #f3f6f9; white-space: nowrap; }
 .capacity-table td:nth-child(n+3) { white-space: nowrap; }
+.capacity-table .triage-desc { display: none; }
 .capacity-table .over { font-weight: 700; color: var(--danger); border: 3px double var(--danger); }
 .staff-count { display: block; }
 .away { font-weight: 700; }
@@ -328,6 +329,15 @@ h3 { font-size: var(--text); }
 .alert-count { margin-left: 12px; font-size: var(--text); padding: 2px 8px; border: 3px double var(--danger); color: var(--danger); }
 .support.has-alert { border-left-color: var(--danger); border-left-style: double; border-left-width: 12px; }
 .support-completed, .support-cancelled { border-left-color: var(--line); border-left-style: dashed; }
+.pinned { margin: var(--gap) 20px 0; padding: 10px 16px; background: var(--board); border: 2px solid var(--line); border-radius: var(--radius); }
+.pinned.has-items { border: 4px solid var(--ink); background: var(--caution-bg); }
+.pinned h2 { margin-bottom: 6px; }
+.pinned-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.pinned-row { background: var(--board); border: 2px solid var(--ink-muted); border-radius: var(--radius); padding: 6px 10px; }
+.pinned-line { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
+.pinned-label { font-weight: 700; padding: 0 8px; border: 2px solid var(--ink); border-radius: var(--radius); white-space: nowrap; }
+.pinned-text { flex: 1; min-width: 240px; }
+.pinned-card { margin-top: 8px; }
 .attention-list { margin: 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 4px; }
 
 /* ---- ダイアログ ---- */
@@ -344,6 +354,38 @@ h3 { font-size: var(--text); }
 .notice-info { border-style: solid; }
 .warning-list { padding: 10px 10px 10px 2em; background: var(--caution-bg); border: 2px dashed var(--ink); font-weight: 700; }
 .dialog-choice { border-top: 2px solid var(--line); padding-top: var(--gap); margin-top: var(--gap); }
+
+/* ---- 掲示用画面（大型モニター。操作なし、離れて読む） ---- */
+.board { min-height: 100vh; display: flex; flex-direction: column; font-size: 26px; }
+.board-header { display: flex; align-items: center; gap: 32px; padding: 12px 28px; color: #fff; border-bottom: 8px solid var(--line-strong); }
+.board-header .mode-badge { font-size: 40px; }
+.board-hospital { font-size: 32px; font-weight: 700; }
+.board-clock { margin-left: auto; font-size: 64px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.board-sync { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; font-size: 22px; }
+.board-grid { flex: 1; display: grid; grid-template-columns: 1fr 1.4fr 1.4fr; grid-template-rows: auto 1fr; gap: 20px; padding: 20px 28px; }
+.board-panel { background: var(--board); border: 3px solid var(--ink); border-radius: var(--radius); padding: 16px 20px; overflow: hidden; }
+.board-panel h2 { font-size: 34px; border-bottom: 3px solid var(--ink); padding-bottom: 6px; }
+[data-testid='board-patients'] { grid-row: 1 / span 2; }
+[data-testid='board-acceptance'] { grid-column: 2 / span 2; }
+.board-counts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
+.board-counts li { display: flex; align-items: center; gap: 16px; }
+.board-counts .triage-large { font-size: 32px; min-width: 7em; }
+.board-counts .triage-desc { display: none; }
+.board-number { font-size: 64px; font-weight: 700; font-variant-numeric: tabular-nums; min-width: 1.6em; text-align: right; }
+.board-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.board-list li { border-left: 10px solid var(--ink); padding: 2px 12px; background: #f3f6f9; }
+.board-route { font-size: 28px; font-weight: 700; line-height: 1.35; }
+.board-sub { font-size: 22px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.board-sub .triage { padding: 0 8px; }
+.board-empty { color: var(--ink-muted); font-size: 26px; }
+.board-more { margin: 8px 0 0; font-weight: 700; }
+.board-table { width: 100%; border-collapse: collapse; }
+.board-table { font-size: 23px; }
+.board-table th, .board-table td { text-align: left; padding: 3px 10px; border-bottom: 2px solid var(--line); vertical-align: top; }
+.board-table th { font-size: 23px; }
+.board-cap { display: inline-block; margin-right: 18px; white-space: nowrap; }
+.board-note { font-size: 20px; color: var(--ink-muted); margin: 8px 0 0; }
+@media (max-width: 1200px) { .board-grid { grid-template-columns: 1fr; } [data-testid='board-patients'], [data-testid='board-acceptance'] { grid-row: auto; grid-column: auto; } }
 
 /* ---- 印刷（白黒で判別できるように） ---- */
 .print-only { display: none; }

@@ -704,3 +704,31 @@ export function supportAlert(s: SupportView, policy: { unassignedAlertMinutes: n
   }
   return null;
 }
+
+// ---- 部署ごとの対応待ち ----
+
+export interface LocationPending {
+  /** この場所が受け入れるかを判断する搬送（了承も断りも未記録で、まだ出発していない） */
+  acceptRequests: TransportView[];
+  /** この場所から出る、まだ出発していない搬送 */
+  departures: TransportView[];
+  /** この場所へ移動中の搬送（到着を記録する） */
+  arrivals: TransportView[];
+  /** この場所に届くはずの支援（届いた記録がない） */
+  supportsToReceive: SupportView[];
+  /** この場所が手配先になっている支援（届いた記録がない） */
+  supportsToProvide: SupportView[];
+}
+
+/** 各部署の画面の上部に固定表示する「この部署への依頼・この部署が記録すること」 */
+export function pendingForLocation(state: AppState, locationId: string): LocationPending {
+  const transports = activeTransports(state);
+  const supports = openSupports(state);
+  return {
+    acceptRequests: transports.filter((t) => t.toLocationId === locationId && !t.steps.accepted && !t.steps.declined && !t.steps.departed),
+    departures: transports.filter((t) => t.fromLocationId === locationId && !t.steps.departed),
+    arrivals: transports.filter((t) => t.toLocationId === locationId && t.steps.departed),
+    supportsToReceive: supports.filter((s) => (s.steps.dispatched?.toLocationId ?? s.fromLocationId) === locationId && !s.steps.received),
+    supportsToProvide: supports.filter((s) => s.steps.dispatched?.providerLocationId === locationId && !s.steps.received),
+  };
+}

@@ -11,9 +11,9 @@ export function formatDateTime(iso: string | Date): string {
   return d.toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
 
-/** 経過分 */
+/** 経過分。端末とサーバーの時計の小さなずれで負にならないようにする */
 export function minutesSince(iso: string, now: Date): number {
-  return Math.floor((now.getTime() - Date.parse(iso)) / 60000);
+  return Math.max(0, Math.floor((now.getTime() - Date.parse(iso)) / 60000));
 }
 
 /** 時刻入力（HH:MM）を今日の日付の ISO 文字列にする。空欄なら undefined（＝今） */

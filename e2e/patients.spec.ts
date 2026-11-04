@@ -9,6 +9,8 @@ async function openTerminal(browser: Browser, terminal: string, staffName: strin
   await expect(page.getByTestId('sync-status')).toContainText('同期中');
   await page.getByRole('button', { name: new RegExp(staffName) }).click();
   await expect(page.getByTestId('entered-by')).toHaveText(staffName);
+  // 部署の端末は「この部署」タブが先頭なので、患者のタブを開く
+  await page.getByRole('tab', { name: /^(▼ )?患者/ }).click();
   return page;
 }
 
