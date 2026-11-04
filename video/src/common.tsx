@@ -61,6 +61,24 @@ export const Hud = () => {
 
 /** ナレーションと同じ字幕（画面に焼き込む） */
 type SubLine = { text: string; en?: string; start: number; end: number };
+
+/** 長い字幕を2行に分ける。真ん中に近い句読点の後ろで改行する（「。」を少し優先）。短すぎる行ができるときは分けない */
+export function breakLine(text: string, max: number, marks: string[], minPart: number): string {
+  if (text.length <= max) return text;
+  const mid = text.length / 2;
+  let best = -1;
+  let bestScore = Infinity;
+  marks.forEach((mark, rank) => {
+    for (let i = text.indexOf(mark); i >= 0; i = text.indexOf(mark, i + 1)) {
+      const at = i + mark.length;
+      if (at < minPart || text.length - at < minPart) continue;
+      const score = Math.abs(at - mid) + rank * 3;
+      if (score < bestScore) [best, bestScore] = [at, score];
+    }
+  });
+  return best < 0 ? text : `${text.slice(0, best).trimEnd()}\n${text.slice(best).trimStart()}`;
+}
+
 export const Subtitles = ({ lines = lines30 as SubLine[], delay = AUDIO_DELAY }: { lines?: SubLine[]; delay?: number }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
@@ -87,8 +105,8 @@ export const Subtitles = ({ lines = lines30 as SubLine[], delay = AUDIO_DELAY }:
           translate: `0px ${interpolate(local, [0, 0.3], [12, 0], { ...clamp, easing: ease })}px`,
         }}
       >
-        <div style={{ fontSize: lines[i]!.text.length > 34 ? 38 : 44, fontWeight: 700, color: c.text, letterSpacing: 2, maxWidth: 1600, textAlign: 'center', lineHeight: 1.35 }}>{lines[i]!.text}</div>
-        {lines[i]!.en && <div style={{ fontFamily: `'Helvetica Neue', Arial, sans-serif`, fontSize: 30, color: '#c9d6e8', letterSpacing: 0.5 }}>{lines[i]!.en}</div>}
+        <div style={{ fontSize: 42, fontWeight: 700, color: c.text, letterSpacing: 2, maxWidth: 1760, textAlign: 'center', lineHeight: 1.35, whiteSpace: 'pre-line' }}>{breakLine(lines[i]!.text, 30, ['。', '、'], 6)}</div>
+        {lines[i]!.en && <div style={{ fontFamily: `'Helvetica Neue', Arial, sans-serif`, fontSize: 30, color: '#c9d6e8', letterSpacing: 0.5, textAlign: 'center', whiteSpace: 'pre-line' }}>{breakLine(lines[i]!.en, 78, ['. ', '? ', ', '], 20)}</div>}
       </div>
     </AbsoluteFill>
   );

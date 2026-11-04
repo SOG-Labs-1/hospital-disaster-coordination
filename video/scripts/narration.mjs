@@ -1,7 +1,8 @@
 // 使い方: OUT_DIR=video/public node video/scripts/narration.mjs <声の名前 例 Charon> [speakingRate]
 // APIキーはリポジトリの .env の GOOGLE_TTS_API_KEY から読む（表示しない）
 // 文ごとに音声を作り、決めた長さの無音をはさんで1本の WAV にする
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 
 import { fileURLToPath } from 'node:url';
 const repo = fileURLToPath(new URL('../..', import.meta.url)).replace(/\/$/, '');
@@ -29,7 +30,18 @@ const lines = [
   ['安全で効率的な災害対応を、支えます。', 'Supporting safe, efficient disaster response.', 0.6],
 ];
 
+// 同じ文・声・速さの音声は video/.tts-cache/ に取っておき、作り直すときに API を呼ばない
+const cacheDir = fileURLToPath(new URL('../.tts-cache/', import.meta.url));
 async function synth(text) {
+  const key = createHash('sha256').update(JSON.stringify([text, voice, speakingRate, gemini ?? '', gemini ? stylePrompt : ''])).digest('hex').slice(0, 24);
+  const file = `${cacheDir}${key}.wav`;
+  if (existsSync(file)) return readFileSync(file);
+  const wav = await synthApi(text);
+  mkdirSync(cacheDir, { recursive: true });
+  writeFileSync(file, wav);
+  return wav;
+}
+async function synthApi(text) {
   const r = await fetch('https://texttospeech.googleapis.com/v1/text:synthesize', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': key },
@@ -65,7 +77,7 @@ const timings = [];
 let pos = 0;
 // SCRIPT_MD=原稿の md を渡すと、その表から読み上げを作る（3分版。原稿を1か所で直せば声と字幕が変わる）
 // 表の1列目が読み上げ（字幕の日本語）、2列目が英語の字幕。「## 」の見出しごとに場面（section）を分け、場面の切れ目は長めの間にする
-const READ = [['BCP', 'ビーシーピー'], ['Claude', 'クロード'], ['AI', 'エーアイ'], ['ID', 'アイディー']];
+const READ = [['BCP', 'ビーシーピー'], ['Claude', 'クロード'], ['AI', 'エーアイ'], ['ID', 'アイディー'], ['「0人」', 'ゼロにん'], ['年に何度も', 'ねんに何度も']];
 const spoken = (t) => READ.reduce((x, [a, b]) => x.replaceAll(a, b), t);
 let script = lines.map(([t, en, pause]) => ({ say: t, text: t.replace('エーアイ', 'AI'), en, pause, section: 0 }));
 if (process.env.SCRIPT_MD) {
@@ -77,8 +89,9 @@ if (process.env.SCRIPT_MD) {
     if (/^## \d/.test(line)) { section++; continue; }
     if (section < 0 || !line.startsWith('| ') || line.startsWith('| 読み上げ') || line.startsWith('|---')) continue;
     const [ja, en] = line.split('|').slice(1, 3).map((x) => x.trim());
-    if (script.length && script.at(-1).section !== section) script.at(-1).pause = 0.9;
-    script.push({ say: spoken(ja), text: ja, en, pause: 0.32, section });
+    // 間（秒）：話す内容（場面）が変わるところは長めに。PAUSE_LINE・PAUSE_SECTION で調整する
+    if (script.length && script.at(-1).section !== section) script.at(-1).pause = Number(process.env.PAUSE_SECTION ?? 1.5);
+    script.push({ say: spoken(ja), text: ja, en, pause: Number(process.env.PAUSE_LINE ?? 0.6), section });
   }
   script.at(-1).pause = 0.5;
 }

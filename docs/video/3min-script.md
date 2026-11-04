@@ -1,6 +1,6 @@
-# 3分版のナレーション原稿（第3案）
+# 3分版のナレーション原稿（第4案）
 
-更新：2026-11-05（第3案の追記：訓練モードが Claude API を使っていることが伝わるよう、「AI」を「Claude」と言い、画面にモデル名と仕組みを出す。第3案：災害運用モードを、架空の場面を1つ通して見せる形にした）。
+更新：2026-11-05（第4案：第1版を見た利用者の直し。「震災」、「0人」の言い方、「大規模な訓練は、年（ねん）に何度も」、締めは「訓練で確かめたこと、本番でも。」で終わり「タシカメ。」は言わない。長さを詰めるため「端末は…」と「災害運用モードでは…」を短くした。第3案の追記：訓練モードが Claude API を使っていることが伝わるよう、「AI」を「Claude」と言い、画面にモデル名と仕組みを出す。第3案：災害運用モードを、架空の場面を1つ通して見せる形にした）。
 第2案：利用者の直し（冒頭の言葉、「災害運用モード」、救急外来に限らない登録）を入れ、2つのモード・使い方・端末どうしの同期・推せるポイントが伝わる構成にした。
 声は合成音声（Enceladus の予定）。字幕は日本語と英語。読み上げの速さは「メモ」の長さの項を参照。
 
@@ -10,7 +10,7 @@
 
 | 読み上げ | 英語の字幕 | 映像 |
 |---|---|---|
-| 災害の多い日本。私たちは、数多くの被災を乗り越えてきました。 | Japan is a land of disasters, and we have come through many of them. | 地鳴り。日本地図に、地震・豪雨・台風の印 |
+| 災害の多い日本。私たちは、数多くの震災を乗り越えてきました。 | Japan is a land of disasters. We have come through many earthquakes. | 地鳴り。日本地図に、地震・豪雨・台風の印 |
 | 大規模災害に備え、地域を支える病院は、BCPをつくり、訓練を重ねています。 | To prepare for major disasters, the hospitals that support each community write continuity plans (BCP) and hold drills. | 地図から病院の建物へ寄る。画面に「BCP＝事業継続計画：災害のときも病院の機能を続けるための計画」 |
 | それでも、訓練のたびに残る課題があります。 | Yet one problem remains after every drill. | |
 | それは、情報の伝達です。 | Communication. | 文字だけを大きく |
@@ -22,8 +22,8 @@
 | 私は、災害対応に深く関わる病院で、看護師として働いています。 | I work as a nurse at a hospital deeply involved in disaster response. | 院内の見取り図（架空の Claude総合病院(仮) の配置で描く）。顔は出さない |
 | 訓練では、ホワイトボードと無線で、患者や人の動きを追います。 | In drills, we track patients and staff with whiteboards and radios. | ホワイトボードと無線の再現（架空の内容） |
 | 患者はいまどこにいるのか。頼んだ搬送は、本当に届いたのか。 | Where is each patient now? Did the transfer we asked for actually happen? | 見取り図の点に「？」が増える |
-| 報告がないのか、ゼロなのかも、分からなくなります。 | We can't even tell "no report" from "zero." | 「未確認」と「0」が並ぶ |
-| そして、日々の業務の中で、大きな訓練は年に何度もできません。 | And with daily work, large drills can't happen often. | 勤務表が埋まる図（30秒版から） |
+| 「0人」が本当にいないのか、まだ確認していないだけなのかも、分かりません。 | Does "0" mean no one is there, or just that no one has checked yet? We can't tell. | 「未確認」と「0」が並ぶ |
+| そして、日々の業務の中で、大規模な訓練は、年に何度もできません。 | And amid daily work, large-scale drills can't be held many times a year. | 勤務表が埋まる図（30秒版から） |
 
 ## 3. タシカメと2つのモード（0:44–0:56）
 
@@ -39,7 +39,7 @@
 | 読み上げ | 英語の字幕 | 映像 | 画面の一言の説明 |
 |---|---|---|---|
 | ある地震の日を例に、使い方を見てみましょう。 | Let's walk through one example: the day of an earthquake. | 「例：架空の Claude総合病院(仮)」 | |
-| 端末は、本部や救急外来など、場所ごとのパソコン。ブラウザで開くだけで、ログインはいりません。 | Each location, like headquarters or the ER, has a computer. Just open a browser. No login. | 架空の見取り図に端末の印が灯る。場所を選ぶ画面「このパソコンを置いた場所を選んでください」 | 本部＝院内の災害対策本部。全体の調整をする |
+| 端末は、場所ごとのパソコン。ブラウザで開くだけで、ログインはいりません。 | Each location has its own computer. Just open a browser. No login. | 架空の見取り図に端末の印が灯る。場所を選ぶ画面「このパソコンを置いた場所を選んでください」 | 本部＝院内の災害対策本部。全体の調整をする |
 | 救急外来に、赤のタッグ110の患者が運ばれてきました。 | A patient with red tag 110 arrives at the ER. | 救急外来の端末 | タッグ＝トリアージタッグ。治療の急ぎ具合を色で示す札。赤は最優先。区分を決めるのは医師・看護師で、タシカメは記録するだけ |
 | 救急外来で登録すると、本部の画面にも、すぐに出ます。 | Register it in the ER, and it appears on the HQ screen instantly. | 2台の端末を左右に並べる。救急外来で登録→本部の一覧の先頭に出る | |
 | 本部は、手術室への搬送を依頼。手術室が受け入れを了承すると、本部が搬送要員に指示します。 | HQ requests a transfer to the OR. Once the OR accepts, HQ dispatches transport staff. | 本部の搬送のカード。「次にすること」が了承→要員の割り当て→指示と進む | 搬送要員＝患者を運ぶ担当の職員 |
@@ -48,9 +48,8 @@
 | 報告のない場所の人数は、ゼロではなく「未確認」と表示します。 | Counts from places that haven't reported show as "unconfirmed," not zero. | 院内の状況。病棟の「未確認」 | |
 | 同じタッグ番号の登録には警告を出しますが、止めません。理由を残して、先へ進めます。 | Duplicate tag numbers raise a warning, not a block. Record a reason and keep going. | 警告と理由の選択 | |
 | 災害のときは、慣れない人も使います。文字は大きく、状態は色だけでなく、文字と記号でも示します。 | In a disaster, people new to the system use it too. So text is large, and status uses words and symbols, not color alone. | 区分の札（◆赤・▲黄、色＋記号＋文字）に寄る。大きなボタン | |
-| 紙に切り替えるときは、白黒で読める印刷も。 | And for switching to paper, black-and-white printouts. | 印刷のプレビュー。〔訂正済み〕の印は字幕だけで見せる | |
 
-字幕だけで見せる（読み上げない）：訂正しても記録は履歴ごと残る（〔訂正済み〕の印）、同じ患者を別の端末で同時に直すとお知らせが出る（「ほかの端末で先に更新されました」）、画面上部の「同期中」と「最終更新」。
+字幕・画面の文字だけで見せる（読み上げない）：白黒で読める印刷（第4案で読み上げから外した。長さを3分に収めるため）、訂正しても記録は履歴ごと残る（〔訂正済み〕の印）、同じ患者を別の端末で同時に直すとお知らせが出る（「ほかの端末で先に更新されました」）、画面上部の「同期中」と「最終更新」。
 
 ## 5. 訓練モード（1:52–2:34）
 
@@ -68,7 +67,7 @@
 |---|---|---|
 | Claudeが出せるのは、決められた形の提案だけ。反映する前に、必ずプログラムが確かめます。 | Claude can only make proposals in a fixed format, and the system checks each one before applying it. | 提案→検証→反映の図。「strict tool use（JSON Schema で出力の形を固定）」 |
 | 区分や治療について聞いても、Claudeは「担当の医療者が判断します」と答えます。 | Ask about triage or treatment, and Claude replies that the medical staff will decide. | 訓練中に本部から部署役へ「区分を黄に下げたほうがいい？」と送り、断る返事が届く（API で撮る場合） |
-| 災害運用モードでは、AIを使いません。Claudeのサービスが止まっても、記録と共有は動き続けます。 | Disaster Mode uses no AI at all, so recording and sharing keep working even if Claude is unavailable. | |
+| 災害運用モードでは、AIを使いません。 | Disaster Mode uses no AI at all. | |
 
 ## 7. どの病院でも（2:50–2:56）
 
@@ -80,7 +79,7 @@
 
 | 読み上げ | 英語の字幕 | 映像 |
 |---|---|---|
-| 訓練で確かめたことを、本番でも。タシカメ。 | What you confirm in drills, you use for real. Tashikame. | ツール名、「Claude Code で開発」、リポジトリの URL、「データはすべて架空です」 |
+| 訓練で確かめたこと、本番でも。 | What you confirm in drills, for real. | ツール名、「Claude Code で開発」、リポジトリの URL、「データはすべて架空です」 |
 
 ## 推せるポイント（映像で必ず伝える）
 
