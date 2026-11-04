@@ -21,6 +21,21 @@ export interface TrainingSnapshot {
   inbox: { messageId: string; from: string; fromName: string; text: string; simMs: number; heard: boolean }[];
   outbox: { messageId: string; to: string; toName: string; text: string; simMs: number }[];
   pendingReplies: number;
+  review: {
+    findings: {
+      id: string;
+      category: string;
+      categoryLabel: string;
+      kind: 'no-record' | 'not-done';
+      title: string;
+      detail: string;
+      evidence: string[];
+      note?: string;
+      explanation?: { text: string; evidence: string[] };
+    }[];
+    checks: { id: string; text: string; source: 'scenario' | 'hospital'; result: 'met' | 'no-record' | 'not-met' | 'self-check'; evidence: string[] }[];
+    explainedBy: string | null;
+  } | null;
 }
 
 let base = '';
@@ -28,7 +43,7 @@ export function setTrainingHospital(hospitalId: string) {
   base = `/api/h/${encodeURIComponent(hospitalId)}/training/sim`;
 }
 
-export async function trainingPost(path: 'control' | 'message' | 'heard' | 'note', body: unknown): Promise<{ ok: true; snapshot: TrainingSnapshot } | { ok: false; error: string }> {
+export async function trainingPost(path: 'control' | 'message' | 'heard' | 'note' | 'explain', body: unknown): Promise<{ ok: true; snapshot: TrainingSnapshot } | { ok: false; error: string }> {
   try {
     const res = await fetch(`${base}/${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     const json = await res.json();

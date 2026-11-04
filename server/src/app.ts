@@ -69,7 +69,7 @@ export function createApp(options: AppOptions): App {
   function snapshotOf(hospitalId: string) {
     const m = managers.get(hospitalId)!;
     const config = hospitals.find((h) => h.id === hospitalId)!;
-    return buildSnapshot({ config, scenarios: options.training!.scenarios.filter((s) => s.hospital === hospitalId), view: m.view(), scenario: m.scenario(), provider: m.providerName, now: now() });
+    return buildSnapshot({ config, scenarios: options.training!.scenarios.filter((s) => s.hospital === hospitalId), view: m.view(), scenario: m.scenario(), provider: m.providerName, now: now(), review: m.review() });
   }
   function broadcastSim(hospitalId: string) {
     const clients = simClients.get(hospitalId);
@@ -176,7 +176,7 @@ export function createApp(options: AppOptions): App {
       return config ? json(res, 200, config) : json(res, 404, { status: 'error', errors: [`病院「${c[1]}」の設定がない`] });
     }
 
-    const t = path.match(/^\/api\/h\/([a-z0-9-]+)\/training\/sim(?:\/(stream|control|message|heard|note))?$/);
+    const t = path.match(/^\/api\/h\/([a-z0-9-]+)\/training\/sim(?:\/(stream|control|message|heard|note|explain))?$/);
     if (t) {
       const manager = managers.get(t[1]!);
       if (!manager) return json(res, 404, { status: 'error', errors: ['この病院には訓練のシナリオがない'] });
@@ -204,7 +204,9 @@ export function createApp(options: AppOptions): App {
             ? manager.message(String(body.to ?? ''), String(body.text ?? ''))
             : action === 'heard'
               ? manager.heard(String(body.messageId ?? ''))
-              : manager.addNote(String(body.findingId ?? ''), String(body.note ?? ''));
+              : action === 'explain'
+                ? manager.explain()
+                : manager.addNote(String(body.findingId ?? ''), String(body.note ?? ''));
       return r.ok ? json(res, 200, snapshotOf(t[1]!)) : json(res, 400, { status: 'rejected', errors: [r.error] });
     }
 

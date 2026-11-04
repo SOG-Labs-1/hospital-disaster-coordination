@@ -114,6 +114,31 @@ describe('訓練の進行（mock の部署役）', () => {
     expect(((await (await fetch(`${base}/live/events`)).json()) as any).events).toHaveLength(0);
   });
 
+  it('終わると振り返りを作る。照合はプログラムで、説明文の根拠は渡した番号だけ', async () => {
+    await post('/training/sim/control', { action: 'start', scenarioId: 'claude-red-to-or' });
+    await advanceBy(20_000);
+    await advanceBy(15_000);
+    expect((await snapshot()).review).toBeNull(); // 訓練中は実際の状態を見せない
+    await post('/training/sim/control', { action: 'end' });
+    await app.training('claude')!.settle();
+    const s = await snapshot();
+    expect(s.run.ended.reason).toBe('manual');
+    const notRegistered = s.review.findings.find((f: any) => f.title.includes('タッグ101'));
+    expect(notRegistered).toMatchObject({ categoryLabel: '情報が確認・共有されなかった', kind: 'no-record' });
+    expect(notRegistered.explanation.text).toContain('ボードに登録されていない');
+    expect(notRegistered.explanation.evidence).toEqual(notRegistered.evidence);
+    expect(s.review.explainedBy).toBe('mock');
+    expect(s.review.checks.find((c: any) => c.id === 'register-red').result).toBe('no-record');
+
+    // 参加者の補足（画面外での対応）を残して、説明を作り直せる
+    await post('/training/sim/note', { findingId: notRegistered.id, note: '口頭で救急外来に確認していた' });
+    await post('/training/sim/explain', {});
+    await app.training('claude')!.settle();
+    const again = (await snapshot()).review.findings.find((f: any) => f.id === notRegistered.id);
+    expect(again.note).toBe('口頭で救急外来に確認していた');
+    expect(again.explanation.text).toContain('参加者の補足：口頭で救急外来に確認していた');
+  });
+
   it('実運用には訓練の進行の入口がない', async () => {
     expect((await fetch(`${base}/live/sim`)).status).toBe(404);
   });

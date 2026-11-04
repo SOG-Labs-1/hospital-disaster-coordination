@@ -14,6 +14,7 @@ import { readEnteredBy, readHospital, readMode, readTerminal, saveEnteredBy, set
 import { TerminalSetup } from './TerminalSetup';
 import { TopBar } from './TopBar';
 import { setTrainingHospital, useTraining } from './training';
+import { ReviewPanel } from './ReviewPanel';
 import { RadioInbox, TrainingTab } from './TrainingPanel';
 import { SupportPanel } from './SupportPanel';
 import { TransportPanel } from './TransportPanel';
@@ -234,7 +235,9 @@ function Headquarters({ config, terminal, mode }: { config: HospitalConfig; term
             />
           )}
           {tab === 'supports' && <SupportPanel config={config} state={state} terminal={terminal} enteredBy={enteredBy} now={now} />}
-          {tab === 'training' && training && <TrainingTab config={config} snapshot={training} terminal={terminal} enteredBy={enteredBy} now={now} />}
+          {tab === 'training' && training && (
+            <TrainingTab config={config} snapshot={training} terminal={terminal} enteredBy={enteredBy} now={now} review={<ReviewPanel snapshot={training} now={now} />} />
+          )}
           {tab === 'chronology' && <ChronologyPanel config={config} events={events} terminal={terminal} enteredBy={enteredBy} now={now} />}
           {tab === 'locations' && <LocationBoard config={config} state={state} terminal={terminal} enteredBy={enteredBy} now={now} />}
         </main>

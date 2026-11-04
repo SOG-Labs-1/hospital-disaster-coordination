@@ -1,11 +1,13 @@
 import {
   advance,
+  buildReview,
   buildRoleContext,
   reduceSim,
   resolveProposals,
   simMsAt,
   type DomainEvent,
   type HospitalConfig,
+  type Review,
   type Scenario,
   type SimEvent,
   type SimEventInput,
@@ -94,6 +96,7 @@ export class TrainingManager {
     const view = reduceSim(this.events, sc, this.deps.config);
     for (const [id, st] of view.stimuli) if (st.dispatched && !st.resolved && !this.inflight.has(id)) this.ask(id);
     if (this.events.length !== before) this.deps.onChange?.();
+    this.explainOnceAfterEnd();
   }
 
   private ask(stimulusId: string): void {
@@ -116,9 +119,50 @@ export class TrainingManager {
       });
   }
 
-  /** 返事待ちの部署役がなくなるまで待つ（テスト用） */
+  /** 返事待ちの部署役・説明文がなくなるまで待つ（テスト用） */
   async settle(): Promise<void> {
-    while (this.inflight.size) await new Promise((r) => setTimeout(r, 5));
+    while (this.inflight.size || this.explaining) await new Promise((r) => setTimeout(r, 5));
+  }
+
+  /** 振り返り。訓練が終わってからだけ作る（実際の状態は訓練中の参加者には見せない） */
+  review(): Review | null {
+    const sc = this.scenario();
+    const view = this.view();
+    if (!sc || !view?.ended) return null;
+    return buildReview({ scenario: sc, config: this.deps.config, view, boardEvents: this.deps.board.events() });
+  }
+
+  private explaining = false;
+
+  /**
+   * 振り返りの説明文を AI に書かせる。照合の結果（指摘と根拠）はプログラムが作り、AI は説明だけを書く。
+   * 根拠は、こちらが渡した番号だけを残す（AI が作った番号は使わない）
+   */
+  explain(): { ok: true } | { ok: false; error: string } {
+    const review = this.review();
+    const sc = this.scenario();
+    if (!review || !sc) return { ok: false, error: '訓練が終わってから説明を作る' };
+    if (this.explaining) return { ok: true };
+    this.explaining = true;
+    const runId = this.runId;
+    const notes = this.view()!.notes;
+    const findings = review.findings.map((f) => ({ id: f.id, title: f.title, detail: f.detail, evidence: f.evidence, participantNote: notes[f.id] }));
+    this.deps.provider
+      .explainReview({ scenarioTitle: sc.title, findings })
+      .catch((err) => {
+        console.error('振り返りの説明文を受け取れなかった', err);
+        return [];
+      })
+      .then((explanations) => {
+        this.explaining = false;
+        if (this.runId !== runId) return;
+        const byId = new Map(findings.map((f) => [f.id, f]));
+        const valid = explanations
+          .filter((x) => byId.has(x.findingId) && x.text.trim())
+          .map((x) => ({ findingId: x.findingId, text: x.text.trim(), evidence: x.evidence.filter((e) => byId.get(x.findingId)!.evidence.includes(e)) }));
+        this.recordExplanations(valid);
+      });
+    return { ok: true };
   }
 
   control(c: ControlAction): { ok: true } | { ok: false; error: string } {
@@ -158,6 +202,12 @@ export class TrainingManager {
     this.tick();
     this.deps.onChange?.();
     return { ok: true };
+  }
+
+  /** 時間切れ・終了の直後に、振り返りの説明文を一度だけ作る */
+  private explainOnceAfterEnd(): void {
+    const view = this.view();
+    if (view?.ended && !view.explanations && !this.explaining) this.explain();
   }
 
   /** 本部から部署役へ連絡する（無線で伝えたことにあたる） */
