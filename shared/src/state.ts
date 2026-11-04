@@ -52,6 +52,12 @@ export interface PatientView {
   overrides: { eventId: string; codes: string[]; reason: string }[];
   /** 登録そのものが訂正で取り消された */
   retracted: boolean;
+  /** 別の患者にまとめられた（同じ人だった）。まとめ先の管理番号 */
+  mergedInto?: string;
+  /** この患者にまとめた患者の管理番号 */
+  mergedFrom: string[];
+  /** 登録内容の訂正の履歴 */
+  corrections: { eventId: string; observedAt: string; reason: string; fields: string[] }[];
 }
 
 export interface EventMeta {
@@ -302,6 +308,8 @@ function applyEvent(state: AppState, e: DomainEvent, correction: Correction | un
       lastRecordedAt: e.recordedAt,
       overrides: [],
       retracted: correction?.retract ?? false,
+      mergedFrom: [],
+      corrections: [],
     };
     if (e.override) patient.overrides.push({ eventId: e.id, codes: e.override.codes, reason: e.override.reason });
     state.patients[patient.id] = patient;
@@ -343,6 +351,30 @@ function applyEvent(state: AppState, e: DomainEvent, correction: Correction | un
       if (p) patient[p.field] = p.value || undefined;
       return;
     }
+    case 'PatientDetailsCorrected': {
+      const p = effectivePayload(e, correction);
+      if (!p) return;
+      const { locationId, departmentLocationId, ...rest } = p.fields;
+      for (const [k, v] of Object.entries(rest)) if (v !== undefined) (patient as unknown as Record<string, unknown>)[k] = v === '' ? undefined : v;
+      if (locationId) {
+        patient.locationId = locationId;
+        patient.locationSince = e.observedAt;
+      }
+      if (departmentLocationId) patient.departmentLocationId = departmentLocationId;
+      patient.corrections.push({ eventId: e.id, observedAt: e.observedAt, reason: p.reason, fields: Object.keys(p.fields).filter((k) => (p.fields as Record<string, unknown>)[k] !== undefined) });
+      return;
+    }
+    case 'PatientsMerged': {
+      const p = effectivePayload(e, correction);
+      const source = p ? state.patients[p.sourceId] : undefined;
+      if (!p || !source) return;
+      source.mergedInto = patient.id;
+      patient.mergedFrom.push(source.id);
+      // まとめ先で空いている識別情報・特徴は、まとめられる側から埋める（上書きはしない）
+      for (const k of ['tagNumber', 'hospitalPatientId', 'medicalId', 'name', 'estimatedAge', 'features', 'conditionNote'] as const) if (!patient[k] && source[k]) patient[k] = source[k];
+      if (patient.sex === 'unknown') patient.sex = source.sex;
+      return;
+    }
     case 'PatientTriageChanged': {
       const p = effectivePayload(e, correction);
       patient.triageHistory.push({
@@ -380,7 +412,7 @@ function recomputeTriage(patient: PatientView): void {
 }
 
 export function activePatients(state: AppState): PatientView[] {
-  return state.patientOrder.map((id) => state.patients[id]!).filter((p) => !p.retracted);
+  return state.patientOrder.map((id) => state.patients[id]!).filter((p) => !p.retracted && !p.mergedInto);
 }
 
 /** 識別番号が一致する（取り消されていない）患者 */

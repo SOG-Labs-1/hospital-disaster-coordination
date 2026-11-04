@@ -45,6 +45,9 @@ export const CommandSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('AddPatientIdentifier'), patientId: z.string(), payload: PatientIdentifierAddedPayload }),
   z.object({ type: z.literal('ChangePatientTriage'), patientId: z.string(), payload: PatientTriageChangedPayload }),
   z.object({ type: z.literal('UpdatePatientNote'), patientId: z.string(), payload: PatientNoteUpdatedPayload }),
+  z.object({ type: z.literal('CorrectPatientDetails'), patientId: z.string(), payload: payloadSchemas.PatientDetailsCorrected }),
+  /** sourceId の患者を patientId の患者にまとめる */
+  z.object({ type: z.literal('MergePatients'), patientId: z.string(), payload: payloadSchemas.PatientsMerged }),
   // 訂正
   z.object({ type: z.literal('CorrectEvent'), eventId: z.string(), payload: EventCorrectedPayload }),
   // 搬送（調整・指示）
@@ -326,12 +329,41 @@ export function decide(
       event = make('PatientRegistered', command.payload);
       break;
     }
+    case 'CorrectPatientDetails': {
+      const patient = state.patients[command.patientId];
+      subject = { kind: 'patient', id: command.patientId };
+      if (!patient || patient.retracted || patient.mergedInto) {
+        errors.push(`患者「${command.patientId}」が見つからない`);
+        break;
+      }
+      const f = command.payload.fields;
+      for (const loc of [f.locationId, f.departmentLocationId]) if (loc && !locationIds.has(loc)) errors.push(`場所「${loc}」が病院設定にない`);
+      // 搬送中の患者の所在は、搬送の記録（到着）で動かす
+      if (f.locationId && activeTransportsForPatient(state, patient.id).some((t) => t.steps.departed))
+        errors.push('搬送中の患者の所在は、搬送の到着で記録する');
+      if (f.tagNumber) duplicateCheck('tagNumber', f.tagNumber, patient.id);
+      if (f.hospitalPatientId) duplicateCheck('hospitalPatientId', f.hospitalPatientId, patient.id);
+      event = make('PatientDetailsCorrected', command.payload);
+      break;
+    }
+    case 'MergePatients': {
+      const target = state.patients[command.patientId];
+      const source = state.patients[command.payload.sourceId];
+      subject = { kind: 'patient', id: command.patientId };
+      if (!target || target.retracted || target.mergedInto) errors.push(`まとめ先の患者「${command.patientId}」が見つからない`);
+      if (!source || source.retracted || source.mergedInto) errors.push(`まとめる患者「${command.payload.sourceId}」が見つからない`);
+      if (command.patientId === command.payload.sourceId) errors.push('同じ患者どうしはまとめられない');
+      // 進行中の搬送がある患者をまとめると、搬送の記録の対象が分からなくなる
+      if (source && activeTransportsForPatient(state, source.id).length) errors.push(`${source.id} には進行中の搬送がある。搬送を終えてからまとめる`);
+      event = make('PatientsMerged', command.payload);
+      break;
+    }
     case 'AddPatientIdentifier':
     case 'ChangePatientTriage':
     case 'UpdatePatientNote': {
       const patient = state.patients[command.patientId];
       subject = { kind: 'patient', id: command.patientId };
-      if (!patient || patient.retracted) {
+      if (!patient || patient.retracted || patient.mergedInto) {
         errors.push(`患者「${command.patientId}」が見つからない`);
         break;
       }
@@ -377,7 +409,7 @@ export function decide(
       subject = { kind: 'transport', id: formatTransportId(state.requestedTransportCount + 1) };
       const p = command.payload;
       const patient = state.patients[p.patientId];
-      if (!patient || patient.retracted) {
+      if (!patient || patient.retracted || patient.mergedInto) {
         errors.push(`患者「${p.patientId}」が見つからない`);
         break;
       }

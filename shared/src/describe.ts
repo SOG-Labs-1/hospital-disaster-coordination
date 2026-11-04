@@ -39,6 +39,8 @@ export const eventTypeLabels: Record<EventType, string> = {
   PatientIdentifierAdded: '識別情報の追加',
   PatientTriageChanged: '区分の変更',
   PatientNoteUpdated: 'メモの更新',
+  PatientDetailsCorrected: '登録内容の訂正',
+  PatientsMerged: '患者の統合',
   EventCorrected: '訂正',
   TransportRequested: '搬送の要請',
   TransportAccepted: '受け入れ了承',
@@ -99,6 +101,24 @@ export function describeEvent(e: DomainEvent, config: HospitalConfig, lookup: (e
       return d('patient', 'record', `区分を${triage(e.payload.triage)}に変更`);
     case 'PatientNoteUpdated':
       return d('patient', 'record', `${noteFieldLabels[e.payload.field]}：${e.payload.value || '（消去）'}`);
+    case 'PatientDetailsCorrected': {
+      const f = e.payload.fields;
+      const parts = [
+        f.tagNumber !== undefined && `タッグ番号→${f.tagNumber || '（消去）'}`,
+        f.hospitalPatientId !== undefined && `院内患者ID→${f.hospitalPatientId || '（消去）'}`,
+        f.medicalId !== undefined && `メディカルID→${f.medicalId || '（消去）'}`,
+        f.name !== undefined && `氏名→${f.name || '（消去）'}`,
+        f.sex !== undefined && `性別→${sexLabels[f.sex]}`,
+        f.estimatedAge !== undefined && `推定年齢→${f.estimatedAge || '（消去）'}`,
+        f.features !== undefined && `特徴→${f.features || '（消去）'}`,
+        f.conditionNote !== undefined && `状態→${f.conditionNote || '（消去）'}`,
+        f.locationId !== undefined && `所在→${loc(f.locationId)}`,
+        f.departmentLocationId !== undefined && `担当→${loc(f.departmentLocationId)}`,
+      ].filter(Boolean);
+      return d('patient', 'record', `登録内容を訂正：${parts.join('、')}（理由：${e.payload.reason}）`);
+    }
+    case 'PatientsMerged':
+      return d('patient', 'record', `${e.payload.sourceId} を ${id} にまとめた（同じ患者。理由：${e.payload.reason}）`);
     case 'EventCorrected': {
       const target = e.corrects ? lookup(e.corrects) : undefined;
       const what = target ? `${target.subject.id} の「${eventTypeLabels[target.type]}」` : '記録';

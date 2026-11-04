@@ -84,6 +84,34 @@ export const PatientNoteUpdatedPayload = z.object({
   value: z.string(),
 });
 
+/**
+ * 患者の登録内容の訂正（理由つき）。書いた項目だけを直す。
+ * 搬送なしで所在が違っていた（登録時の場所の間違いなど）ときも、ここで所在を直す
+ */
+export const PatientDetailsCorrectedPayload = z.object({
+  fields: z
+    .object({
+      tagNumber: optionalText,
+      hospitalPatientId: optionalText,
+      medicalId: optionalText,
+      name: optionalText,
+      sex: z.enum(sexes).optional(),
+      estimatedAge: optionalText,
+      features: optionalText,
+      conditionNote: optionalText,
+      locationId: z.string().optional(),
+      departmentLocationId: z.string().optional(),
+    })
+    .refine((f) => Object.values(f).some((v) => v !== undefined), '直す項目を1つ以上書く'),
+  reason: z.string().trim().min(1),
+});
+
+/** 同じ人だと分かった2件の記録を1つにまとめる。subject がまとめ先、sourceId がまとめられる側 */
+export const PatientsMergedPayload = z.object({
+  sourceId: z.string().min(1),
+  reason: z.string().trim().min(1),
+});
+
 /** 訂正。対象のイベント（corrects）を取り消すか、中身を差し替える */
 export const EventCorrectedPayload = z.object({
   reason: z.string().trim().min(1),
@@ -217,6 +245,8 @@ export const payloadSchemas = {
   PatientIdentifierAdded: PatientIdentifierAddedPayload,
   PatientTriageChanged: PatientTriageChangedPayload,
   PatientNoteUpdated: PatientNoteUpdatedPayload,
+  PatientDetailsCorrected: PatientDetailsCorrectedPayload,
+  PatientsMerged: PatientsMergedPayload,
   EventCorrected: EventCorrectedPayload,
   TransportRequested: TransportRequestedPayload,
   TransportAccepted: TransportAcceptedPayload,

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { activePatients, activeTransportsForPatient, sexLabels, versionOf, type AppState, type HospitalConfig, type PatientView } from '@hdc/shared';
+import { activePatients, activeTransportsForPatient, sexes, sexLabels, versionOf, type AppState, type HospitalConfig, type PatientView } from '@hdc/shared';
 import { locationName } from './labels';
 import { formatTime, minutesSince } from './format';
 import { TriageBadge } from './Triage';
@@ -69,7 +69,7 @@ export function PatientList({ config, state, terminal, enteredBy, now, onRequest
 
 function PatientRow({ patient: p, hiddenOnScreen, config, state, terminal, enteredBy, now, onRequestTransport }: { patient: PatientView; hiddenOnScreen: boolean } & Props) {
   const { run, highlight, setHighlight, showNotice } = useCommands();
-  const [editing, setEditing] = useState<'none' | 'triage' | 'note'>('none');
+  const [editing, setEditing] = useState<'none' | 'triage' | 'note' | 'correct' | 'merge'>('none');
   const ref = useRef<HTMLLIElement>(null);
   const transports = activeTransportsForPatient(state, p.id);
   const moving = transports.find((t) => t.steps.departed);
@@ -191,6 +191,18 @@ function PatientRow({ patient: p, hiddenOnScreen, config, state, terminal, enter
             {stale && <span className="stale-mark"> ⏱ {age}分前（古い）</span>}
           </dd>
         </div>
+        {p.mergedFrom.length > 0 && (
+          <div>
+            <dt>統合</dt>
+            <dd>{p.mergedFrom.join('、')} をこの患者にまとめた（同じ患者）</dd>
+          </div>
+        )}
+        {p.corrections.length > 0 && (
+          <div>
+            <dt>訂正</dt>
+            <dd className="override-note">登録内容を{p.corrections.length}回訂正：{p.corrections.at(-1)!.reason}</dd>
+          </div>
+        )}
         {p.overrides.length > 0 && (
           <div>
             <dt>警告</dt>
@@ -209,6 +221,12 @@ function PatientRow({ patient: p, hiddenOnScreen, config, state, terminal, enter
         <button type="button" className="btn" onClick={() => onRequestTransport(p.id)}>
           搬送を依頼する
         </button>
+        <button type="button" className="btn btn-quiet" disabled={!enteredBy} aria-expanded={editing === 'correct'} onClick={() => setEditing(editing === 'correct' ? 'none' : 'correct')}>
+          登録内容を直す
+        </button>
+        <button type="button" className="btn btn-quiet" disabled={!enteredBy} aria-expanded={editing === 'merge'} onClick={() => setEditing(editing === 'merge' ? 'none' : 'merge')}>
+          同じ患者としてまとめる
+        </button>
       </div>
 
       {editing === 'triage' && (
@@ -222,6 +240,8 @@ function PatientRow({ patient: p, hiddenOnScreen, config, state, terminal, enter
         </div>
       )}
       {editing === 'note' && <NoteEditor patient={p} onDone={() => setEditing('none')} meta={meta} expectedVersion={expectedVersion} />}
+      {editing === 'correct' && <CorrectForm config={config} patient={p} onDone={() => setEditing('none')} meta={meta} expectedVersion={expectedVersion} />}
+      {editing === 'merge' && <MergeForm config={config} state={state} patient={p} onDone={() => setEditing('none')} meta={meta} expectedVersion={expectedVersion} />}
 
       <details className="history">
         <summary>区分の履歴（{p.triageHistory.length}件）</summary>
@@ -283,5 +303,162 @@ function NoteEditor({ patient, onDone, meta, expectedVersion }: { patient: Patie
         </button>
       </div>
     </div>
+  );
+}
+
+type EditMeta = { enteredBy: string; terminal: string; reportedBy: null };
+
+/** 登録内容の訂正。変えた項目だけを、理由つきで記録する（元の記録は残る） */
+function CorrectForm({ config, patient: p, onDone, meta, expectedVersion }: { config: HospitalConfig; patient: PatientView; onDone: () => void; meta: EditMeta; expectedVersion: number }) {
+  const { run } = useCommands();
+  const initial = {
+    tagNumber: p.tagNumber ?? '',
+    hospitalPatientId: p.hospitalPatientId ?? '',
+    name: p.name ?? '',
+    sex: p.sex,
+    estimatedAge: p.estimatedAge ?? '',
+    features: p.features ?? '',
+    locationId: p.locationId,
+  };
+  const [form, setForm] = useState(initial);
+  const [reason, setReason] = useState('');
+  const changed = Object.fromEntries(Object.entries(form).filter(([k, v]) => v !== initial[k as keyof typeof initial]));
+  const ready = Object.keys(changed).length > 0 && reason.trim() !== '';
+  const set = (k: keyof typeof initial, v: string) => setForm({ ...form, [k]: v });
+
+  async function save() {
+    const r = await run(
+      (override) => ({ command: { type: 'CorrectPatientDetails', patientId: p.id, payload: { fields: changed, reason: reason.trim() } }, meta, expectedVersion, override }),
+      { doneText: `${p.id} の登録内容を直しました`, overrideLabel: '理由を記録して直す' },
+    );
+    if (r === 'accepted') onDone();
+  }
+
+  const text = (k: 'tagNumber' | 'hospitalPatientId' | 'name' | 'estimatedAge' | 'features', label: string) => (
+    <label className="field">
+      <span>
+        {label}
+        {k in changed && <em className="changed-mark">変更あり</em>}
+      </span>
+      <input value={form[k]} onChange={(e) => set(k, e.target.value)} autoComplete="off" />
+    </label>
+  );
+
+  return (
+    <form
+      className="patient-edit no-print correct-form"
+      aria-label={`${p.id} の登録内容を直す`}
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (ready) save();
+      }}
+    >
+      <p className="hint">変えた項目だけを、理由つきで記録します。元の記録は消えずに残ります。</p>
+      {text('tagNumber', 'タッグ番号')}
+      {text('hospitalPatientId', '院内患者ID')}
+      {text('name', '氏名')}
+      {text('estimatedAge', '推定年齢')}
+      {text('features', '特徴メモ')}
+      <label className="field">
+        <span>性別{'sex' in changed && <em className="changed-mark">変更あり</em>}</span>
+        <select value={form.sex} onChange={(e) => set('sex', e.target.value)}>
+          {sexes.map((s) => (
+            <option key={s} value={s}>
+              {sexLabels[s]}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="field">
+        <span>所在（登録時の場所の間違いなど。移動は搬送で記録）{'locationId' in changed && <em className="changed-mark">変更あり</em>}</span>
+        <select value={form.locationId} onChange={(e) => set('locationId', e.target.value)}>
+          {config.locations.map((l) => (
+            <option key={l.id} value={l.id}>
+              {l.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="field">
+        <span>直す理由（必ず書く）</span>
+        <input value={reason} onChange={(e) => setReason(e.target.value)} autoComplete="off" placeholder="例：無線の聞き間違い" />
+      </label>
+      {!ready && <p className="hint">{Object.keys(changed).length === 0 ? '直したい項目を書き換えてください。' : '理由を書くと記録できます。'}</p>}
+      <div className="button-row">
+        <button type="submit" className="btn btn-primary" disabled={!ready}>
+          直して記録する
+        </button>
+        <button type="button" className="btn btn-quiet" onClick={onDone}>
+          やめる
+        </button>
+      </div>
+    </form>
+  );
+}
+
+/** 同じ人だと分かった2件をまとめる。まとめられる側の記録は消さず「統合済み」として残す */
+function MergeForm({ config, state, patient: p, onDone, meta, expectedVersion }: { config: HospitalConfig; state: AppState; patient: PatientView; onDone: () => void; meta: EditMeta; expectedVersion: number }) {
+  const { run } = useCommands();
+  const others = activePatients(state).filter((x) => x.id !== p.id);
+  const [sourceId, setSourceId] = useState('');
+  const [reason, setReason] = useState('');
+  const source = state.patients[sourceId];
+  const ready = !!source && reason.trim() !== '';
+  const line = (x: PatientView) =>
+    [x.id, x.tagNumber && `タッグ${x.tagNumber}`, x.hospitalPatientId && `院内ID ${x.hospitalPatientId}`, sexLabels[x.sex], x.estimatedAge, x.features, locationName(config, x.locationId)].filter(Boolean).join('、');
+
+  async function save() {
+    const r = await run(() => ({ command: { type: 'MergePatients', patientId: p.id, payload: { sourceId, reason: reason.trim() } }, meta, expectedVersion }), {
+      doneText: `${sourceId} を ${p.id} にまとめました`,
+    });
+    if (r === 'accepted') onDone();
+  }
+
+  return (
+    <form
+      className="patient-edit no-print merge-form"
+      aria-label={`${p.id} に同じ患者をまとめる`}
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (ready) save();
+      }}
+    >
+      <p className="hint">別々に登録された2件が同じ人だったときに使います。{p.id} を残し、選んだ患者の記録はこの患者にまとめます（消さずに「統合済み」として残り、あとで取り消せます）。</p>
+      <label className="field">
+        <span>まとめる患者（同じ人）</span>
+        <select value={sourceId} onChange={(e) => setSourceId(e.target.value)}>
+          <option value="">選んでください</option>
+          {others.map((x) => (
+            <option key={x.id} value={x.id}>
+              {line(x)}
+            </option>
+          ))}
+        </select>
+      </label>
+      {source && (
+        <dl className="merge-compare">
+          <div>
+            <dt>残す</dt>
+            <dd>{line(p)}</dd>
+          </div>
+          <div>
+            <dt>まとめる</dt>
+            <dd>{line(source)}</dd>
+          </div>
+        </dl>
+      )}
+      <label className="field">
+        <span>同じ人だと分かった理由（必ず書く）</span>
+        <input value={reason} onChange={(e) => setReason(e.target.value)} autoComplete="off" placeholder="例：院内患者IDのリストバンドで確認" />
+      </label>
+      <div className="button-row">
+        <button type="submit" className="btn btn-primary" disabled={!ready}>
+          {source ? `${source.id} を ${p.id} にまとめる` : 'まとめる'}
+        </button>
+        <button type="button" className="btn btn-quiet" onClick={onDone}>
+          やめる
+        </button>
+      </div>
+    </form>
   );
 }
