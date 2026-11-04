@@ -17,8 +17,9 @@ export const TwoFunctions = ({ start }: { start: number }) => {
   // 名前を大きく出してから、上へ小さく移す
   const up = interpolate(t, [split - 0.3, split + 0.4], [0, 1], { ...clamp, easing: ease });
   const nameIn = interpolate(t, [nameAt - 0.15, nameAt + 0.35], [0, 1], { ...clamp, easing: ease });
-  const live = capture('live.mp4');
-  const training = capture('training.mp4');
+  // 録画は別のセッションが作った video/public/captures/（manifest.json に説明あり）
+  const live = capture('a-register.webm');
+  const training = capture('e-training-radio.webm');
 
   return (
     <AbsoluteFill style={{ fontFamily }}>
@@ -27,19 +28,19 @@ export const TwoFunctions = ({ start }: { start: number }) => {
         <div style={{ opacity: nameIn * (1 - up), marginTop: 18, fontSize: 30, color: c.sub, letterSpacing: 6 }}>院内災害対応の調整ツール</div>
       </AbsoluteFill>
 
-      <AbsoluteFill style={{ flexDirection: 'row', gap: 40, padding: '250px 90px 180px', opacity: up }}>
+      <AbsoluteFill style={{ flexDirection: 'row', gap: 40, padding: '250px 90px 0px', opacity: up }}>
         <Panel label="実運用" sub="災害時の院内調整" from={split} t={t} accent={c.accent}>
-          {live ? <Video src={staticFile('captures/live.mp4')} muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <LiveMock t={t - split} />}
+          {live ? <Video src={staticFile('captures/a-register.webm')} muted style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'left top' }} /> : <LiveMock t={t - split} />}
         </Panel>
         <Panel label="訓練" sub="AIと行う平常時の訓練" from={split + 0.9} t={t} accent={c.warn} dashed>
-          {training ? <Video src={staticFile('captures/training.mp4')} muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <TrainingMock t={t - split - 0.9} />}
+          {training ? <Video src={staticFile('captures/e-training-radio.webm')} muted style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'left top' }} /> : <TrainingMock t={t - split - 0.9} />}
         </Panel>
       </AbsoluteFill>
 
       <AbsoluteFill style={{ top: 186, alignItems: 'center', opacity: interpolate(t, [split + 0.2, split + 0.6], [0, 1], clamp) }}>
         <div style={{ fontSize: 24, color: c.sub, letterSpacing: 10 }}>― 2つの機能 ―</div>
       </AbsoluteFill>
-      <AbsoluteFill style={{ top: 832, left: 1030, opacity: interpolate(t, [split + 2.2, split + 2.6], [0, 1], clamp) }}>
+      <AbsoluteFill style={{ top: 812, left: 1030, opacity: interpolate(t, [split + 2.2, split + 2.6], [0, 1], clamp) }}>
         <div style={{ fontSize: 24, color: c.warn, letterSpacing: 2, backgroundColor: 'rgba(7,13,24,0.85)', padding: '6px 14px', border: `2px dashed ${c.warn}`, alignSelf: 'flex-start' }}>※ AIは提案のみ。医療判断はしない</div>
       </AbsoluteFill>
     </AbsoluteFill>
@@ -54,7 +55,7 @@ const Panel = ({ label, sub, from, t, accent, dashed, children }: { label: strin
         <span style={{ fontSize: 40, fontWeight: 700, color: accent, border: `3px ${dashed ? 'dashed' : 'solid'} ${accent}`, padding: '2px 18px' }}>{label}</span>
         <span style={{ fontSize: 30, color: c.text }}>{sub}</span>
       </div>
-      <div style={{ flex: 1, border: `2px solid ${c.line}`, backgroundColor: c.bg2, overflow: 'hidden', boxShadow: `0 0 60px ${c.accentSoft}` }}>{children}</div>
+      <div style={{ aspectRatio: '16 / 9', position: 'relative', border: `2px solid ${c.line}`, backgroundColor: c.bg2, overflow: 'hidden', boxShadow: `0 0 60px ${c.accentSoft}` }}>{children}</div>
     </div>
   );
 };

@@ -1,8 +1,9 @@
 # 30秒映像のコンテ（映像制作の練習）
 
 ツール名：タシカメ（仮決定。ウェブ検索では同名の製品なし。J-PlatPat は未確認）
-形式：16:9、約30秒。ナレーションは字幕として画面に焼き込む（音声だけに頼らない）
-声：利用者の声を録音し、高さを少し下げて使う予定（合成音声は不採用）
+形式：16:9、約38秒（利用者の判断で、です・ます調にして30秒より長くてよいとした）。ナレーションは日本語と英語の2行の字幕として画面に焼き込む（音声だけに頼らない）
+声：Google Cloud Text-to-Speech の Chirp 3 HD「Enceladus」、速さ 1.08（7つの声を聞き比べて利用者が選んだ。特定の人の声に似せる合成はしない）
+効果音：冒頭の地鳴り（「ゴゴゴ」）は `video/scripts/rumble.mjs` で自作した音（外部の素材なし）
 
 ## 伝えること（第3案）
 
@@ -22,13 +23,23 @@
 | 0:15–0:26 | 画面が左右に分かれる。左は「実運用」：患者の登録が2台の端末に同時に出る、搬送の指示と到着、場所ごとの人数（未確認は「未確認」と表示）。右は「訓練」：無線の受信箱にAI部署役からの報告が届き、振り返りへ | タシカメは、二つの機能で備える。災害時の院内調整ツールと、AIを相手にした平常時の訓練。 | 実運用 ／ 訓練　AIは提案のみ。医療判断はしない |
 | 0:26–0:30 | 大きな病院から中規模の病院の輪郭へ、同じ画面が並ぶ。ツール名 | 総合病院から中規模病院まで、安全で効率的な災害対応を。 | タシカメ ／ Claude Code Hackathon 2026 ／ データはすべて架空 |
 
-## 録音用の原稿（「／」は短い間、「／／」は長い間）
+## 原稿（第2版・です・ます）
 
-> 地震、豪雨、台風。／災害のたび、病院には患者が押し寄せる。／／
-> 患者は、人は、物は、いまどこに。／混乱の中、院内の把握は難しい。／／
-> 日々の業務に追われ、／大きな訓練も重ねにくい。／／
-> タシカメは、二つの機能で備える。／災害時の院内調整ツールと、／AIを相手にした、平常時の訓練。／／
-> 総合病院から中規模病院まで。／安全で効率的な、災害対応を。
+コンテの表のナレーションは第1版のまま。いま使っている原稿はこちら（`video/scripts/narration.mjs` が元）。
+
+| 読み上げ | 英語の字幕 |
+|---|---|
+| 地震、豪雨、台風。 | Earthquakes. Torrential rain. Typhoons. |
+| 災害のたび、病院には患者が押し寄せます。 | With every disaster, patients pour into hospitals. |
+| 患者は、人は、物は、いまどこにあるのか。 | Patients, staff, supplies: where are they right now? |
+| 混乱の中で、院内の状況はつかみきれません。 | In the chaos, no one has the full picture. |
+| 日々の業務に追われ、訓練も十分にはできません。 | Busy with daily work, staff rarely get to train. |
+| タシカメは、二つの機能で備えます。 | Tashikame prepares hospitals in two ways. |
+| 災害時の院内調整ツールと、AIを相手にした、平常時の訓練です。 | A coordination tool for disasters, and everyday drills with AI. |
+| 総合病院から、中規模病院まで。 | From general hospitals to mid-sized hospitals. |
+| 安全で効率的な災害対応を、支えます。 | Supporting safe, efficient disaster response. |
+
+画面の録画は `video/public/captures/`（git の管理外。別のセッションが作成）の `a-register.webm`（実運用）と `e-training-radio.webm`（訓練）を使う。ないときは画面を模した図になる。
 
 ## 素材の決まり
 

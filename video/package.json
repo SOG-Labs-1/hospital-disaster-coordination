@@ -6,7 +6,7 @@
   "scripts": {
     "studio": "remotion studio",
     "render": "remotion render Intro30 out/intro-30s.mp4",
-    "narration": "OUT_DIR=public node scripts/narration.mjs Iapetus 1.05",
+    "narration": "OUT_DIR=public node scripts/narration.mjs Enceladus 1.08",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

@@ -47,8 +47,10 @@ export const Closing = ({ start }: { start: number }) => {
         <div style={{ marginTop: 22, width: interpolate(final, [0, 1], [0, 520]), height: 3, backgroundColor: c.accent }} />
         <div style={{ marginTop: 26, fontSize: 30, color: c.sub, letterSpacing: 6 }}>院内災害対応の調整ツール ／ AI訓練モード</div>
       </AbsoluteFill>
-      <AbsoluteFill style={{ justifyContent: 'flex-end', alignItems: 'center', paddingBottom: 26, opacity: final }}>
-        <div style={{ fontSize: 20, color: c.sub, letterSpacing: 2 }}>Claude Code Hackathon 2026 ／ データはすべて架空です ／ 音声：Google Cloud Text-to-Speech</div>
+      {/* 字幕が2行になったので、クレジットは画面の下端ではなく題名の下に置く */}
+      <AbsoluteFill style={{ top: 720, alignItems: 'center', gap: 8, opacity: final }}>
+        <div style={{ fontSize: 22, color: c.sub, letterSpacing: 2 }}>Claude Code Hackathon 2026 ／ データはすべて架空です ／ All data is fictional</div>
+        <div style={{ fontSize: 20, color: c.sub, letterSpacing: 2, opacity: 0.8 }}>音声：Google Cloud Text-to-Speech ／ 効果音：自作</div>
       </AbsoluteFill>
     </AbsoluteFill>
   );

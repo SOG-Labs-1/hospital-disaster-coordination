@@ -69,22 +69,25 @@ export const Subtitles = () => {
   const local = t - (at(i) - 0.08);
   const left = endAt(i) + 0.4 - t;
   return (
-    <AbsoluteFill style={{ justifyContent: 'flex-end', alignItems: 'center', paddingBottom: 70 }}>
+    <AbsoluteFill style={{ justifyContent: 'flex-end', alignItems: 'center', paddingBottom: 56 }}>
       <div
         style={{
           fontFamily,
-          fontSize: 46,
-          fontWeight: 700,
-          color: c.text,
-          letterSpacing: 2,
-          padding: '14px 34px',
-          backgroundColor: 'rgba(4, 8, 16, 0.72)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 6,
+          padding: '14px 34px 16px',
+          backgroundColor: 'rgba(4, 8, 16, 0.74)',
           borderLeft: `4px solid ${c.accent}`,
           opacity: Math.min(interpolate(local, [0, 0.15], [0, 1], clamp), interpolate(left, [0, 0.15], [0, 1], clamp)),
           translate: `0px ${interpolate(local, [0, 0.3], [12, 0], { ...clamp, easing: ease })}px`,
         }}
       >
-        {lines[i]!.text}
+        <div style={{ fontSize: 44, fontWeight: 700, color: c.text, letterSpacing: 2 }}>{lines[i]!.text}</div>
+        {'en' in lines[i]! && (
+          <div style={{ fontFamily: `'Helvetica Neue', Arial, sans-serif`, fontSize: 30, color: '#c9d6e8', letterSpacing: 0.5 }}>{(lines[i] as { en: string }).en}</div>
+        )}
       </div>
     </AbsoluteFill>
   );

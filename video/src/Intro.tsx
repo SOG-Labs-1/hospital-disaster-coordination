@@ -30,6 +30,10 @@ export const Intro = () => {
       })}
       <Hud />
       <Subtitles />
+      {/* 地鳴り（自作の音。scripts/rumble.mjs）。冒頭の「地震」に重ねる */}
+      <Sequence from={0} durationInFrames={Math.round(4.5 * fps)} name="地鳴り">
+        <Audio src={staticFile('sfx/rumble.wav')} volume={0.9} />
+      </Sequence>
       <Sequence from={Math.round(AUDIO_DELAY * fps)} name="ナレーション">
         <Audio src={staticFile('narration.wav')} />
       </Sequence>

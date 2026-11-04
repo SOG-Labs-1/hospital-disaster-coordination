@@ -11,18 +11,22 @@ if (!key) { console.error('GOOGLE_TTS_API_KEY が .env にありません'); pro
 const [, , voice = 'Charon', rateArg] = process.argv;
 const speakingRate = Number(rateArg ?? 0.95);
 const rate = 48000;
+const gemini = process.env.GEMINI_TTS;
+const stylePrompt = process.env.STYLE_PROMPT ?? '深く、落ち着いた、信頼感のある穏やかな声で。ドキュメンタリーのナレーションのように、ゆっくり、はっきりと読んでください。';
+const tag = gemini ? `gemini_${voice}` : `google_${voice}`;
 
-// [文, 後ろの無音（秒）]
+// [読み上げる文, 英語の字幕, 後ろの無音（秒）]。字幕の日本語は読み上げ用の「エーアイ」を「AI」に戻して使う
+// 第2版の原稿（です・ます）。声は Enceladus（利用者が聞き比べて選んだ）
 const lines = [
-  ['地震、豪雨、台風。', 0.6],
-  ['災害のたび、病院に患者が押し寄せる。', 1.0],
-  ['患者は、人は、物は、どこにいるのか。', 0.6],
-  ['院内の状況は、つかみきれない。', 1.0],
-  ['日々の業務に追われ、訓練もままならない。', 1.4],
-  ['タシカメ。', 0.8],
-  ['災害時の院内調整と、エーアイと行う、平常時の訓練。', 1.0],
-  ['総合病院から、中規模病院まで。', 0.5],
-  ['安全で効率的な災害対応を、実現する。', 0.8],
+  ['地震、豪雨、台風。', 'Earthquakes. Torrential rain. Typhoons.', 0.5],
+  ['災害のたび、病院には患者が押し寄せます。', 'With every disaster, patients pour into hospitals.', 0.8],
+  ['患者は、人は、物は、いまどこにあるのか。', 'Patients, staff, supplies: where are they right now?', 0.45],
+  ['混乱の中で、院内の状況はつかみきれません。', 'In the chaos, no one has the full picture.', 0.8],
+  ['日々の業務に追われ、訓練も十分にはできません。', 'Busy with daily work, staff rarely get to train.', 1.0],
+  ['タシカメは、二つの機能で備えます。', 'Tashikame prepares hospitals in two ways.', 0.5],
+  ['災害時の院内調整ツールと、エーアイを相手にした、平常時の訓練です。', 'A coordination tool for disasters, and everyday drills with AI.', 0.8],
+  ['総合病院から、中規模病院まで。', 'From general hospitals to mid-sized hospitals.', 0.4],
+  ['安全で効率的な災害対応を、支えます。', 'Supporting safe, efficient disaster response.', 0.6],
 ];
 
 async function synth(text) {
@@ -30,8 +34,9 @@ async function synth(text) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': key },
     body: JSON.stringify({
-      input: { text },
-      voice: { languageCode: 'ja-JP', name: `ja-JP-Chirp3-HD-${voice}` },
+      // GEMINI_TTS=モデル名 のときは Gemini-TTS（話し方を文章で指示できる）。指示は STYLE_PROMPT
+      input: gemini ? { text, prompt: stylePrompt } : { text },
+      voice: gemini ? { languageCode: 'ja-JP', name: voice, modelName: gemini } : { languageCode: 'ja-JP', name: `ja-JP-Chirp3-HD-${voice}` },
       audioConfig: { audioEncoding: 'LINEAR16', sampleRateHertz: rate, speakingRate },
     }),
   });
@@ -58,21 +63,21 @@ function pcm(wav) {
 const parts = [];
 const timings = [];
 let pos = 0;
-for (const [t, pause] of lines) {
+for (const [t, en, pause] of lines) {
   const v = trim(Buffer.from(pcm(await synth(t))));
-  timings.push({ text: t.replace('エーアイ', 'AI'), start: +(pos / 2 / rate).toFixed(3), end: +((pos + v.length) / 2 / rate).toFixed(3) });
+  timings.push({ text: t.replace('エーアイ', 'AI'), en, start: +(pos / 2 / rate).toFixed(3), end: +((pos + v.length) / 2 / rate).toFixed(3) });
   parts.push(v); pos += v.length;
   const silence = Buffer.alloc(Math.round(pause * rate) * 2);
   parts.push(silence); pos += silence.length;
 }
 const outDir = process.env.OUT_DIR;
-if (outDir) writeFileSync(`${outDir}/narration.json`, JSON.stringify({ voice: `ja-JP-Chirp3-HD-${voice}`, speakingRate, lines: timings }, null, 2) + '\n');
+if (outDir) writeFileSync(`${outDir}/narration.json`, JSON.stringify({ voice: gemini ? `${gemini}/${voice}` : `ja-JP-Chirp3-HD-${voice}`, speakingRate, lines: timings }, null, 2) + '\n');
 const data = Buffer.concat(parts);
 const h = Buffer.alloc(44);
 h.write('RIFF', 0); h.writeUInt32LE(36 + data.length, 4); h.write('WAVE', 8);
 h.write('fmt ', 12); h.writeUInt32LE(16, 16); h.writeUInt16LE(1, 20); h.writeUInt16LE(1, 22);
 h.writeUInt32LE(rate, 24); h.writeUInt32LE(rate * 2, 28); h.writeUInt16LE(2, 32); h.writeUInt16LE(16, 34);
 h.write('data', 36); h.writeUInt32LE(data.length, 40);
-const out = outDir ? `${outDir}/narration.wav` : `${repo}/docs/video/samples/google_${voice}_v4.wav`;
+const out = outDir ? `${outDir}/narration.wav` : `${repo}/docs/video/samples/${tag}_v5.wav`;
 writeFileSync(out, Buffer.concat([h, data]));
-console.log(`google_${voice}_v4.wav ${(data.length / 2 / rate).toFixed(1)}s`);
+console.log(`${tag}_v5.wav ${(data.length / 2 / rate).toFixed(1)}s`);
