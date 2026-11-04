@@ -1,0 +1,102 @@
+# 訓練シナリオ：赤ゾーンから手術室への搬送と、病棟からの応援要請が重なる（すべて架空）
+# 参加者は本部。救急外来・手術室・3階東病棟は AI が部署役を担う。
+# 患者の区分はシナリオの作者が書いた架空の値で、AI は判定しない。
+
+id: claude-red-to-or
+title: 赤ゾーンから手術室へ — 応援要請が重なる15分
+hospital: claude
+fictional: true
+durationMinutes: 15
+description: >
+  市内で架空の多数傷病者事故が起き、救急外来（赤ゾーン）に患者が続けて運ばれてくる。
+  手術室への搬送の調整と、3階東病棟からの看護師の応援要請が重なる。
+  途中で同じ番号の手書きタッグが2枚見つかる。
+
+roles:
+  - locationId: er
+    name: 救急外来（赤ゾーン）の看護師リーダー
+    persona: 落ち着いているが忙しい。報告は短く、タッグ番号と特徴を必ず言う。
+  - locationId: or
+    name: 手術室の看護師
+    persona: 慎重。受け入れられる部屋の数を気にしている。
+  - locationId: ward-3e
+    name: 3階東病棟のリーダー
+    persona: 病棟の入院患者の対応に追われていて、少し焦っている。
+
+initial:
+  - locationId: or
+    accepting: true
+    capacity: [{ triage: red, value: 1 }]
+    staff: [{ professionId: nurse, value: 4 }, { professionId: doctor, value: 2 }]
+  - locationId: ward-3e
+    accepting: true
+    staff: [{ professionId: nurse, value: 3 }]
+
+settings:
+  responseDelaySeconds: 15
+  travelMinutes: 2
+  supportDeliveryMinutes: 3
+
+timeline:
+  - type: patientArrives
+    at: "00:20"
+    locationId: er
+    patient: { key: p1, tagNumber: "101", triage: red, sex: male, estimatedAge: 50代, features: 紺の作業着、右腕に包帯 }
+  - type: patientArrives
+    at: "01:00"
+    locationId: er
+    patient: { key: p2, tagNumber: "102", triage: yellow, sex: female, estimatedAge: 70代, features: 杖、灰色のカーディガン }
+  - type: patientArrives
+    at: "01:40"
+    locationId: er
+    patient: { key: p3, tagNumber: "103", triage: red, sex: male, estimatedAge: 30代, features: 黒いジャンパー }
+  - type: locationStatus
+    at: "02:30"
+    locationId: or
+    accepting: true
+    capacity: [{ triage: red, value: 1 }]
+    note: 準備できたのは1室だけ
+  - type: supportNeed
+    at: "03:30"
+    locationId: ward-3e
+    kindId: staff
+    items: [{ professionId: nurse, quantity: 2 }]
+    note: 入院患者の避難準備で手が足りない
+  - type: patientArrives
+    at: "04:30"
+    locationId: er
+    patient: { key: p4, tagNumber: "101", triage: green, sex: female, estimatedAge: 20代, features: 白いパーカー、眼鏡 }
+  - type: notice
+    at: "06:00"
+    reporter: er
+    text: 中央エレベーターが停止。東側のエレベーターを使う必要がある
+  - type: patientArrives
+    at: "09:00"
+    locationId: er
+    patient: { key: p5, tagNumber: "105", triage: yellow, sex: male, estimatedAge: 60代, features: 青い帽子 }
+
+checks:
+  - id: register-red
+    text: 赤の患者（タッグ101・紺の作業着）を登録したか
+    rule: { type: patientRegistered, patientKey: p1 }
+  - id: register-second-red
+    text: 2人目の赤の患者（タッグ103）を登録したか
+    rule: { type: patientRegistered, patientKey: p3 }
+  - id: duplicate-tag
+    text: 同じタッグ番号101の2人を別の患者として登録したか
+    rule: { type: duplicateTagHandled, tagNumber: "101" }
+  - id: transport-ack
+    text: 手術室への搬送の指示に受領確認を取ったか
+    rule: { type: transportAcknowledged, patientKey: p1 }
+  - id: transport-arrived
+    text: タッグ101（紺の作業着）の手術室への到着を記録したか
+    rule: { type: transportArrived, patientKey: p1, toLocationId: or }
+  - id: or-status
+    text: 手術室の受け入れ状況を記録したか
+    rule: { type: locationStatusRecorded, locationId: or }
+  - id: support-assigned
+    text: 3階東病棟の応援要請に5分以内に担当を付けたか
+    rule: { type: supportAssigned, fromLocationId: ward-3e, withinMinutes: 5 }
+  - id: support-completed
+    text: 3階東病棟の応援要請の完了を確認したか
+    rule: { type: supportCompleted, fromLocationId: ward-3e }

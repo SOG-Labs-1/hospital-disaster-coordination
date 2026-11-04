@@ -1,5 +1,7 @@
-import { parse as parseYaml } from 'yaml';
+import { existsSync, readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { parseHospitalConfig } from '../shared/src/config.ts';
+import { parseScenario } from '../shared/src/scenario.ts';
 
 export type YamlValidation = { skipped: boolean; kind: string; errors: string[] };
 
@@ -11,22 +13,15 @@ export function validateYamlFile(relPath: string, text: string): YamlValidation 
     return { skipped: false, kind: '病院設定', errors: r.ok ? [] : r.errors };
   }
   if (path.startsWith('scenarios/')) {
-    // シナリオの本格的なスキーマは訓練モードの実装時に追加する。今は最低限の項目だけ確認する
-    let raw: unknown;
-    try {
-      raw = parseYaml(text);
-    } catch (e) {
-      return { skipped: false, kind: 'シナリオ', errors: [`YAML として読めない: ${(e as Error).message}`] };
-    }
-    const errors: string[] = [];
-    const obj = raw as Record<string, unknown> | null;
-    if (!obj || typeof obj !== 'object' || Array.isArray(obj)) errors.push('最上位はキーと値の組（マップ）にする');
-    else {
-      for (const key of ['id', 'title', 'hospital'])
-        if (typeof obj[key] !== 'string' || obj[key] === '') errors.push(`${key}: 文字列で必ず書く`);
-      if (obj.fictional !== true) errors.push('fictional: true を書く（架空のシナリオであることの明示）');
-    }
-    return { skipped: false, kind: 'シナリオ', errors };
+    // シナリオのスキーマに加え、指している病院設定の場所・区分・職種があるかも確かめる
+    const first = parseScenario(text);
+    if (!first.ok) return { skipped: false, kind: 'シナリオ', errors: first.errors };
+    const configPath = resolve(import.meta.dirname, '..', 'config/hospitals', `${first.scenario.hospital}.yaml`);
+    if (!existsSync(configPath)) return { skipped: false, kind: 'シナリオ', errors: [`hospital「${first.scenario.hospital}」の病院設定がない`] };
+    const config = parseHospitalConfig(readFileSync(configPath, 'utf8'));
+    if (!config.ok) return { skipped: false, kind: 'シナリオ', errors: [`病院設定「${first.scenario.hospital}」に誤りがある`] };
+    const r = parseScenario(text, config.config);
+    return { skipped: false, kind: 'シナリオ', errors: r.ok ? [] : r.errors };
   }
   return { skipped: true, kind: '対象外', errors: [] };
 }
