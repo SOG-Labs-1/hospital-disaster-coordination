@@ -1,6 +1,6 @@
 # 3分版のナレーション原稿（第3案）
 
-更新：2026-11-05（第3案：災害運用モードを、架空の場面を1つ通して見せる形にした）。
+更新：2026-11-05（第3案の追記：訓練モードが Claude API を使っていることが伝わるよう、「AI」を「Claude」と言い、画面にモデル名と仕組みを出す。第3案：災害運用モードを、架空の場面を1つ通して見せる形にした）。
 第2案：利用者の直し（冒頭の言葉、「災害運用モード」、救急外来に限らない登録）を入れ、2つのモード・使い方・端末どうしの同期・推せるポイントが伝わる構成にした。
 声は合成音声（Enceladus の予定）。字幕は日本語と英語。読み上げの速さは「メモ」の長さの項を参照。
 
@@ -40,7 +40,7 @@
 |---|---|---|---|
 | ある地震の日を例に、使い方を見てみましょう。 | Let's walk through one example: the day of an earthquake. | 「例：架空の Claude総合病院(仮)」 | |
 | 端末は、本部や救急外来など、場所ごとのパソコン。ブラウザで開くだけで、ログインはいりません。 | Each location, like headquarters or the ER, has a computer. Just open a browser. No login. | 架空の見取り図に端末の印が灯る。場所を選ぶ画面「このパソコンを置いた場所を選んでください」 | 本部＝院内の災害対策本部。全体の調整をする |
-| 救急外来に、赤のタッグ101の患者が運ばれてきました。 | A patient with red tag 101 arrives at the ER. | 救急外来の端末 | タッグ＝トリアージタッグ。治療の急ぎ具合を色で示す札。赤は最優先。区分を決めるのは医師・看護師で、タシカメは記録するだけ |
+| 救急外来に、赤のタッグ110の患者が運ばれてきました。 | A patient with red tag 110 arrives at the ER. | 救急外来の端末 | タッグ＝トリアージタッグ。治療の急ぎ具合を色で示す札。赤は最優先。区分を決めるのは医師・看護師で、タシカメは記録するだけ |
 | 救急外来で登録すると、本部の画面にも、すぐに出ます。 | Register it in the ER, and it appears on the HQ screen instantly. | 2台の端末を左右に並べる。救急外来で登録→本部の一覧の先頭に出る | |
 | 本部は、手術室への搬送を依頼。手術室が受け入れを了承すると、本部が搬送要員に指示します。 | HQ requests a transfer to the OR. Once the OR accepts, HQ dispatches transport staff. | 本部の搬送のカード。「次にすること」が了承→要員の割り当て→指示と進む | 搬送要員＝患者を運ぶ担当の職員 |
 | 出発、そして到着。記録されるたびに、本部の画面にも、大型モニターの掲示用画面にも、同時に反映されます。 | Departure, then arrival. Each record shows up at once on the HQ screen and the big wall display. | 3画面（救急外来・本部・掲示用画面）を並べ、同じ瞬間に変わる | 掲示用画面＝本部の大型モニター用。操作なしで自動更新 |
@@ -57,18 +57,18 @@
 | 読み上げ | 英語の字幕 | 映像 |
 |---|---|---|
 | そして、同じ画面で、訓練ができます。 | And you can train on the very same screens. | 上部の帯が「◇ 訓練」に変わる。記録は災害運用とは別に保存 |
-| AIが、救急外来や手術室、病棟の役になり、無線で報告してきます。 | AI plays the ER, the operating room and the wards, reporting in over the radio. | 無線の受信箱に報告が次々と届く（e の録画） |
+| Claudeが、救急外来や手術室、病棟の役になり、無線で報告してきます。 | Claude plays the ER, the operating room and the wards, reporting in over the radio. | 無線の受信箱に報告が次々と届く。画面の隅に「部署役：Claude API（claude-sonnet-5-5）」 |
 | 参加者は、それを聞いて、自分で記録し、調整します。 | You listen, record it yourself, and coordinate. | 本部役が入力する手元の画面 |
 | 一人でも、他の部署を相手に、本部の訓練ができます。 | Even alone, you can run an HQ drill against every other department. | |
-| 終わると、実際の状況と自分の記録のずれを、記録を根拠に振り返ります。 | Afterward, review where your records drifted from reality, backed by the log. | 振り返りの画面（要録画） |
+| 終わると、プログラムが記録を照らし合わせ、ずれた所を、Claudeが根拠つきで説明します。 | Afterward, the system checks your records against what really happened, and Claude explains each gap with evidence. | 振り返りの画面。「説明文：Claude／照合と根拠の番号：プログラム」 |
 
 ## 6. 安全のしくみ（2:34–2:50）
 
 | 読み上げ | 英語の字幕 | 映像 |
 |---|---|---|
-| AIが出せるのは、決められた形の提案だけ。反映する前に、必ずプログラムが確かめます。 | AI can only make proposals in a fixed format, and the system checks each one before applying it. | 提案→検証→反映の図 |
-| AIは、診断や治療の判断をしません。災害運用モードでは、AIを使いません。 | AI never makes diagnoses or treatment decisions. Disaster Mode uses no AI at all. | |
-| AIのサービスが止まっても、記録と共有は動き続けます。 | Even if the AI service goes down, recording and sharing keep working. | |
+| Claudeが出せるのは、決められた形の提案だけ。反映する前に、必ずプログラムが確かめます。 | Claude can only make proposals in a fixed format, and the system checks each one before applying it. | 提案→検証→反映の図。「strict tool use（JSON Schema で出力の形を固定）」 |
+| 区分や治療について聞いても、Claudeは「担当の医療者が判断します」と答えます。 | Ask about triage or treatment, and Claude replies that the medical staff will decide. | 訓練中に本部から部署役へ「区分を黄に下げたほうがいい？」と送り、断る返事が届く（API で撮る場合） |
+| 災害運用モードでは、AIを使いません。Claudeのサービスが止まっても、記録と共有は動き続けます。 | Disaster Mode uses no AI at all, so recording and sharing keep working even if Claude is unavailable. | |
 
 ## 7. どの病院でも（2:50–2:56）
 
@@ -80,7 +80,7 @@
 
 | 読み上げ | 英語の字幕 | 映像 |
 |---|---|---|
-| 訓練で確かめたことを、本番でも。タシカメ。 | What you confirm in drills, you use for real. Tashikame. | ツール名、リポジトリの URL、「データはすべて架空です」 |
+| 訓練で確かめたことを、本番でも。タシカメ。 | What you confirm in drills, you use for real. Tashikame. | ツール名、「Claude Code で開発」、リポジトリの URL、「データはすべて架空です」 |
 
 ## 推せるポイント（映像で必ず伝える）
 
@@ -89,7 +89,7 @@
 3. **現場の「分からない」を分けて記録**：未確認とゼロ、頼んだことと起きたこと
 4. **止めない警告と、消えない記録**：急いでいる現場を止めず、訂正も履歴に残す
 5. **誰でも使える画面**：大きな文字と読みやすい書体（BIZ UDゴシック）、48px以上のボタン、色だけに頼らない表示（文字と記号を併用）。災害時に不慣れな職員・高齢の職員の視点で点検した
-6. **AIは一人訓練の相手**：他の部署の役を AI が担う。AI は提案だけで、医療判断はしない
+6. **Claude は一人訓練の相手**：他の部署の役を Claude API が担う（strict tool use で提案の形を固定し、プログラムが検証）。振り返りの説明文も Claude。医療判断はしない
 
 ## 画面の言葉との照合（2026-11-05 時点のソフト）
 

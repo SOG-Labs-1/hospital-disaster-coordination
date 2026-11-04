@@ -1,7 +1,7 @@
 // 使い方: OUT_DIR=video/public node video/scripts/narration.mjs <声の名前 例 Charon> [speakingRate]
 // APIキーはリポジトリの .env の GOOGLE_TTS_API_KEY から読む（表示しない）
 // 文ごとに音声を作り、決めた長さの無音をはさんで1本の WAV にする
-import { writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 
 import { fileURLToPath } from 'node:url';
 const repo = fileURLToPath(new URL('../..', import.meta.url)).replace(/\/$/, '');
@@ -63,21 +63,41 @@ function pcm(wav) {
 const parts = [];
 const timings = [];
 let pos = 0;
-for (const [t, en, pause] of lines) {
+// SCRIPT_MD=原稿の md を渡すと、その表から読み上げを作る（3分版。原稿を1か所で直せば声と字幕が変わる）
+// 表の1列目が読み上げ（字幕の日本語）、2列目が英語の字幕。「## 」の見出しごとに場面（section）を分け、場面の切れ目は長めの間にする
+const READ = [['BCP', 'ビーシーピー'], ['Claude', 'クロード'], ['AI', 'エーアイ'], ['ID', 'アイディー']];
+const spoken = (t) => READ.reduce((x, [a, b]) => x.replaceAll(a, b), t);
+let script = lines.map(([t, en, pause]) => ({ say: t, text: t.replace('エーアイ', 'AI'), en, pause, section: 0 }));
+if (process.env.SCRIPT_MD) {
+  const md = readFileSync(process.env.SCRIPT_MD, 'utf8');
+  const body = md.slice(0, md.indexOf('## 推せるポイント'));
+  script = [];
+  let section = -1;
+  for (const line of body.split('\n')) {
+    if (/^## \d/.test(line)) { section++; continue; }
+    if (section < 0 || !line.startsWith('| ') || line.startsWith('| 読み上げ') || line.startsWith('|---')) continue;
+    const [ja, en] = line.split('|').slice(1, 3).map((x) => x.trim());
+    if (script.length && script.at(-1).section !== section) script.at(-1).pause = 0.9;
+    script.push({ say: spoken(ja), text: ja, en, pause: 0.32, section });
+  }
+  script.at(-1).pause = 0.5;
+}
+for (const { say: t, text, en, pause, section } of script) {
   const v = trim(Buffer.from(pcm(await synth(t))));
-  timings.push({ text: t.replace('エーアイ', 'AI'), en, start: +(pos / 2 / rate).toFixed(3), end: +((pos + v.length) / 2 / rate).toFixed(3) });
+  timings.push({ text, en, section, start: +(pos / 2 / rate).toFixed(3), end: +((pos + v.length) / 2 / rate).toFixed(3) });
   parts.push(v); pos += v.length;
   const silence = Buffer.alloc(Math.round(pause * rate) * 2);
   parts.push(silence); pos += silence.length;
 }
 const outDir = process.env.OUT_DIR;
-if (outDir) writeFileSync(`${outDir}/narration.json`, JSON.stringify({ voice: gemini ? `${gemini}/${voice}` : `ja-JP-Chirp3-HD-${voice}`, speakingRate, lines: timings }, null, 2) + '\n');
+const outName = process.env.OUT_NAME ?? 'narration';
+if (outDir) writeFileSync(`${outDir}/${outName}.json`, JSON.stringify({ voice: gemini ? `${gemini}/${voice}` : `ja-JP-Chirp3-HD-${voice}`, speakingRate, lines: timings }, null, 2) + '\n');
 const data = Buffer.concat(parts);
 const h = Buffer.alloc(44);
 h.write('RIFF', 0); h.writeUInt32LE(36 + data.length, 4); h.write('WAVE', 8);
 h.write('fmt ', 12); h.writeUInt32LE(16, 16); h.writeUInt16LE(1, 20); h.writeUInt16LE(1, 22);
 h.writeUInt32LE(rate, 24); h.writeUInt32LE(rate * 2, 28); h.writeUInt16LE(2, 32); h.writeUInt16LE(16, 34);
 h.write('data', 36); h.writeUInt32LE(data.length, 40);
-const out = outDir ? `${outDir}/narration.wav` : `${repo}/docs/video/samples/${tag}_v5.wav`;
+const out = outDir ? `${outDir}/${outName}.wav` : `${repo}/docs/video/samples/${tag}_v5.wav`;
 writeFileSync(out, Buffer.concat([h, data]));
 console.log(`${tag}_v5.wav ${(data.length / 2 / rate).toFixed(1)}s`);

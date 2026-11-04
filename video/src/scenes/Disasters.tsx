@@ -1,7 +1,7 @@
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig, random } from 'remotion';
 import { clamp, ease, Kicker } from '../common';
 import { dots, project } from '../japan';
-import { at, c, fontFamily } from '../theme';
+import { c, fontFamily, useTiming } from '../theme';
 
 const K = 40;
 const MAP_X = 330;
@@ -10,6 +10,7 @@ const points = dots(0.32);
 
 /** 場面1：自然災害が頻発する国で ／ 災害のたび、病院に患者が押し寄せる */
 export const Disasters = ({ start }: { start: number }) => {
+  const { at } = useTiming();
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const t = frame / fps + start;
@@ -51,6 +52,7 @@ export const Disasters = ({ start }: { start: number }) => {
 };
 
 const Quake = ({ t }: { t: number }) => {
+  const { at } = useTiming();
   const { x, y } = project(141.6, 38.4, K);
   const s = at(0);
   return (
@@ -66,6 +68,7 @@ const Quake = ({ t }: { t: number }) => {
 };
 
 const Rain = ({ t }: { t: number }) => {
+  const { at } = useTiming();
   const { x, y } = project(130.7, 32.9, K);
   const s = at(0) + 0.55;
   if (t < s) return null;
@@ -81,6 +84,7 @@ const Rain = ({ t }: { t: number }) => {
 };
 
 const Typhoon = ({ t }: { t: number }) => {
+  const { at } = useTiming();
   const s = at(0) + 1.1;
   if (t < s) return null;
   const p = interpolate(t, [s, s + 4], [0, 1], clamp);
@@ -99,6 +103,7 @@ const Typhoon = ({ t }: { t: number }) => {
 
 /** 病院の輪郭と、流れ込む患者の点 */
 const Hospital = ({ t }: { t: number }) => {
+  const { at } = useTiming();
   const s = at(1) - 0.2;
   const show = interpolate(t, [s, s + 0.6], [0, 1], { ...clamp, easing: ease });
   if (show <= 0) return null;

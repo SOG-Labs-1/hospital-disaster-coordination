@@ -1,6 +1,6 @@
 import { AbsoluteFill, interpolate, random, useCurrentFrame, useVideoConfig } from 'remotion';
 import { clamp, ease, Kicker } from '../common';
-import { at, c, fontFamily } from '../theme';
+import { c, fontFamily, useTiming } from '../theme';
 
 // 架空の院内の見取り図（実在の病院の配置ではない）
 const rooms = [
@@ -21,6 +21,7 @@ const items = Array.from({ length: 46 }, (_, i) => {
 
 /** 場面2：患者は、人は、物は、どこにいるのか。院内の状況は、つかみきれない。 */
 export const FloorPlan = ({ start }: { start: number }) => {
+  const { at } = useTiming();
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const t = frame / fps + start;

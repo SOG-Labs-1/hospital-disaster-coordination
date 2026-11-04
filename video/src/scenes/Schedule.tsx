@@ -1,6 +1,6 @@
 import { AbsoluteFill, interpolate, random, useCurrentFrame, useVideoConfig } from 'remotion';
 import { clamp, Kicker } from '../common';
-import { at, c, fontFamily } from '../theme';
+import { c, fontFamily, useTiming } from '../theme';
 
 const days = ['月', '火', '水', '木', '金', '土', '日'];
 const rows = 5;
@@ -9,6 +9,7 @@ const TRAINING = { r: 2, d: 4 };
 
 /** 場面3：日々の業務に追われ、訓練もままならない。 */
 export const Schedule = ({ start }: { start: number }) => {
+  const { at } = useTiming();
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const t = frame / fps + start;

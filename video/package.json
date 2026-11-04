@@ -7,7 +7,9 @@
     "studio": "remotion studio",
     "render": "remotion render Intro30 out/intro-30s.mp4",
     "narration": "OUT_DIR=public node scripts/narration.mjs Enceladus 1.08",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "narration:3min": "OUT_DIR=public OUT_NAME=narration-3min SCRIPT_MD=../docs/video/3min-script.md node scripts/narration.mjs Enceladus 1.12",
+    "render:3min": "remotion render Intro3min out/intro-3min.mp4"
   },
   "dependencies": {
     "@remotion/cli": "4.0.537",

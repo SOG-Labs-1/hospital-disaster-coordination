@@ -1,0 +1,230 @@
+{
+  "voice": "ja-JP-Chirp3-HD-Enceladus",
+  "speakingRate": 1.12,
+  "lines": [
+    {
+      "text": "災害の多い日本。私たちは、数多くの被災を乗り越えてきました。",
+      "en": "Japan is a land of disasters, and we have come through many of them.",
+      "section": 0,
+      "start": 0,
+      "end": 5.094
+    },
+    {
+      "text": "大規模災害に備え、地域を支える病院は、BCPをつくり、訓練を重ねています。",
+      "en": "To prepare for major disasters, the hospitals that support each community write continuity plans (BCP) and hold drills.",
+      "section": 0,
+      "start": 5.414,
+      "end": 11.704
+    },
+    {
+      "text": "それでも、訓練のたびに残る課題があります。",
+      "en": "Yet one problem remains after every drill.",
+      "section": 0,
+      "start": 12.024,
+      "end": 14.732
+    },
+    {
+      "text": "それは、情報の伝達です。",
+      "en": "Communication.",
+      "section": 0,
+      "start": 15.052,
+      "end": 17.059
+    },
+    {
+      "text": "私は、災害対応に深く関わる病院で、看護師として働いています。",
+      "en": "I work as a nurse at a hospital deeply involved in disaster response.",
+      "section": 1,
+      "start": 17.959,
+      "end": 22.77
+    },
+    {
+      "text": "訓練では、ホワイトボードと無線で、患者や人の動きを追います。",
+      "en": "In drills, we track patients and staff with whiteboards and radios.",
+      "section": 1,
+      "start": 23.09,
+      "end": 27.501
+    },
+    {
+      "text": "患者はいまどこにいるのか。頼んだ搬送は、本当に届いたのか。",
+      "en": "Where is each patient now? Did the transfer we asked for actually happen?",
+      "section": 1,
+      "start": 27.821,
+      "end": 32.289
+    },
+    {
+      "text": "報告がないのか、ゼロなのかも、分からなくなります。",
+      "en": "We can't even tell \"no report\" from \"zero.\"",
+      "section": 1,
+      "start": 32.609,
+      "end": 36.11
+    },
+    {
+      "text": "そして、日々の業務の中で、大きな訓練は年に何度もできません。",
+      "en": "And with daily work, large drills can't happen often.",
+      "section": 1,
+      "start": 36.43,
+      "end": 41.194
+    },
+    {
+      "text": "タシカメは、院内の災害対応を、確かめながら進めるための調整ツールです。",
+      "en": "Tashikame is a coordination tool for confirming every step of a hospital's disaster response.",
+      "section": 2,
+      "start": 42.094,
+      "end": 47.463
+    },
+    {
+      "text": "モードは二つ。災害のときに使う「災害運用モード」と、ふだんの「訓練モード」。どちらも、同じ画面です。",
+      "en": "It has two modes: Disaster Mode for real emergencies, and Training Mode for everyday practice. Both use the same screens.",
+      "section": 2,
+      "start": 47.783,
+      "end": 55.787
+    },
+    {
+      "text": "ある地震の日を例に、使い方を見てみましょう。",
+      "en": "Let's walk through one example: the day of an earthquake.",
+      "section": 3,
+      "start": 56.687,
+      "end": 59.668
+    },
+    {
+      "text": "端末は、本部や救急外来など、場所ごとのパソコン。ブラウザで開くだけで、ログインはいりません。",
+      "en": "Each location, like headquarters or the ER, has a computer. Just open a browser. No login.",
+      "section": 3,
+      "start": 59.988,
+      "end": 66.748
+    },
+    {
+      "text": "救急外来に、赤のタッグ110の患者が運ばれてきました。",
+      "en": "A patient with red tag 110 arrives at the ER.",
+      "section": 3,
+      "start": 67.068,
+      "end": 70.764
+    },
+    {
+      "text": "救急外来で登録すると、本部の画面にも、すぐに出ます。",
+      "en": "Register it in the ER, and it appears on the HQ screen instantly.",
+      "section": 3,
+      "start": 71.084,
+      "end": 75.267
+    },
+    {
+      "text": "本部は、手術室への搬送を依頼。手術室が受け入れを了承すると、本部が搬送要員に指示します。",
+      "en": "HQ requests a transfer to the OR. Once the OR accepts, HQ dispatches transport staff.",
+      "section": 3,
+      "start": 75.587,
+      "end": 83.4
+    },
+    {
+      "text": "出発、そして到着。記録されるたびに、本部の画面にも、大型モニターの掲示用画面にも、同時に反映されます。",
+      "en": "Departure, then arrival. Each record shows up at once on the HQ screen and the big wall display.",
+      "section": 3,
+      "start": 83.72,
+      "end": 92.005
+    },
+    {
+      "text": "頼んだことと、実際に起きたことは、分けて残ります。まだ記録のない段階も、ひと目で分かります。",
+      "en": "What was requested and what actually happened are kept separate. Missing steps are easy to spot.",
+      "section": 3,
+      "start": 92.325,
+      "end": 98.798
+    },
+    {
+      "text": "報告のない場所の人数は、ゼロではなく「未確認」と表示します。",
+      "en": "Counts from places that haven't reported show as \"unconfirmed,\" not zero.",
+      "section": 3,
+      "start": 99.118,
+      "end": 103.314
+    },
+    {
+      "text": "同じタッグ番号の登録には警告を出しますが、止めません。理由を残して、先へ進めます。",
+      "en": "Duplicate tag numbers raise a warning, not a block. Record a reason and keep going.",
+      "section": 3,
+      "start": 103.634,
+      "end": 110.179
+    },
+    {
+      "text": "災害のときは、慣れない人も使います。文字は大きく、状態は色だけでなく、文字と記号でも示します。",
+      "en": "In a disaster, people new to the system use it too. So text is large, and status uses words and symbols, not color alone.",
+      "section": 3,
+      "start": 110.499,
+      "end": 117.702
+    },
+    {
+      "text": "紙に切り替えるときは、白黒で読める印刷も。",
+      "en": "And for switching to paper, black-and-white printouts.",
+      "section": 3,
+      "start": 118.022,
+      "end": 121.087
+    },
+    {
+      "text": "そして、同じ画面で、訓練ができます。",
+      "en": "And you can train on the very same screens.",
+      "section": 4,
+      "start": 121.987,
+      "end": 124.65
+    },
+    {
+      "text": "Claudeが、救急外来や手術室、病棟の役になり、無線で報告してきます。",
+      "en": "Claude plays the ER, the operating room and the wards, reporting in over the radio.",
+      "section": 4,
+      "start": 124.971,
+      "end": 130.853
+    },
+    {
+      "text": "参加者は、それを聞いて、自分で記録し、調整します。",
+      "en": "You listen, record it yourself, and coordinate.",
+      "section": 4,
+      "start": 131.173,
+      "end": 135.521
+    },
+    {
+      "text": "一人でも、他の部署を相手に、本部の訓練ができます。",
+      "en": "Even alone, you can run an HQ drill against every other department.",
+      "section": 4,
+      "start": 135.841,
+      "end": 139.711
+    },
+    {
+      "text": "終わると、プログラムが記録を照らし合わせ、ずれた所を、Claudeが根拠つきで説明します。",
+      "en": "Afterward, the system checks your records against what really happened, and Claude explains each gap with evidence.",
+      "section": 4,
+      "start": 140.031,
+      "end": 146.179
+    },
+    {
+      "text": "Claudeが出せるのは、決められた形の提案だけ。反映する前に、必ずプログラムが確かめます。",
+      "en": "Claude can only make proposals in a fixed format, and the system checks each one before applying it.",
+      "section": 5,
+      "start": 147.079,
+      "end": 153.548
+    },
+    {
+      "text": "区分や治療について聞いても、Claudeは「担当の医療者が判断します」と答えます。",
+      "en": "Ask about triage or treatment, and Claude replies that the medical staff will decide.",
+      "section": 5,
+      "start": 153.868,
+      "end": 159.438
+    },
+    {
+      "text": "災害運用モードでは、AIを使いません。Claudeのサービスが止まっても、記録と共有は動き続けます。",
+      "en": "Disaster Mode uses no AI at all, so recording and sharing keep working even if Claude is unavailable.",
+      "section": 5,
+      "start": 159.758,
+      "end": 166.665
+    },
+    {
+      "text": "場所や役割は、病院ごとに設定できます。総合病院から、中規模病院まで。",
+      "en": "Locations and roles are set per hospital, from general hospitals to mid-sized ones.",
+      "section": 6,
+      "start": 167.565,
+      "end": 173.027
+    },
+    {
+      "text": "訓練で確かめたことを、本番でも。タシカメ。",
+      "en": "What you confirm in drills, you use for real. Tashikame.",
+      "section": 7,
+      "start": 173.927,
+      "end": 177.148
+    }
+  ]
+}

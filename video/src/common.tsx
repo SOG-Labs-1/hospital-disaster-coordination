@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { AbsoluteFill, Easing, interpolate, useCurrentFrame, useVideoConfig } from 'remotion';
-import { at, c, endAt, fontFamily, lines } from './theme';
+import { AUDIO_DELAY, c, fontFamily, lines as lines30 } from './theme';
 
 const clamp = { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' } as const;
 export const ease = Easing.bezier(0.16, 1, 0.3, 1);
@@ -60,10 +60,13 @@ export const Hud = () => {
 };
 
 /** ナレーションと同じ字幕（画面に焼き込む） */
-export const Subtitles = () => {
+type SubLine = { text: string; en?: string; start: number; end: number };
+export const Subtitles = ({ lines = lines30 as SubLine[], delay = AUDIO_DELAY }: { lines?: SubLine[]; delay?: number }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const t = frame / fps;
+  const at = (n: number) => lines[n]!.start + delay;
+  const endAt = (n: number) => lines[n]!.end + delay;
   const i = lines.findIndex((_, n) => t >= at(n) - 0.08 && t < endAt(n) + 0.4);
   if (i < 0) return null;
   const local = t - (at(i) - 0.08);
@@ -84,10 +87,8 @@ export const Subtitles = () => {
           translate: `0px ${interpolate(local, [0, 0.3], [12, 0], { ...clamp, easing: ease })}px`,
         }}
       >
-        <div style={{ fontSize: 44, fontWeight: 700, color: c.text, letterSpacing: 2 }}>{lines[i]!.text}</div>
-        {'en' in lines[i]! && (
-          <div style={{ fontFamily: `'Helvetica Neue', Arial, sans-serif`, fontSize: 30, color: '#c9d6e8', letterSpacing: 0.5 }}>{(lines[i] as { en: string }).en}</div>
-        )}
+        <div style={{ fontSize: lines[i]!.text.length > 34 ? 38 : 44, fontWeight: 700, color: c.text, letterSpacing: 2, maxWidth: 1600, textAlign: 'center', lineHeight: 1.35 }}>{lines[i]!.text}</div>
+        {lines[i]!.en && <div style={{ fontFamily: `'Helvetica Neue', Arial, sans-serif`, fontSize: 30, color: '#c9d6e8', letterSpacing: 0.5 }}>{lines[i]!.en}</div>}
       </div>
     </AbsoluteFill>
   );

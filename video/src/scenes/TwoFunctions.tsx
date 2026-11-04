@@ -2,13 +2,14 @@ import type { ReactNode } from 'react';
 import { Video } from '@remotion/media';
 import { AbsoluteFill, getStaticFiles, interpolate, staticFile, useCurrentFrame, useVideoConfig } from 'remotion';
 import { clamp, ease } from '../common';
-import { at, c, fontFamily } from '../theme';
+import { c, fontFamily, useTiming } from '../theme';
 
 // 画面の録画（video/public/captures/）があれば使い、なければ画面を模した図で代える
 const capture = (name: string) => getStaticFiles().find((f) => f.name === `captures/${name}`);
 
 /** 場面4：タシカメ。災害時の院内調整と、AIと行う、平常時の訓練。 */
-export const TwoFunctions = ({ start }: { start: number }) => {
+export const TwoFunctions = ({ start, heading = '― 2つの機能 ―', liveLabel = '災害運用', trainingLabel = '訓練' }: { start: number; heading?: string; liveLabel?: string; trainingLabel?: string }) => {
+  const { at } = useTiming();
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const t = frame / fps + start;
@@ -29,16 +30,16 @@ export const TwoFunctions = ({ start }: { start: number }) => {
       </AbsoluteFill>
 
       <AbsoluteFill style={{ flexDirection: 'row', gap: 40, padding: '250px 90px 0px', opacity: up }}>
-        <Panel label="災害運用" sub="災害時の院内調整" from={split} t={t} accent={c.accent}>
+        <Panel label={liveLabel} sub="災害時の院内調整" from={split} t={t} accent={c.accent}>
           {live ? <Video src={staticFile('captures/a-register.webm')} muted style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'left top' }} /> : <LiveMock t={t - split} />}
         </Panel>
-        <Panel label="訓練" sub="AIと行う平常時の訓練" from={split + 0.9} t={t} accent={c.warn} dashed>
+        <Panel label={trainingLabel} sub="AIと行う平常時の訓練" from={split + 0.9} t={t} accent={c.warn} dashed>
           {training ? <Video src={staticFile('captures/e-training-radio.webm')} muted style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'left top' }} /> : <TrainingMock t={t - split - 0.9} />}
         </Panel>
       </AbsoluteFill>
 
       <AbsoluteFill style={{ top: 186, alignItems: 'center', opacity: interpolate(t, [split + 0.2, split + 0.6], [0, 1], clamp) }}>
-        <div style={{ fontSize: 24, color: c.sub, letterSpacing: 10 }}>― 2つの機能 ―</div>
+        <div style={{ fontSize: 24, color: c.sub, letterSpacing: 10 }}>{heading}</div>
       </AbsoluteFill>
       <AbsoluteFill style={{ top: 812, left: 1030, opacity: interpolate(t, [split + 2.2, split + 2.6], [0, 1], clamp) }}>
         <div style={{ fontSize: 24, color: c.warn, letterSpacing: 2, backgroundColor: 'rgba(7,13,24,0.85)', padding: '6px 14px', border: `2px dashed ${c.warn}`, alignSelf: 'flex-start' }}>※ AIは提案のみ。医療判断はしない</div>
@@ -48,6 +49,7 @@ export const TwoFunctions = ({ start }: { start: number }) => {
 };
 
 const Panel = ({ label, sub, from, t, accent, dashed, children }: { label: string; sub: string; from: number; t: number; accent: string; dashed?: boolean; children: ReactNode }) => {
+  const { at } = useTiming();
   const p = interpolate(t, [from, from + 0.6], [0, 1], { ...clamp, easing: ease });
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 16, opacity: p, translate: `0px ${(1 - p) * 40}px` }}>

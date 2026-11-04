@@ -1,6 +1,6 @@
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from 'remotion';
 import { clamp, ease } from '../common';
-import { at, c, fontFamily } from '../theme';
+import { c, fontFamily, useTiming } from '../theme';
 
 // 大きさの違う病院の輪郭（架空）。どれにも同じ画面が入る
 const buildings = [
@@ -11,6 +11,7 @@ const buildings = [
 
 /** 場面5：総合病院から、中規模病院まで。安全で効率的な災害対応を、実現する。 */
 export const Closing = ({ start }: { start: number }) => {
+  const { at } = useTiming();
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const t = frame / fps + start;

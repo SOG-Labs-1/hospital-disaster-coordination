@@ -1,4 +1,5 @@
 import { loadFont } from '@remotion/google-fonts/BIZUDGothic';
+import { createContext, useContext } from 'react';
 import narration from '../public/narration.json';
 
 // BIZ UDゴシック（SIL OFL）。アプリ本体と同じ書体
@@ -28,3 +29,11 @@ export const c = {
   yellow: '#ffd23f',
   green: '#3fa34d',
 };
+
+/** 場面が使うナレーションの時刻。30秒版の時刻が既定。3分版は TimingContext で差し替える（場面の行番号を3分版の行に読み替える） */
+export interface Timing {
+  at: (n: number) => number;
+  endAt: (n: number) => number;
+}
+export const TimingContext = createContext<Timing>({ at, endAt });
+export const useTiming = () => useContext(TimingContext);
