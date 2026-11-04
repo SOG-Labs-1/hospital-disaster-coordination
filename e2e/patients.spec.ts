@@ -50,11 +50,16 @@ test('同じタッグ番号は警告し、理由を記録すれば登録でき�
   await register(hq, { tag: '101', triage: '黄', location: '外来ホール', features: '赤い帽子' });
   const dialog = hq.getByRole('dialog', { name: '確認してください' });
   await expect(dialog).toContainText('同じタッグ番号「101」の患者がすでにいます（P-001）');
-  await expect(dialog.getByRole('button', { name: '既存の患者 P-001 を開く' })).toBeVisible();
+  // 同じ人か判断できるよう、既存の患者の要点が警告画面に出る
+  const existing = dialog.getByTestId('existing-P-001');
+  await expect(existing).toContainText('救急外来');
+  await expect(existing).toContainText('紺の上着、眼鏡');
+  await expect(existing.getByRole('button', { name: '同じ患者なので P-001 を開く（記録しない）' })).toBeVisible();
   await hq.screenshot({ path: 'test-results/hq-duplicate-warning.png' });
 
-  const confirm = dialog.getByRole('button', { name: '理由を記録して実行する' });
+  const confirm = dialog.getByRole('button', { name: '別の患者として登録する' });
   await expect(confirm).toBeDisabled();
+  await expect(dialog).toContainText('理由を1つ選ぶと押せます。');
   await dialog.getByLabel('別の患者であることを確認した').check();
   await confirm.click();
 
@@ -82,4 +87,59 @@ test('訓練モードは実運用と記録が分かれ、常に「訓練」と�
   await expect(page.getByTestId('mode-badge')).toHaveText(/訓練/);
   await expect(page).toHaveTitle(/【訓練】/);
   await expect(page.getByTestId('patient-count')).toHaveText('0人');
+});
+
+test('区分の変更は「元に戻す」で取り消せ、取り消しも記録に残る', async ({ browser }) => {
+  const hq = await openTerminal(browser, 'hq', '青木 はるか');
+  const row = hq.getByTestId('patient-P-001');
+  await expect(row.locator('.patient-triage')).toContainText('黄'); // 前のテストで黄に変えた
+  await row.getByRole('button', { name: '区分を変える' }).click();
+  await row.getByRole('group', { name: 'P-001 の区分を変える' }).getByRole('button', { name: /黒/ }).click();
+  await expect(hq.getByTestId('notice')).toContainText('P-001 の区分を');
+  await expect(row.locator('.patient-triage')).toContainText('黒');
+
+  await hq.getByTestId('notice').getByRole('button', { name: '元に戻す' }).click();
+  await expect(hq.getByTestId('notice')).toContainText('戻しました');
+  await expect(row.locator('.patient-triage')).toContainText('黄');
+  await expect(row.locator('.patient-triage')).not.toContainText('黒');
+  await row.getByText(/区分の履歴/).click();
+  await expect(row.locator('.history li.history-retracted')).toContainText('取り消し');
+});
+
+test('「同じ患者なので開く」を選ぶと記録せず、入力内容が残ることを知らせる', async ({ browser }) => {
+  const hq = await openTerminal(browser, 'hq', '青木 はるか');
+  await register(hq, { tag: '101', triage: '緑', location: '講堂', features: '白いシャツ' });
+  await hq.getByRole('dialog').getByRole('button', { name: /P-001 を開く/ }).click();
+  await expect(hq.getByRole('dialog')).toHaveCount(0);
+  await expect(hq.getByTestId('notice')).toContainText('記録はしていません');
+  await expect(hq.getByTestId('patient-P-001')).toHaveClass(/is-highlighted/);
+  await expect(hq.getByLabel('タッグ番号')).toHaveValue('101');
+  await expect(hq.getByTestId('patient-count')).toHaveText('2人');
+});
+
+test('本部の端末で所在が未選択なら、登録できない理由を出す', async ({ browser }) => {
+  const hq = await openTerminal(browser, 'hq', '青木 はるか');
+  const form = hq.getByRole('form', { name: '患者を登録する' });
+  await expect(form.getByRole('button', { name: '登録する' })).toBeDisabled();
+  await expect(form).toContainText('所在（いま患者がいる場所）を選ぶと登録できます');
+});
+
+test('絞り込んだまま印刷しても全員が出る', async ({ browser }) => {
+  const hq = await openTerminal(browser, 'hq', '青木 はるか');
+  await hq.getByRole('group', { name: '区分で絞り込む' }).getByRole('button', { name: /赤/ }).click();
+  const rows = hq.getByTestId('patient-list').locator('li.patient');
+  await expect(rows.filter({ visible: true })).toHaveCount(0);
+  await hq.emulateMedia({ media: 'print' });
+  await expect(rows.filter({ visible: true })).toHaveCount(2);
+  await expect(hq.locator('.print-header')).toContainText('出力');
+  await hq.screenshot({ path: 'test-results/print-filtered.png', fullPage: true });
+});
+
+test('mode の指定が正しくなければ記録を開かず、選び直させる', async ({ browser }) => {
+  const page = await (await browser.newContext()).newPage();
+  await page.goto('/?terminal=hq&mode=Training');
+  await expect(page.getByRole('heading', { name: '実運用か訓練かを選んでください' })).toBeVisible();
+  await expect(page.getByTestId('mode-badge')).toHaveCount(0);
+  await page.getByRole('button', { name: /訓練で開く/ }).click();
+  await expect(page.getByTestId('mode-badge')).toHaveText(/訓練/);
 });

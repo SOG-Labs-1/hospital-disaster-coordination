@@ -1,7 +1,9 @@
-export function formatTime(iso: string | Date | null | undefined): string {
+/** 時刻。今日でなければ日付も付ける（日をまたいだ記録を取り違えないように） */
+export function formatTime(iso: string | Date | null | undefined, now = new Date()): string {
   if (!iso) return '—';
   const d = typeof iso === 'string' ? new Date(iso) : iso;
-  return d.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const time = d.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  return d.toDateString() === now.toDateString() ? time : `${d.getMonth() + 1}/${d.getDate()} ${time}`;
 }
 
 export function formatDateTime(iso: string | Date): string {

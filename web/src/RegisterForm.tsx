@@ -60,7 +60,7 @@ export function RegisterForm(props: { config: HospitalConfig; terminal: string; 
         meta: { enteredBy, terminal, reportedBy, observedAt: timeInputToIso(form.observedTime) },
         override,
       }),
-      { doneText: '{id} を登録しました' },
+      { doneText: '{id} を登録しました', overrideLabel: '別の患者として登録する' },
     );
     setBusy(false);
     if (result === 'accepted') setForm({ ...empty, locationId: form.locationId, reporterLocationId: form.reporterLocationId });
@@ -173,6 +173,7 @@ export function RegisterForm(props: { config: HospitalConfig; terminal: string; 
       </details>
 
       {!enteredBy && <p className="inline-alert">⚠ 先に、画面上の一覧から入力者を選んでください。</p>}
+      {enteredBy && !form.locationId && <p className="inline-alert">⚠ 所在（いま患者がいる場所）を選ぶと登録できます。</p>}
       <button type="submit" className="btn btn-primary btn-wide" disabled={!canSubmit}>
         {busy ? '送信中…' : '登録する'}
       </button>

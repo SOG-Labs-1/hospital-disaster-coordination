@@ -5,7 +5,7 @@ export function TriageBadge({ config, triage, size = 'normal' }: { config: Hospi
   const t = config.triageCategories.find((c) => c.id === triage);
   if (!t) {
     return (
-      <span className={`triage triage-none triage-${size}`} data-print-border="dotted">
+      <span className={`triage triage-none triage-${size}`} data-print-border="none">
         <span aria-hidden="true">？</span> 未判定
       </span>
     );

@@ -18,8 +18,18 @@ function safeSet(key: string, value: string | null) {
   }
 }
 
-export function readMode(): Mode {
-  return new URLSearchParams(location.search).get('mode') === 'training' ? 'training' : 'live';
+/** URL の ?mode=。省略時は実運用。知らない値は null（黙って実運用にしない） */
+export function readMode(): Mode | null {
+  const value = new URLSearchParams(location.search).get('mode');
+  if (value === null || value === 'live') return 'live';
+  if (value === 'training') return 'training';
+  return null;
+}
+
+export function setModeInUrl(mode: Mode) {
+  const params = new URLSearchParams(location.search);
+  params.set('mode', mode);
+  location.search = params.toString();
 }
 
 /** URL の ?terminal= を優先し、なければこのブラウザに保存した値 */

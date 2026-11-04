@@ -15,7 +15,8 @@ interface Props {
 export function PatientList({ config, state, terminal, enteredBy, now }: Props) {
   const patients = activePatients(state);
   const [filter, setFilter] = useState<string>('all');
-  const shown = filter === 'all' ? patients : patients.filter((p) => (p.triage ?? 'none') === filter);
+  const matches = (p: PatientView) => filter === 'all' || (p.triage ?? 'none') === filter;
+  const shownCount = patients.filter(matches).length;
   const count = (id: string | null) => patients.filter((p) => p.triage === id).length;
 
   return (
@@ -44,21 +45,24 @@ export function PatientList({ config, state, terminal, enteredBy, now }: Props) 
         </button>
       </div>
 
-      {shown.length === 0 ? (
-        <p className="empty">{patients.length === 0 ? 'まだ患者は登録されていません。左の「患者を登録する」から登録します。' : 'この区分の患者はいません。'}</p>
-      ) : (
+      {patients.length === 0 && <p className="empty">まだ患者は登録されていません。左の「患者を登録する」から登録します。</p>}
+      {patients.length > 0 && shownCount === 0 && <p className="empty no-print">この区分の患者はいません。</p>}
+      {patients.length > 0 && (
+        // 印刷は絞り込みにかかわらず常に全員を出す（紙が名簿として使われても患者が欠けないように）
         <ol className="patient-list" data-testid="patient-list">
-          {[...shown].reverse().map((p) => (
-            <PatientRow key={p.id} patient={p} config={config} state={state} terminal={terminal} enteredBy={enteredBy} now={now} />
+          {[...patients].reverse().map((p) => (
+            <PatientRow key={p.id} patient={p} hiddenOnScreen={!matches(p)} config={config} state={state} terminal={terminal} enteredBy={enteredBy} now={now} />
           ))}
         </ol>
       )}
+      {filter !== 'all' && shownCount > 0 && <p className="hint no-print">絞り込み中です。印刷すると全員（{patients.length}人）が出ます。</p>}
+      {!enteredBy && patients.length > 0 && <p className="hint no-print">入力者を選ぶと、区分の変更やメモの修正ができます。</p>}
     </section>
   );
 }
 
-function PatientRow({ patient: p, config, state, terminal, enteredBy, now }: { patient: PatientView } & Props) {
-  const { run, highlight, setHighlight } = useCommands();
+function PatientRow({ patient: p, hiddenOnScreen, config, state, terminal, enteredBy, now }: { patient: PatientView; hiddenOnScreen: boolean } & Props) {
+  const { run, highlight, setHighlight, showNotice } = useCommands();
   const [editing, setEditing] = useState<'none' | 'triage' | 'note'>('none');
   const ref = useRef<HTMLLIElement>(null);
   const location = config.locations.find((l) => l.id === p.locationId)?.name ?? p.locationId;
@@ -78,17 +82,52 @@ function PatientRow({ patient: p, config, state, terminal, enteredBy, now }: { p
   const expectedVersion = versionOf(state, { kind: 'patient', id: p.id });
   const meta = { enteredBy: enteredBy ?? '', terminal, reportedBy: null };
 
+  const triageLabel = (id: string | null) => {
+    const t = config.triageCategories.find((c) => c.id === id);
+    return t ? `${t.symbol}${t.label}` : '？未判定';
+  };
+
   async function changeTriage(triage: string | null) {
-    const r = await run(() => ({
-      command: { type: 'ChangePatientTriage', patientId: p.id, payload: { triage } },
-      meta,
-      expectedVersion,
-    }));
+    const before = p.triage;
+    const r = await run(
+      () => ({
+        command: { type: 'ChangePatientTriage', patientId: p.id, payload: { triage } },
+        meta,
+        expectedVersion,
+      }),
+      {
+        // 押し間違えてもすぐ戻せるように、変更の知らせに「元に戻す」を添える（取り消しは訂正イベントで記録する）
+        onAccepted: ([changed]) => {
+          if (!changed) return;
+          showNotice({
+            kind: 'done',
+            text: `${p.id} の区分を ${triageLabel(before)} → ${triageLabel(triage)} に変えました`,
+            action: {
+              label: '元に戻す',
+              onClick: () =>
+                run(
+                  () => ({
+                    command: { type: 'CorrectEvent', eventId: changed.id, payload: { reason: '変更の直後に元に戻した', retract: true } },
+                    meta,
+                    expectedVersion: expectedVersion + 1,
+                  }),
+                  { doneText: `${p.id} の区分を ${triageLabel(before)} に戻しました` },
+                ),
+            },
+          });
+        },
+      },
+    );
     if (r === 'accepted') setEditing('none');
   }
 
   return (
-    <li ref={ref} className={`patient ${isHighlighted ? 'is-highlighted' : ''}`} data-testid={`patient-${p.id}`} data-print-border={config.triageCategories.find((t) => t.id === p.triage)?.printBorder ?? 'dotted'}>
+    <li
+      ref={ref}
+      className={`patient ${isHighlighted ? 'is-highlighted' : ''} ${hiddenOnScreen ? 'is-filtered-out' : ''}`}
+      data-testid={`patient-${p.id}`}
+      data-print-border={config.triageCategories.find((t) => t.id === p.triage)?.printBorder ?? 'none'}
+    >
       <div className="patient-id">
         <span className="patient-number">{p.id}</span>
         <span className="patient-tag">タッグ {p.tagNumber ? <strong>{p.tagNumber}</strong> : <span className="unknown">未記入</span>}</span>
