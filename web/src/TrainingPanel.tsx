@@ -44,7 +44,7 @@ export function RadioInbox({ config, snapshot, terminal, enteredBy, now }: Props
   }
 
   return (
-    <section className={`radio ${unheard.length ? 'has-items' : ''}`} aria-labelledby="radio-title" data-testid="radio-inbox">
+    <section className={`radio-inbox ${unheard.length ? 'has-items' : ''}`} aria-labelledby="radio-title" data-testid="radio-inbox">
       <h2 id="radio-title">
         <span aria-hidden="true">📻</span> 無線の受信 <span className="count">聞いていない {unheard.length}件</span>
         {snapshot.pendingReplies > 0 && <span className="radio-pending">… 部署役が返事を考えています</span>}

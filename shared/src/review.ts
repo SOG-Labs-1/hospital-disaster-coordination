@@ -32,8 +32,11 @@ export interface CheckResult {
   id: string;
   text: string;
   source: 'scenario' | 'hospital';
-  /** met：満たした、no-record：起きたが記録がない、not-met：満たしていない、self-check：参加者が自分で確かめる項目 */
-  result: 'met' | 'no-record' | 'not-met' | 'self-check';
+  /**
+   * met：満たした、no-record：起きたが記録がない、not-met：満たしていない、
+   * not-reached：訓練の時間内に、その場面が起きなかった、self-check：参加者が自分で確かめる項目
+   */
+  result: 'met' | 'no-record' | 'not-met' | 'not-reached' | 'self-check';
   evidence: string[];
 }
 
@@ -210,10 +213,27 @@ export function buildReview(input: { scenario: Scenario; config: HospitalConfig;
 
   // 確認項目
   const checks: CheckResult[] = [
-    ...scenario.checks.map((c) => ({ id: c.id, text: c.text, source: 'scenario' as const, ...evaluate(c.rule, view, board, matches) })),
+    ...scenario.checks.map((c) => ({
+      id: c.id,
+      text: c.text,
+      source: 'scenario' as const,
+      ...(reached(c.rule, scenario, view) ? evaluate(c.rule, view, board, matches) : { result: 'not-reached' as const, evidence: [] }),
+    })),
     ...config.checklist.map((c) => ({ id: `hospital-${c.id}`, text: c.text, source: 'hospital' as const, result: 'self-check' as const, evidence: [] })),
   ];
   return { findings, checks, matches };
+}
+
+/** 確認項目の場面が、訓練の時間内に起きたか（途中で終えた回で「満たしていない」と誤って示さないため） */
+function reached(rule: CheckRule, scenario: Scenario, view: SimView): boolean {
+  if ('patientKey' in rule) return !!view.patients[rule.patientKey];
+  if (rule.type === 'supportAssigned' || rule.type === 'supportCompleted')
+    return scenario.timeline.some((t, i) => t.type === 'supportNeed' && t.locationId === rule.fromLocationId && view.fired.has(i));
+  if (rule.type === 'locationStatusRecorded')
+    return scenario.timeline.some((t, i) => t.type === 'locationStatus' && t.locationId === rule.locationId && view.fired.has(i));
+  if (rule.type === 'duplicateTagHandled')
+    return Object.values(view.patients).filter((p) => normalizeIdentifier(p.tagNumber) === normalizeIdentifier(rule.tagNumber)).length >= 2;
+  return true;
 }
 
 function evaluate(rule: CheckRule, view: SimView, board: AppState, matches: Record<string, string | null>): Pick<CheckResult, 'result' | 'evidence'> {

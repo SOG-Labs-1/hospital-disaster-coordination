@@ -14,6 +14,7 @@ const resultLabels = {
   met: { symbol: '○', text: '満たした' },
   'no-record': { symbol: '△', text: '起きたが記録がない' },
   'not-met': { symbol: '✕', text: '満たしていない' },
+  'not-reached': { symbol: '－', text: '訓練の時間内に起きなかった' },
   'self-check': { symbol: '□', text: '自分で確かめる' },
 } as const;
 

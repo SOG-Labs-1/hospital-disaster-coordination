@@ -33,7 +33,7 @@ export interface TrainingSnapshot {
       note?: string;
       explanation?: { text: string; evidence: string[] };
     }[];
-    checks: { id: string; text: string; source: 'scenario' | 'hospital'; result: 'met' | 'no-record' | 'not-met' | 'self-check'; evidence: string[] }[];
+    checks: { id: string; text: string; source: 'scenario' | 'hospital'; result: 'met' | 'no-record' | 'not-met' | 'not-reached' | 'self-check'; evidence: string[] }[];
     explainedBy: string | null;
   } | null;
 }

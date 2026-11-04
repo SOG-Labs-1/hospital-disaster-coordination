@@ -91,6 +91,14 @@ describe('振り返りの照合', () => {
     expect(review.checks.filter((c) => c.source === 'hospital').every((c) => c.result === 'self-check')).toBe(true);
   });
 
+  it('途中で終えた回では、まだ起きていない場面の確認項目を「起きなかった」と示す', () => {
+    const run = new Run(sc, config);
+    step(run, 15_000); // p1 だけが到着した時点で終える
+    run.add([{ type: 'RunEnded', simMs: 15_000, reason: 'manual' }]);
+    const result = Object.fromEntries(buildReview({ scenario: sc, config, view: run.view(), boardEvents: run.board }).checks.map((c) => [c.id, c.result]));
+    expect(result).toMatchObject({ 'reg-p1': 'no-record', 'reg-p2': 'not-reached', dup: 'not-reached', support: 'not-reached' });
+  });
+
   it('すべて記録していれば、その観点の指摘は出ない', () => {
     const run = new Run(sc, config);
     step(run, 60_000);

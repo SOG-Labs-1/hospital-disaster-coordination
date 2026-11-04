@@ -359,9 +359,9 @@ h3 { font-size: var(--text); }
 .chrono-table tr.is-retracted .chrono-note { text-decoration: none; }
 .chrono-table tr.is-correction { background: var(--caution-bg); }
 .link-button { min-height: var(--tap); padding: 0 4px; font: inherit; font-weight: 700; color: var(--primary); background: none; border: 0; text-decoration: underline; cursor: pointer; white-space: nowrap; }
-.radio { margin: var(--gap) 20px 0; padding: 10px 16px; background: var(--board); border: 3px dashed var(--training); border-radius: var(--radius); }
-.radio.has-items { border: 5px double var(--training); background: #f6f0fb; }
-.radio h2 { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; margin-bottom: 6px; }
+.radio-inbox { margin: var(--gap) 20px 0; padding: 10px 16px; background: var(--board); border: 3px dashed var(--training); border-radius: var(--radius); }
+.radio-inbox.has-items { border: 5px double var(--training); background: #f6f0fb; }
+.radio-inbox h2 { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; margin-bottom: 6px; }
 .radio-pending { font-size: var(--text-small); font-weight: 400; }
 .radio-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .radio-row { display: grid; grid-template-columns: 4em minmax(8em, 14em) 1fr auto; align-items: center; gap: 4px 12px; padding: 6px 10px; background: var(--board); border: 2px solid var(--ink-muted); border-radius: var(--radius); }
