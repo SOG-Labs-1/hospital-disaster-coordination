@@ -20,7 +20,7 @@ export default defineConfig({
   webServer: [
     {
       command: 'rm -rf e2e/.tmp && npx tsx server/src/main.ts',
-      env: { SERVER_PORT: String(SERVER_PORT), DATA_DIR: 'e2e/.tmp/data', HOSPITAL_CONFIG: 'sakura' },
+      env: { SERVER_PORT: String(SERVER_PORT), DATA_DIR: 'e2e/.tmp/data', HOSPITAL_CONFIG: 'claude' },
       url: `http://localhost:${SERVER_PORT}/api/health`,
       reuseExistingServer: false,
     },

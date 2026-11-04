@@ -16,7 +16,7 @@ description: 病院設定ファイル（config/hospitals/*.yaml）を新しく�
 
 ## 手順
 
-1. 既存の `config/hospitals/sakura.yaml` を開き、構成をまねる
+1. 既存の `config/hospitals/claude.yaml` を開き、構成をまねる
 2. 次の順に書く。id は英小文字・数字・ハイフン（例: `er`, `ward-3`）。後から変えると記録と合わなくなるので、名前を変えたいときは `name` だけを変える
    1. `id`・`name`・`fictional`・`staleAfterMinutes`
    2. `locations`：物理的な場所。`kind` は `headquarters` `emergency` `outpatient` `ward` `operating-room` `icu` `hall` `rehabilitation` `other` から選ぶ。端末を置く場所は `hasTerminal: true`

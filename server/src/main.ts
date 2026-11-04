@@ -1,8 +1,8 @@
 import { join } from 'node:path';
 import { createApp } from './app';
-import { loadHospitalConfig, repoRoot } from './config';
+import { loadHospitalConfig, repoRoot, resolveHospitalId } from './config';
 
-const hospitalId = process.env.HOSPITAL_CONFIG ?? 'sakura';
+const hospitalId = resolveHospitalId(process.env.HOSPITAL_CONFIG);
 // PORT は開発ツールが画面用に設定することがあるので、専用の名前にする
 const port = Number(process.env.SERVER_PORT ?? 4000);
 const dataDir = process.env.DATA_DIR ?? join(repoRoot, 'data', hospitalId);

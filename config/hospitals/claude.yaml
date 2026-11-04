@@ -1,9 +1,9 @@
-# 病院設定A：さくら総合病院(仮)
+# 病院設定A：Claude総合病院(仮)
 # すべて架空。実在の病院・職員とは関係ありません。
 # 「# 仮」と書いた数値は設計書 §13 で未決定のため、仮に置いた値です。
 
-id: sakura
-name: さくら総合病院(仮)
+id: claude
+name: Claude総合病院(仮)
 fictional: true
 staleAfterMinutes: 30 # 仮
 

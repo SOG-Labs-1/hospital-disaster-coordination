@@ -18,7 +18,7 @@ describe('validateYamlFile', () => {
   });
 
   it('シナリオは最低限の項目を確認する', () => {
-    expect(validateYamlFile('scenarios/a.yaml', 'id: a\ntitle: 訓練\nhospital: sakura\nfictional: true\n').errors).toEqual([]);
+    expect(validateYamlFile('scenarios/a.yaml', 'id: a\ntitle: 訓練\nhospital: claude\nfictional: true\n').errors).toEqual([]);
     expect(validateYamlFile('scenarios/a.yaml', 'id: a\n').errors.length).toBeGreaterThan(0);
   });
 });

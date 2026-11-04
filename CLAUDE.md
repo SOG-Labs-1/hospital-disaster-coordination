@@ -63,4 +63,4 @@
 - `npm run test:e2e` — Playwright（テスト用ポート 4100/5174、保存先 `e2e/.tmp`。初回は `npx playwright install chromium`）
 - `npm run typecheck` — 3パッケージの型検査
 - `npm run validate:config [-- ファイル]` — config/・scenarios/ の YAML 検証（編集時はフックが自動実行）
-- 環境変数：`HOSPITAL_CONFIG`（既定 sakura）、`SERVER_PORT`（既定 4000。`PORT` は使わない）、`DATA_DIR`
+- 環境変数：`HOSPITAL_CONFIG`（未指定なら config/hospitals/ に1つだけある設定を使う）、`SERVER_PORT`（既定 4000。`PORT` は使わない）、`DATA_DIR`

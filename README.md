@@ -35,7 +35,7 @@ npm run dev
 
 ブラウザで http://localhost:5173/?terminal=hq を開きます。`terminal` は端末を置く場所のIDです（病院設定の `locations` の id）。訓練モードは `&mode=training` を付けます。
 
-使う病院設定は環境変数 `HOSPITAL_CONFIG` で選べます（既定は `sakura`）。サーバーのポートは `SERVER_PORT`（既定 4000）、記録の保存先は `DATA_DIR` で変えられます。
+使う病院設定は環境変数 `HOSPITAL_CONFIG` で選べます（例：`HOSPITAL_CONFIG=claude`）。`config/hospitals/` に設定が1つしかないときは、指定しなくてもそれを使います。サーバーのポートは `SERVER_PORT`（既定 4000）、記録の保存先は `DATA_DIR` で変えられます。
 
 院内の1台のPCで本番のように動かす場合（画面をビルドしてサーバーから配信、http://localhost:4000 ）：
 
@@ -58,7 +58,7 @@ npm run test:e2e
 ```
 
 ```bash
-npm run validate:config -- config/hospitals/sakura.yaml
+npm run validate:config -- config/hospitals/claude.yaml
 ```
 
 ## 構成
@@ -82,7 +82,7 @@ npm run validate:config -- config/hospitals/sakura.yaml
 - 開発環境の土台（npm workspaces、TypeScript、Vitest、Playwright）
 - Claude Code の設定（Skills、サブエージェント、フック）
 - 記録（イベント）の仕組み：イベントの型、病院設定のスキーマ、集計、追記保存、コマンドAPI（競合検知と警告）、Server-Sent Events での配信
-- 病院設定A（架空「さくら総合病院(仮)」）
+- 病院設定A（架空「Claude総合病院(仮)」）
 - 患者の登録と一覧、本部画面の骨組み
 
 ## Claude Code の使い分け
