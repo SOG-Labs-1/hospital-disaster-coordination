@@ -29,7 +29,7 @@ export const TwoFunctions = ({ start }: { start: number }) => {
       </AbsoluteFill>
 
       <AbsoluteFill style={{ flexDirection: 'row', gap: 40, padding: '250px 90px 0px', opacity: up }}>
-        <Panel label="実運用" sub="災害時の院内調整" from={split} t={t} accent={c.accent}>
+        <Panel label="災害運用" sub="災害時の院内調整" from={split} t={t} accent={c.accent}>
           {live ? <Video src={staticFile('captures/a-register.webm')} muted style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'left top' }} /> : <LiveMock t={t - split} />}
         </Panel>
         <Panel label="訓練" sub="AIと行う平常時の訓練" from={split + 0.9} t={t} accent={c.warn} dashed>
@@ -72,7 +72,7 @@ const Chip = ({ color, sym, label, fg = '#fff' }: { color: string; sym: string; 
   </span>
 );
 
-/** 実運用の画面を模した図（録画ができるまでの代わり。すべて架空） */
+/** 災害運用の画面を模した図（録画ができるまでの代わり。すべて架空） */
 const LiveMock = ({ t }: { t: number }) => (
   <div>
     <Row t={t} i={0}>
