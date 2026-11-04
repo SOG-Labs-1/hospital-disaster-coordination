@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { activePatients, sexLabels, versionOf, type AppState, type HospitalConfig, type PatientView } from '@hdc/shared';
+import { activePatients, activeTransportsForPatient, sexLabels, versionOf, type AppState, type HospitalConfig, type PatientView } from '@hdc/shared';
+import { locationName } from './labels';
 import { formatTime, minutesSince } from './format';
 import { TriageBadge } from './Triage';
 import { useCommands } from './useCommands';
@@ -10,9 +11,10 @@ interface Props {
   terminal: string;
   enteredBy: string | null;
   now: Date;
+  onRequestTransport: (patientId: string) => void;
 }
 
-export function PatientList({ config, state, terminal, enteredBy, now }: Props) {
+export function PatientList({ config, state, terminal, enteredBy, now, onRequestTransport }: Props) {
   const patients = activePatients(state);
   const [filter, setFilter] = useState<string>('all');
   const matches = (p: PatientView) => filter === 'all' || (p.triage ?? 'none') === filter;
@@ -51,7 +53,7 @@ export function PatientList({ config, state, terminal, enteredBy, now }: Props) 
         // 印刷は絞り込みにかかわらず常に全員を出す（紙が名簿として使われても患者が欠けないように）
         <ol className="patient-list" data-testid="patient-list">
           {[...patients].reverse().map((p) => (
-            <PatientRow key={p.id} patient={p} hiddenOnScreen={!matches(p)} config={config} state={state} terminal={terminal} enteredBy={enteredBy} now={now} />
+            <PatientRow key={p.id} patient={p} hiddenOnScreen={!matches(p)} config={config} state={state} terminal={terminal} enteredBy={enteredBy} now={now} onRequestTransport={onRequestTransport} />
           ))}
         </ol>
       )}
@@ -61,11 +63,15 @@ export function PatientList({ config, state, terminal, enteredBy, now }: Props) 
   );
 }
 
-function PatientRow({ patient: p, hiddenOnScreen, config, state, terminal, enteredBy, now }: { patient: PatientView; hiddenOnScreen: boolean } & Props) {
+function PatientRow({ patient: p, hiddenOnScreen, config, state, terminal, enteredBy, now, onRequestTransport }: { patient: PatientView; hiddenOnScreen: boolean } & Props) {
   const { run, highlight, setHighlight, showNotice } = useCommands();
   const [editing, setEditing] = useState<'none' | 'triage' | 'note'>('none');
   const ref = useRef<HTMLLIElement>(null);
-  const location = config.locations.find((l) => l.id === p.locationId)?.name ?? p.locationId;
+  const transports = activeTransportsForPatient(state, p.id);
+  const moving = transports.find((t) => t.steps.departed);
+  const location = moving
+    ? `搬送中（${locationName(config, moving.fromLocationId)}→${locationName(config, moving.toLocationId)}）`
+    : locationName(config, p.locationId);
   const staffName = (id: string) => config.staff.find((s) => s.id === id)?.name ?? id;
   const age = minutesSince(p.lastObservedAt, now);
   const stale = age >= config.staleAfterMinutes;
@@ -139,8 +145,23 @@ function PatientRow({ patient: p, hiddenOnScreen, config, state, terminal, enter
       <dl className="patient-facts">
         <div>
           <dt>所在</dt>
-          <dd>{location}</dd>
+          <dd className={moving ? 'in-transit' : ''}>
+            {moving && <span aria-hidden="true">▶ </span>}
+            {location}
+          </dd>
         </div>
+        {p.departmentLocationId !== p.locationId && !moving && (
+          <div>
+            <dt>担当</dt>
+            <dd>{locationName(config, p.departmentLocationId)}</dd>
+          </div>
+        )}
+        {transports.length > 0 && !moving && (
+          <div>
+            <dt>搬送</dt>
+            <dd>{transports.map((t) => `${t.id}：${locationName(config, t.toLocationId)}へ（調整中）`).join('、')}</dd>
+          </div>
+        )}
         <div>
           <dt>特徴</dt>
           <dd>
@@ -180,6 +201,9 @@ function PatientRow({ patient: p, hiddenOnScreen, config, state, terminal, enter
         </button>
         <button type="button" className="btn" disabled={!enteredBy} aria-expanded={editing === 'note'} onClick={() => setEditing(editing === 'note' ? 'none' : 'note')}>
           メモを直す
+        </button>
+        <button type="button" className="btn" onClick={() => onRequestTransport(p.id)}>
+          搬送を依頼する
         </button>
       </div>
 

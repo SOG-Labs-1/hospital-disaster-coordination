@@ -1,14 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { modeLabels, modes, type HospitalConfig, type Mode } from '@hdc/shared';
 import { fetchConfig } from './api';
 import { EnteredByPicker } from './EnteredByPicker';
 import { formatDateTime } from './format';
+import { LocationBoard } from './LocationBoard';
 import { PatientList } from './PatientList';
 import { RegisterForm } from './RegisterForm';
 import { readEnteredBy, readMode, readTerminal, saveEnteredBy, setModeInUrl } from './session';
 import { TerminalSetup } from './TerminalSetup';
 import { TopBar } from './TopBar';
+import { TransportPanel } from './TransportPanel';
 import { CommandProvider, useCommands } from './useCommands';
 import { useEventLog } from './useEventLog';
 
@@ -69,6 +71,13 @@ function Headquarters({ config, terminal, mode }: { config: HospitalConfig; term
   });
   const now = useNow(30_000);
   const printedAt = usePrintTime();
+  const [tab, setTab] = useState<Tab>(() => readTab(terminal));
+  const [preselect, setPreselect] = useState<string | null>(null);
+  const clearPreselect = useCallback(() => setPreselect(null), []);
+  const openTab = (t: Tab) => {
+    setTab(t);
+    saveTab(terminal, t);
+  };
   const terminalName = config.locations.find((l) => l.id === terminal)?.name ?? terminal;
 
   useEffect(() => {
@@ -80,7 +89,7 @@ function Headquarters({ config, terminal, mode }: { config: HospitalConfig; term
       <div className={`app app-${mode}`}>
         <TopBar config={config} mode={mode} terminalName={terminalName} status={status} lastSyncedAt={lastSyncedAt} />
         <div className="print-header print-only">
-          【{modeLabels[mode]}】{config.name} 患者一覧　出力 {formatDateTime(printedAt)}　（各患者の「確認」は現場で確認した時刻）
+          【{modeLabels[mode]}】{config.name} {tabs.find((t) => t.id === tab)!.printTitle}　出力 {formatDateTime(printedAt)}　（時刻は現場で確認した時刻）
         </div>
         <div className="no-print">
           <EnteredByPicker
@@ -93,16 +102,87 @@ function Headquarters({ config, terminal, mode }: { config: HospitalConfig; term
             }}
           />
           <NoticeBar />
+          <nav className="tabs" role="tablist" aria-label="画面の切り替え">
+            {tabs.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                role="tab"
+                id={`tab-${t.id}`}
+                aria-selected={tab === t.id}
+                aria-controls="tab-panel"
+                className={`tab ${tab === t.id ? 'is-selected' : ''}`}
+                onClick={() => openTab(t.id)}
+              >
+                {tab === t.id && <span aria-hidden="true">▼ </span>}
+                {t.label}
+                {t.id === 'transports' && activeTransportCount(state) > 0 && <span className="tab-count">{activeTransportCount(state)}件</span>}
+              </button>
+            ))}
+          </nav>
         </div>
-        <main className="layout">
-          <div className="no-print">
-            <RegisterForm config={config} terminal={terminal} enteredBy={enteredBy} />
-          </div>
-          <PatientList config={config} state={state} terminal={terminal} enteredBy={enteredBy} now={now} />
+        <main id="tab-panel" role="tabpanel" aria-labelledby={`tab-${tab}`} className="tab-panel">
+          {tab === 'patients' && (
+            <div className="layout">
+              <div className="no-print">
+                <RegisterForm config={config} terminal={terminal} enteredBy={enteredBy} />
+              </div>
+              <PatientList
+                config={config}
+                state={state}
+                terminal={terminal}
+                enteredBy={enteredBy}
+                now={now}
+                onRequestTransport={(patientId) => {
+                  setPreselect(patientId);
+                  openTab('transports');
+                }}
+              />
+            </div>
+          )}
+          {tab === 'transports' && (
+            <TransportPanel
+              config={config}
+              state={state}
+              terminal={terminal}
+              enteredBy={enteredBy}
+              now={now}
+              preselectPatientId={preselect}
+              onPreselectUsed={clearPreselect}
+            />
+          )}
+          {tab === 'locations' && <LocationBoard config={config} state={state} terminal={terminal} enteredBy={enteredBy} now={now} />}
         </main>
       </div>
     </CommandProvider>
   );
+}
+
+type Tab = 'patients' | 'transports' | 'locations';
+const tabs: { id: Tab; label: string; printTitle: string }[] = [
+  { id: 'patients', label: '患者', printTitle: '患者一覧' },
+  { id: 'transports', label: '搬送', printTitle: '搬送一覧' },
+  { id: 'locations', label: '院内の状況', printTitle: '院内の状況' },
+];
+
+function readTab(terminal: string): Tab {
+  try {
+    const t = localStorage.getItem(`hdc.tab.${terminal}`);
+    return tabs.some((x) => x.id === t) ? (t as Tab) : 'patients';
+  } catch {
+    return 'patients';
+  }
+}
+function saveTab(terminal: string, tab: Tab) {
+  try {
+    localStorage.setItem(`hdc.tab.${terminal}`, tab);
+  } catch {
+    /* 保存できなくても動く */
+  }
+}
+
+function activeTransportCount(state: import('@hdc/shared').AppState): number {
+  return state.transportOrder.filter((id) => !state.transports[id]!.closed && !state.transports[id]!.retracted).length;
 }
 
 function NoticeBar() {
