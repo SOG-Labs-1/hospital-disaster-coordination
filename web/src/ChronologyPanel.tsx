@@ -9,7 +9,7 @@ import {
   type EventDescription,
   type HospitalConfig,
 } from '@hdc/shared';
-import { formatDateTime, formatTime, timeInputToIso } from './format';
+import { formatDateTime, formatTime, timeInputNote, timeInputToIso } from './format';
 import { locationName, staffName } from './labels';
 import { useCommands } from './useCommands';
 
@@ -266,6 +266,7 @@ function MessageForm({ config, terminal, enteredBy }: Props) {
           <span>連絡を受けた時刻（空欄＝今）</span>
           <input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
         </label>
+        {timeInputNote(time) && <p className="hint time-note">ⓘ {timeInputNote(time)}</p>}
       </div>
       {!enteredBy && <p className="inline-alert">⚠ 先に、画面上の一覧から入力者を選んでください。</p>}
       <button type="submit" className="btn btn-primary" disabled={!enteredBy || !text.trim() || busy}>

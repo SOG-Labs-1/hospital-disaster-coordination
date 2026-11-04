@@ -16,11 +16,29 @@ export function minutesSince(iso: string, now: Date): number {
   return Math.max(0, Math.floor((now.getTime() - Date.parse(iso)) / 60000));
 }
 
-/** 時刻入力（HH:MM）を今日の日付の ISO 文字列にする。空欄なら undefined（＝今） */
-export function timeInputToIso(value: string): string | undefined {
+/** 今より何分以上先の時刻なら、前日の時刻とみなすか（サーバーが受け付ける時計のずれより少し小さく） */
+const FUTURE_TOLERANCE_MS = 4 * 60_000;
+
+/**
+ * 時刻入力（HH:MM）を日付つきの時刻にする。空欄なら undefined（＝今）。
+ * 今より先の時刻は前日とみなす（0:10 に「23:50に確認」と入れたとき、未来の時刻として拒否されないように）
+ */
+export function timeInputToDate(value: string, now = new Date()): Date | undefined {
   if (!value) return undefined;
   const [h, m] = value.split(':').map(Number);
-  const d = new Date();
+  const d = new Date(now);
   d.setHours(h ?? 0, m ?? 0, 0, 0);
-  return d.toISOString();
+  if (d.getTime() - now.getTime() > FUTURE_TOLERANCE_MS) d.setDate(d.getDate() - 1);
+  return d;
+}
+
+export function timeInputToIso(value: string): string | undefined {
+  return timeInputToDate(value)?.toISOString();
+}
+
+/** 時刻入力が前日の時刻として扱われるときの説明。今日なら null */
+export function timeInputNote(value: string, now = new Date()): string | null {
+  const d = timeInputToDate(value, now);
+  if (!d || d.toDateString() === now.toDateString()) return null;
+  return `前日（${d.getMonth() + 1}/${d.getDate()}）の ${value} として記録します`;
 }

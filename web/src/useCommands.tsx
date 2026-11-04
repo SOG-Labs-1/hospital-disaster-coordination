@@ -38,7 +38,10 @@ export function useCommands(): Ctx {
   return c;
 }
 
-/** 完了の知らせは、古い内容が残り続けないように一定時間で消す */
+/**
+ * 完了の知らせは、古い内容が残り続けないように一定時間で消す。
+ * ただし「元に戻す」が付いた知らせは消さない（取り消す機会に時間の制限を設けない）。「閉じる」か次の操作で消える
+ */
 const DONE_NOTICE_MS = 20_000;
 
 /** コマンドの送信。警告が返ったら理由を選ばせて再送し、競合なら知らせる */
@@ -53,7 +56,7 @@ export function CommandProvider(props: { mode: Mode; config: HospitalConfig; sta
   } | null>(null);
 
   useEffect(() => {
-    if (notice?.kind !== 'done') return;
+    if (notice?.kind !== 'done' || notice.action) return;
     const t = setTimeout(() => setNotice((n) => (n === notice ? null : n)), DONE_NOTICE_MS);
     return () => clearTimeout(t);
   }, [notice]);

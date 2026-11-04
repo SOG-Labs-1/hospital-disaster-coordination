@@ -117,3 +117,17 @@ test('入力者を選んでいなくても、上部の「端末の設定」か�
   await page.getByRole('dialog', { name: '端末の設定' }).getByRole('button', { name: '場所を選び直す' }).click();
   await expect(page.getByRole('heading', { name: 'この端末を置いた場所を選んでください' })).toBeVisible();
 });
+
+test('前回この端末で訓練を開いていたら、アドレスに mode がないときは黙って実運用で開かず、選び直させる', async ({ browser }) => {
+  const page = await (await browser.newContext()).newPage();
+  await page.goto('/?hospital=claude&terminal=hq&mode=training');
+  await expect(page.getByTestId('mode-badge')).toHaveText(/訓練/);
+  await page.goto('/?hospital=claude&terminal=hq');
+  await expect(page.getByRole('heading', { name: '実運用か訓練かを選んでください' })).toBeVisible();
+  await expect(page.getByText('前回この端末では訓練モードを開いていました')).toBeVisible();
+  await page.getByRole('button', { name: /実運用で開く/ }).click();
+  await expect(page.getByTestId('mode-badge')).toHaveText(/実運用/);
+  // 実運用を選んだあとは、mode がなくても実運用で開く
+  await page.goto('/?hospital=claude&terminal=hq');
+  await expect(page.getByTestId('mode-badge')).toHaveText(/実運用/);
+});

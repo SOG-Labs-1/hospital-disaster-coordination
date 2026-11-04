@@ -11,7 +11,7 @@ import { formatDateTime } from './format';
 import { LocationBoard } from './LocationBoard';
 import { PatientList } from './PatientList';
 import { RegisterForm } from './RegisterForm';
-import { readEnteredBy, readHospital, readMode, readTerminal, saveEnteredBy, setHospitalInUrl, setModeInUrl, setSessionHospital } from './session';
+import { modeMissingAfterTraining, readEnteredBy, readHospital, readMode, readTerminal, saveEnteredBy, setHospitalInUrl, setModeInUrl, setSessionHospital } from './session';
 import { TerminalSetup } from './TerminalSetup';
 import { TopBar } from './TopBar';
 import { setTrainingHospital, useTraining } from './training';
@@ -112,7 +112,11 @@ function ModeSetup() {
   return (
     <main className="setup">
       <h1>実運用か訓練かを選んでください</h1>
-      <p className="inline-alert">⚠ アドレスの mode の指定が正しくないため、記録を開いていません。</p>
+      <p className="inline-alert">
+        {modeMissingAfterTraining()
+          ? '⚠ 前回この端末では訓練モードを開いていました。アドレスに実運用か訓練かの指定がないため、記録を開いていません。'
+          : '⚠ アドレスの mode の指定が正しくないため、記録を開いていません。'}
+      </p>
       <div className="button-grid">
         {modes.map((m) => (
           <button key={m} type="button" className="btn btn-large" onClick={() => setModeInUrl(m)}>
@@ -160,7 +164,13 @@ function Headquarters({ config, terminal, mode, otherHospitals }: { config: Hosp
   return (
     <CommandProvider mode={mode} config={cfg} state={state}>
       <div className={`app app-${mode}`}>
-        <TopBar config={cfg} mode={mode} terminalName={terminalName} status={status} lastSyncedAt={lastSyncedAt} otherHospitals={otherHospitals} />
+        {/* 上部の帯と操作結果の知らせは、画面を下へ送っても常に見える位置に固定する（押した結果と「元に戻す」を見落とさない） */}
+        <div className="sticky-head">
+          <TopBar config={cfg} mode={mode} terminalName={terminalName} status={status} lastSyncedAt={lastSyncedAt} otherHospitals={otherHospitals} />
+          <div className="no-print">
+            <NoticeBar />
+          </div>
+        </div>
         <div className="print-header print-only">
           【{modeLabels[mode]}】{config.name} {tabs.find((t) => t.id === tab)!.printTitle}　出力 {formatDateTime(printedAt)}　（時刻は現場で確認した時刻）
         </div>
@@ -174,7 +184,6 @@ function Headquarters({ config, terminal, mode, otherHospitals }: { config: Hosp
               saveEnteredBy(terminal, id);
             }}
           />
-          <NoticeBar />
           {training && <RadioInbox config={cfg} snapshot={training} terminal={terminal} enteredBy={enteredBy} now={now} />}
           {isDepartment && (
             <PinnedRequests

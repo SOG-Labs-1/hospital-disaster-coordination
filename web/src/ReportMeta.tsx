@@ -1,5 +1,5 @@
 import type { HospitalConfig, Reporter } from '@hdc/shared';
-import { timeInputToIso } from './format';
+import { timeInputNote, timeInputToIso } from './format';
 
 // 無線・電話で受けた報告を代わりに入力するときの「報告元」と「現場で確認した時刻」
 
@@ -63,6 +63,7 @@ export function ReportMetaFields(props: {
           <span>現場で確認した時刻（空欄＝今）</span>
           <input type="time" value={value.observedTime} onChange={(e) => set({ observedTime: e.target.value })} />
         </label>
+        {timeInputNote(value.observedTime) && <p className="hint time-note">ⓘ {timeInputNote(value.observedTime)}</p>}
       </div>
     </details>
   );

@@ -283,11 +283,14 @@ function NoteEditor({ patient, onDone, meta, expectedVersion }: { patient: Patie
     ] as const;
     for (const [field, value, before] of changes) {
       if (value === before) continue;
-      const r = await run(() => ({
-        command: { type: 'UpdatePatientNote', patientId: patient.id, payload: { field, value } },
-        meta,
-        expectedVersion: version,
-      }));
+      const r = await run(
+        () => ({
+          command: { type: 'UpdatePatientNote', patientId: patient.id, payload: { field, value } },
+          meta,
+          expectedVersion: version,
+        }),
+        { doneText: `${patient.id} のメモを保存しました` },
+      );
       if (r !== 'accepted') return;
       version += 1;
     }

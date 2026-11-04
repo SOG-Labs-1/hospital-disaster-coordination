@@ -356,9 +356,10 @@ export function TransportCard({ transport: t, config, state, terminal, enteredBy
               >
                 出発を記録
               </button>
+              {/* 出発と到着は押すとすぐ記録される。押し間違えないよう間をあけ、出発の前は到着を控えめな見た目にする */}
               <button
                 type="button"
-                className="btn btn-primary"
+                className={`btn btn-apart ${t.steps.departed ? 'btn-primary' : ''}`}
                 disabled={!enteredBy}
                 onClick={recordArrival}
               >
@@ -438,6 +439,12 @@ export function TransportCard({ transport: t, config, state, terminal, enteredBy
       </ol>
 
       {!enteredBy && !t.closed && <p className="inline-alert no-print">⚠ 記録するには、先に画面上の一覧から自分の名前を押してください。</p>}
+      {/* 無線・電話で受けた報告の欄は、押すとすぐ記録されるボタンより上に置く（先に確認時刻と報告元を入れられるように） */}
+      {(!t.steps.arrived || handoverPending) && !t.steps.cancelled && enteredBy && (
+        <div className="no-print">
+          <ReportMetaFields config={config} value={report} onChange={setReport} />
+        </div>
+      )}
       {!t.steps.arrived && !t.steps.cancelled &&
         (focus ? (
           <>
@@ -472,11 +479,6 @@ export function TransportCard({ transport: t, config, state, terminal, enteredBy
         ) : (
           allActions
         ))}
-      {(!t.steps.arrived || handoverPending) && !t.steps.cancelled && enteredBy && (
-        <div className="no-print">
-          <ReportMetaFields config={config} value={report} onChange={setReport} />
-        </div>
-      )}
       {handoverPending && (
         <div className="transport-actions no-print">
           <button type="button" className="btn btn-primary" disabled={!enteredBy} onClick={() => send({ type: 'RecordHandover', transportId: t.id, payload: {} }, { doneText: `${t.id} の引き渡しを記録しました` })}>
@@ -814,11 +816,14 @@ function TransporterBoard({ config, state, terminal, enteredBy, now }: Props) {
           const activity = state.transporters[tr.id];
           const version = versionOf(state, { kind: 'transporter', id: tr.id });
           const setAvailable = (available: boolean) =>
-            run(() => ({
-              command: { type: 'SetTransporterAvailability', transporterId: tr.id, payload: { available } },
-              meta: { enteredBy: enteredBy ?? '', terminal, reportedBy: null },
-              expectedVersion: version,
-            }));
+            run(
+              () => ({
+                command: { type: 'SetTransporterAvailability', transporterId: tr.id, payload: { available } },
+                meta: { enteredBy: enteredBy ?? '', terminal, reportedBy: null },
+                expectedVersion: version,
+              }),
+              { doneText: available ? `${tr.name} を待機に戻しました` : `${tr.name} を対応不可として記録しました` },
+            );
           return (
             <li key={tr.id} className={`transporter transporter-${s.status}`} data-testid={`transporter-${tr.id}`}>
               <span className="transporter-name">{tr.name}</span>

@@ -123,45 +123,39 @@ export function LocationCard({ locationId, config, state, terminal, enteredBy, n
       </dl>
 
       {triages.length > 0 && (
-        <table className="capacity-table">
-          <caption className="capacity-caption">空き ＝ 受け入れ枠 − いま居る人数 − 向かっている人数（了承済み・移動中）</caption>
-          <thead>
-            <tr>
-              <th scope="col">区分</th>
-              <th scope="col">受け入れ枠</th>
-              <th scope="col">いま居る</th>
-              <th scope="col">向かっている</th>
-              <th scope="col">空き</th>
-            </tr>
-          </thead>
-          <tbody>
-            {triages.map((t) => {
-              const r = remainingCapacity(config, state, locationId, t.id);
-              const reported = v.capacity[t.id];
-              return (
-                <tr key={t.id} data-testid={`capacity-${t.id}`}>
-                  <th scope="row">
-                    <TriageBadge config={config} triage={t.id} />
-                  </th>
-                  <td>
-                    {r.source === 'config' ? (
-                      <span>
-                        {r.value}人 <span className="confirmed-at">（設定の初期値・未確認）</span>
-                      </span>
-                    ) : (
-                      <ReportedValue r={reported} now={now} isStale={isStale} format={(x) => `${x}人`} />
-                    )}
-                  </td>
-                  <td>{r.present}人</td>
-                  <td>{r.incoming}人</td>
-                  <td className={r.remaining !== null && r.remaining <= 0 ? 'over' : ''}>
-                    {r.remaining === null ? '－' : r.remaining <= 0 ? `⚠ ${r.remaining}人` : `${r.remaining}人`}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        // いちばん大事な「空き」を区分ごとに先頭で大きく出し、内訳は小さく添える（表にすると狭い画面で「空き」の列が切れるため）
+        <ul className="capacity-list" aria-label="区分ごとの空き">
+          {triages.map((t) => {
+            const r = remainingCapacity(config, state, locationId, t.id);
+            const reported = v.capacity[t.id];
+            const fromConfig = r.source === 'config';
+            const over = r.remaining !== null && r.remaining <= 0;
+            return (
+              <li key={t.id} className="capacity-row" data-testid={`capacity-${t.id}`}>
+                <TriageBadge config={config} triage={t.id} />
+                {r.remaining === null ? (
+                  <span className="cap-remaining unknown-value">空き 未確認</span>
+                ) : fromConfig ? (
+                  // 設定の初期値から計算した空きは、確認済みの数字に見せない（掲示用画面と同じ見せ方）
+                  <span className="cap-remaining unknown-value">空き 未確認（目安{r.remaining}人）</span>
+                ) : (
+                  <span className={`cap-remaining ${over ? 'over' : ''}`}>{over ? `⚠ 空き ${r.remaining}人` : `空き ${r.remaining}人`}</span>
+                )}
+                <span className="cap-detail">
+                  受け入れ枠{' '}
+                  {fromConfig ? (
+                    <>
+                      {r.value}人<span className="confirmed-at">（設定の初期値・未確認）</span>
+                    </>
+                  ) : (
+                    <ReportedValue r={reported} now={now} isStale={isStale} format={(x) => `${x}人`} />
+                  )}
+                  {`　− いま居る ${r.present}人　− 向かっている ${r.incoming}人`}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
       )}
 
       <dl className="location-facts">

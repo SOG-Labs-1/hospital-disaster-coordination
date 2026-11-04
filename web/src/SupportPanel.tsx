@@ -329,6 +329,12 @@ export function SupportCard({ support: s, config, state, terminal, enteredBy, no
       </ol>
 
       {!enteredBy && !s.closed && <p className="inline-alert no-print">⚠ 記録するには、先に画面上の一覧から自分の名前を押してください。</p>}
+      {/* 無線・電話で受けた報告の欄は、押すとすぐ記録されるボタンより上に置く（先に確認時刻と報告元を入れられるように） */}
+      {!s.closed && enteredBy && (
+        <div className="no-print">
+          <ReportMetaFields config={config} value={report} onChange={setReport} />
+        </div>
+      )}
       {!s.closed && focus === 'receive' && (
         <div className="button-row focused-actions no-print">
           <button type="button" className="btn btn-primary" disabled={!enteredBy || !!s.steps.received} onClick={recordReceived}>
@@ -354,9 +360,10 @@ export function SupportCard({ support: s, config, state, terminal, enteredBy, no
               >
                 受け取り
               </button>
+              {/* 受け取りと完了は押すとすぐ記録される。押し間違えないよう間をあけ、受け取りの前は完了を控えめな見た目にする */}
               <button
                 type="button"
-                className="btn btn-primary"
+                className={`btn btn-apart ${s.steps.received ? 'btn-primary' : ''}`}
                 disabled={!enteredBy}
                 onClick={() =>
                   send(
@@ -372,11 +379,6 @@ export function SupportCard({ support: s, config, state, terminal, enteredBy, no
               </button>
             </div>
           </div>
-          {enteredBy && (
-            <div className="no-print">
-              <ReportMetaFields config={config} value={report} onChange={setReport} />
-            </div>
-          )}
         </>
       )}
 

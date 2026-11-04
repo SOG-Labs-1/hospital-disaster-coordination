@@ -555,3 +555,24 @@ h3 { font-size: var(--text); }
 .staff-location strong {
   font-size: 1.2em;
 }
+
+/* 上部の帯と知らせを画面の上に固定する */
+.sticky-head { position: sticky; top: 0; z-index: 20; }
+.sticky-head .topbar { position: static; }
+.sticky-head .notice { margin: 0; border-left-width: 0; border-right-width: 0; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.18); }
+@media print { .sticky-head { position: static; } }
+
+/* 押すとすぐ記録されるボタン同士は間をあける（押し間違いを防ぐ） */
+.btn-apart { margin-left: 24px; }
+/* 押すと入力欄が開くボタンには ▼ を付け、すぐ記録されるボタンと見分けられるようにする */
+.btn[aria-expanded]::after { content: ' ▼'; font-size: 0.8em; }
+.btn[aria-expanded='true']::after { content: ' ▲'; }
+
+/* 院内の状況：区分ごとの空き（先頭に大きく） */
+.capacity-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.capacity-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; padding: 6px 8px; border: 1px solid var(--line); }
+.capacity-row .triage-desc { display: none; }
+.cap-remaining { font-size: var(--text-large); font-weight: 700; }
+.cap-remaining.over { color: var(--danger); border: 3px double var(--danger); padding: 0 6px; }
+.cap-detail { flex-basis: 100%; font-size: var(--text-small); color: var(--ink-muted); }
+.location-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr)); }

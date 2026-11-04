@@ -18,12 +18,24 @@ function safeSet(key: string, value: string | null) {
   }
 }
 
-/** URL の ?mode=。省略時は実運用。知らない値は null（黙って実運用にしない） */
+/**
+ * URL の ?mode=。知らない値は null（黙って実運用にしない）。
+ * 省略時は実運用。ただし前回この端末（ブラウザ）で訓練を開いていたときは null にして選び直させる
+ * （訓練のつもりの入力が、アドレスの書き漏れで実運用の記録に入らないように）
+ */
 export function readMode(): Mode | null {
   const value = new URLSearchParams(location.search).get('mode');
-  if (value === null || value === 'live') return 'live';
-  if (value === 'training') return 'training';
+  if (value === 'live' || value === 'training') {
+    safeSet('hdc.lastMode', value);
+    return value;
+  }
+  if (value === null) return safeGet('hdc.lastMode') === 'training' ? null : 'live';
   return null;
+}
+
+/** mode の指定がなく、前回は訓練を開いていたか（選び直す画面の説明に使う） */
+export function modeMissingAfterTraining(): boolean {
+  return new URLSearchParams(location.search).get('mode') === null && safeGet('hdc.lastMode') === 'training';
 }
 
 export function setModeInUrl(mode: Mode) {

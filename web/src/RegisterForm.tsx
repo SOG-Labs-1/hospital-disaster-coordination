@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { sexLabels, sexes, type HospitalConfig } from '@hdc/shared';
-import { timeInputToIso } from './format';
+import { timeInputNote, timeInputToIso } from './format';
 import { TriageBadge } from './Triage';
 import { useCommands } from './useCommands';
 
@@ -165,6 +165,7 @@ export function RegisterForm(props: { config: HospitalConfig; terminal: string; 
             <span>現場で確認した時刻（空欄＝今）</span>
             <input type="time" value={form.observedTime} onChange={(e) => set('observedTime', e.target.value)} />
           </label>
+          {timeInputNote(form.observedTime) && <p className="hint time-note">ⓘ {timeInputNote(form.observedTime)}</p>}
           {/* メディカルID（災害診療記録）は、病院設定で使うことにした病院だけ出す */}
           {config.patientFields.medicalId && (
             <label className="field">
