@@ -79,7 +79,7 @@ export function describeEvent(e: DomainEvent, config: HospitalConfig, lookup: (e
   };
   const item = (it: SupportItem) => {
     const qty = (unit: string) => (it.quantity === null ? '（数は未確認）' : `${it.quantity}${unit}`);
-    if (it.professionId) return `${config.professions.find((p) => p.id === it.professionId)?.name ?? it.professionId} ${qty('人')}`;
+    if (it.professionId) return `${config.professions.find((p) => p.id === it.professionId)?.name ?? `設定にない職種（${it.professionId}）`} ${qty('人')}`;
     if (it.resourceId) {
       const r = config.resources.find((x) => x.id === it.resourceId);
       return `${r?.name ?? it.resourceId} ${qty(r?.unit ?? '')}`;
@@ -170,7 +170,7 @@ export function describeEvent(e: DomainEvent, config: HospitalConfig, lookup: (e
       return d(
         'location',
         'report',
-        `人員の報告：${e.payload.counts.map((c) => `${config.professions.find((p) => p.id === c.professionId)?.name ?? c.professionId} ${count(c.value)}`).join('、')}`,
+        `人員の報告：${e.payload.counts.map((c) => `${config.professions.find((p) => p.id === c.professionId)?.name ?? `設定にない職種（${c.professionId}）`} ${count(c.value)}`).join('、')}`,
         loc(id),
       );
     case 'SupportRequested': {

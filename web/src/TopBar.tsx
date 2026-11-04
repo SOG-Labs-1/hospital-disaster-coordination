@@ -36,7 +36,7 @@ export function TopBar(props: {
         <div className={`sync sync-${status}`} role="status" aria-live="polite" data-testid="sync-status">
           <span aria-hidden="true">{sync.symbol}</span> {sync.text}
         </div>
-        <TerminalSettings mode={mode} />
+        <TerminalSettings mode={mode} hospitalId={config.id} />
       </div>
     </header>
   );

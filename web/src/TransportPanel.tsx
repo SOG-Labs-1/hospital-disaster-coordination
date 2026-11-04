@@ -279,6 +279,8 @@ export function TransportCard({ transport: t, config, state, terminal, enteredBy
   const meta = { ...baseMeta, ...toReportMeta(report) };
   const stepLabel = (s: TransportStep) => config.transportPolicy.stepLabels[s] ?? s;
   const optional = new Set(config.transportPolicy.optionalSteps);
+  // 要員の割り当てと指示は、搬送を指示できる役職がいる端末（本部・搬送指揮）だけで出す。部署の端末では出さない
+  const canDirect = config.positions.some((x) => x.locationId === terminal && x.permissions.includes('direct-transport'));
   const status = statusLabels[t.status];
   const radioPlaces = [t.fromLocationId, t.toLocationId].filter((id) => !hasTerminal(config, id));
   const handoverPending = !!t.steps.arrived && !t.steps.arrived.handover && !t.steps.handedOver;
@@ -292,7 +294,7 @@ export function TransportCard({ transport: t, config, state, terminal, enteredBy
   ] as const;
   const stageNext: 'accept' | 'assign' | 'order' | 'depart' | 'arrive' | undefined = t.steps.declined
     ? undefined
-    : (stagesInOrder.find(([step]) => !t.steps[step] && !optional.has(step))?.[1] ?? 'arrive');
+    : (stagesInOrder.find(([step]) => !t.steps[step] && !optional.has(step) && (canDirect || (step !== 'staffAssigned' && step !== 'ordered')))?.[1] ?? 'arrive');
   const next = focus ?? stageNext;
 
   async function send(command: CommandInput, opts: { doneText?: string; overrideLabel?: string; undo?: { text: string; undoneText: string } } = {}) {
@@ -338,12 +340,16 @@ export function TransportCard({ transport: t, config, state, terminal, enteredBy
               <button type="button" className="btn" disabled={!enteredBy} aria-expanded={action === 'decline'} onClick={() => setAction(action === 'decline' ? 'none' : 'decline')}>
                 断りを記録
               </button>
-              <button type="button" className="btn" disabled={!enteredBy} aria-expanded={action === 'assign'} onClick={() => setAction(action === 'assign' ? 'none' : 'assign')}>
-                要員を割り当てる
-              </button>
-              <button type="button" className="btn" disabled={!enteredBy} aria-expanded={action === 'order'} onClick={() => setAction(action === 'order' ? 'none' : 'order')}>
-                指示を記録
-              </button>
+              {canDirect && (
+                <>
+                  <button type="button" className="btn" disabled={!enteredBy} aria-expanded={action === 'assign'} onClick={() => setAction(action === 'assign' ? 'none' : 'assign')}>
+                    要員を割り当てる
+                  </button>
+                  <button type="button" className="btn" disabled={!enteredBy} aria-expanded={action === 'order'} onClick={() => setAction(action === 'order' ? 'none' : 'order')}>
+                    指示を記録
+                  </button>
+                </>
+              )}
               <button
                 type="button"
                 className="btn"
@@ -358,6 +364,7 @@ export function TransportCard({ transport: t, config, state, terminal, enteredBy
                 受領を記録
               </button>
             </div>
+            {!canDirect && <p className="hint">要員の割り当てと指示は、本部（搬送を指示する役職のいる端末）で行います。</p>}
             <div className="button-row" role="group" aria-label={`${t.id} の事実（起きたこと）`}>
               <span className="action-group-label">事実（起きたこと）</span>
               <button

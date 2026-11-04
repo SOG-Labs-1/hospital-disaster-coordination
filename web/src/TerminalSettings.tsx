@@ -7,7 +7,7 @@ import { clearTerminal, setHospitalInUrl } from './session';
  * どれも押し間違えると困るので、確かめてから切り替える。
  * 災害運用と訓練の切り替えはここに置かない（同じ画面のままモードが変わる誤操作を防ぐ）。病院を選ぶ画面でだけ選ぶ
  */
-export function TerminalSettings({ mode }: { mode: Mode }) {
+export function TerminalSettings({ mode, hospitalId }: { mode: Mode; hospitalId: string }) {
   const [open, setOpen] = useState(false);
   const [confirm, setConfirm] = useState<null | { text: string; run: () => void; label: string }>(null);
   const ask = (text: string, label: string, run: () => void) => setConfirm({ text, label, run });
@@ -55,10 +55,21 @@ export function TerminalSettings({ mode }: { mode: Mode }) {
                 病院を変える
               </button>
               <p className="hint">災害運用と訓練の切り替えは、病院を選ぶ画面で行います。</p>
+              {/* 掲示用画面（本部の大型モニター）は操作のない別の画面なので、別のタブで開く。この端末の画面は変えない */}
+              <a className="btn" href={boardUrl(hospitalId, mode)} target="_blank" rel="noopener">
+                掲示用画面を別のタブで開く
+              </a>
+              <p className="hint">大型モニターで常に映すときは、そのパソコンで掲示用画面を開き、全画面表示（F11 キー、Mac は control＋command＋F）にします。</p>
             </div>
           )}
         </div>
       )}
     </div>
   );
+}
+
+/** 掲示用画面のアドレス（病院と、災害運用か訓練かを必ず付ける） */
+export function boardUrl(hospitalId: string, mode: Mode): string {
+  const p = new URLSearchParams({ hospital: hospitalId, view: 'board', mode });
+  return `${location.pathname}?${p.toString()}`;
 }

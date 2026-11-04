@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { decide, type CommandEnvelopeInput, type DecideResult } from './commands';
 import type { DomainEvent } from './events';
-import { openSupports, reduce, supportAlert, versionOf } from './state';
+import { openSupports, openSupportsForLocation, reduce, supportAlert, versionOf } from './state';
 import { testConfig } from './test-fixtures';
 
 const config = testConfig();
@@ -126,5 +126,13 @@ describe('未対応・未完了の判定', () => {
     requestStaff();
     stepCmd({ type: 'CancelSupport', supportId: 'S-001', payload: { reason: 'x' } });
     expect(supportAlert(state().supports['S-001']!, policy, at(99))).toBeNull();
+  });
+});
+
+describe('部署の端末で数える「関係する要請」', () => {
+  it('要請元の場所では数え、関係のない場所では数えない', () => {
+    requestStaff();
+    expect(openSupportsForLocation(state(), 'loc-b').map((s) => s.id)).toEqual(['S-001']);
+    expect(openSupportsForLocation(state(), 'loc-a')).toEqual([]);
   });
 });

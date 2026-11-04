@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { decide, remainingCapacity, type CommandEnvelopeInput, type DecideResult } from './commands';
 import type { HospitalConfig } from './config';
 import type { DomainEvent } from './events';
-import { escortsAway, incomingTransports, locationView, patientsAtLocation, reduce, transporterStatus, versionOf } from './state';
+import { activeTransportsForLocation, escortsAway, incomingTransports, locationView, patientsAtLocation, reduce, transporterStatus, versionOf } from './state';
 import { testConfig } from './test-fixtures';
 
 const meta = { enteredBy: 's1', terminal: 'hq' };
@@ -208,6 +208,14 @@ describe('搬送要員', () => {
     request('P-002');
   });
 
+  it('搬送要員の割り当ては、搬送を指示できる役職がいる端末からだけ受け付ける（部署の端末からは割り当てない）', () => {
+    request();
+    const r = stepCmd({ type: 'AssignTransportStaff', transportId: 'T-001', payload: { transporterIds: ['tr1'] } }, { meta: { enteredBy: 's1', terminal: 'loc-a' } });
+    expect(r).toMatchObject({ status: 'rejected', errors: ['搬送要員の割り当ては、搬送を指示できる役職がいる端末（本部など）から行う'] });
+    // 本部の端末からなら割り当てられる
+    expect(stepCmd({ type: 'AssignTransportStaff', transportId: 'T-001', payload: { transporterIds: ['tr1'] } }).status).toBe('accepted');
+  });
+
   it('状態は 待機 → 割当済 → 移動中 → 到着後は最後の到着先で待機', () => {
     expect(transporterStatus(state(), 'tr1').status).toBe('idle');
     stepCmd({ type: 'AssignTransportStaff', transportId: 'T-001', payload: { transporterIds: ['tr1', 'tr2'], teamId: 'team1' } });
@@ -331,5 +339,15 @@ describe('訂正の差し替えの検証', () => {
 
     send({ command: { type: 'ReportLocationStatus', locationId: 'loc-b', payload: { capacity: [{ triage: 't1', value: 2 }] } }, meta });
     expect(correct(events.at(-1)!.id, { capacity: [{ triage: 'zz', value: 2 }] }, 'loc-b', 'location').status).toBe('rejected');
+  });
+});
+
+describe('部署の端末で数える「関係する搬送」', () => {
+  it('出発地か到着先がその場所の、進行中の搬送だけを数える', () => {
+    registerPatient('t1', 'loc-a');
+    request('P-001', 'loc-b');
+    expect(activeTransportsForLocation(state(), 'loc-a').map((t) => t.id)).toEqual(['T-001']);
+    expect(activeTransportsForLocation(state(), 'loc-b').map((t) => t.id)).toEqual(['T-001']);
+    expect(activeTransportsForLocation(state(), 'hq')).toEqual([]);
   });
 });

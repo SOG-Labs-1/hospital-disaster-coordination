@@ -634,6 +634,11 @@ export function activeTransports(state: AppState): TransportView[] {
   return state.transportOrder.map((id) => state.transports[id]!).filter((t) => !t.retracted && !t.closed);
 }
 
+/** その場所が出発地か到着先になっている、進行中の搬送（部署の端末で「関係する搬送」として数える） */
+export function activeTransportsForLocation(state: AppState, locationId: string): TransportView[] {
+  return activeTransports(state).filter((t) => t.fromLocationId === locationId || t.toLocationId === locationId);
+}
+
 /** 到着したが引き渡しが未記録の搬送（到着と引き渡しを分ける病院だけで起きる） */
 export function handoverPending(state: AppState): TransportView[] {
   return state.transportOrder
@@ -754,6 +759,13 @@ function applySupportEvent(state: AppState, e: DomainEvent, correction: Correcti
 
 export function openSupports(state: AppState): SupportView[] {
   return state.supportOrder.map((id) => state.supports[id]!).filter((s) => !s.retracted && !s.closed);
+}
+
+/** その場所が要請元・届け先・手配先になっている、対応中の支援要請（部署の端末で「関係する要請」として数える） */
+export function openSupportsForLocation(state: AppState, locationId: string): SupportView[] {
+  return openSupports(state).filter(
+    (s) => s.fromLocationId === locationId || s.steps.dispatched?.toLocationId === locationId || s.steps.dispatched?.providerLocationId === locationId,
+  );
 }
 
 export type SupportAlert = { kind: 'unassigned' | 'undelivered'; minutes: number };

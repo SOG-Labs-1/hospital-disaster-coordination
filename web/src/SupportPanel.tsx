@@ -11,7 +11,7 @@ import {
   type SupportView,
 } from '@hdc/shared';
 import { formatTime } from './format';
-import { deciderLabel, hasTerminal, locationName, staffName } from './labels';
+import { deciderLabel, hasTerminal, locationName, professionName, staffName } from './labels';
 import { emptyReportMeta, ReportMetaFields, toReportMeta, type ReportMetaValue } from './ReportMeta';
 import { undoNotice } from './undo';
 import { useCommands } from './useCommands';
@@ -27,10 +27,10 @@ interface Props {
 /** 「看護師 2人」「酸素ボンベ 3本」のように、何を求めるかを言葉にする */
 export function itemText(config: HospitalConfig, it: SupportItem): string {
   const qty = (unit: string) => (it.quantity === null ? '（数は未確認）' : `${it.quantity}${unit}`);
-  if (it.professionId) return `${config.professions.find((p) => p.id === it.professionId)?.name ?? it.professionId} ${qty('人')}`;
+  if (it.professionId) return `${professionName(config, it.professionId)} ${qty('人')}`;
   if (it.resourceId) {
     const r = config.resources.find((x) => x.id === it.resourceId);
-    return `${r?.name ?? it.resourceId} ${qty(r?.unit ?? '')}`;
+    return `${r?.name ?? `設定にない物品（${it.resourceId}）`} ${qty(r?.unit ?? '')}`;
   }
   return [it.text, it.quantity !== null ? `${it.quantity}` : ''].filter(Boolean).join(' ');
 }

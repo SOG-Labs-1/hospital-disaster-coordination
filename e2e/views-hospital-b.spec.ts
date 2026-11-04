@@ -15,7 +15,7 @@ test('病院を選ぶ画面から病院Bを選び、記録は病院Aと分かれ
   await page.goto('/?hospital=');
   await expect(page.getByRole('heading', { name: '病院を選んでください' })).toBeVisible();
   await page.locator('.hospital-choice', { hasText: 'Hackathon中央病院(仮)' }).getByRole('button', { name: /災害運用で開く/ }).click();
-  await expect(page.getByRole('heading', { name: 'この端末を置いた場所を選んでください' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'このパソコンを置いた場所を選んでください' })).toBeVisible();
   await expect(page.getByText('病院：Hackathon中央病院(仮)')).toBeVisible();
   await page.getByRole('button', { name: '本部（1階事務室）' }).click();
   await expect(page.getByTestId('sync-status')).toContainText('同期中');
@@ -118,7 +118,7 @@ test('入力者を選んでいなくても、上部の「端末の設定」か�
   await page.getByRole('button', { name: /端末の設定/ }).click();
   await page.getByRole('dialog', { name: '端末の設定' }).getByRole('button', { name: '端末の場所を変える' }).click();
   await page.getByRole('dialog', { name: '端末の設定' }).getByRole('button', { name: '場所を選び直す' }).click();
-  await expect(page.getByRole('heading', { name: 'この端末を置いた場所を選んでください' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'このパソコンを置いた場所を選んでください' })).toBeVisible();
 });
 
 test('前回この端末で訓練を開いていたら、アドレスに mode がないときは黙って災害運用で開かず、選び直させる', async ({ browser }) => {

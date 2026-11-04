@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { flushSync } from 'react-dom';
-import { effectiveConfig, modeLabels, modes, openSupports, supportAlert, type HospitalConfig, type Mode } from '@hdc/shared';
+import { activeTransports, activeTransportsForLocation, effectiveConfig, modeLabels, modes, openSupports, openSupportsForLocation, supportAlert, type HospitalConfig, type Mode } from '@hdc/shared';
 import { fetchConfig, fetchHospitals, setApiHospital, type HospitalList } from './api';
 import { ChronologyPanel } from './ChronologyPanel';
 import { DepartmentTab, PinnedRequests } from './DepartmentPanel';
@@ -148,6 +148,9 @@ function Headquarters({ config, terminal, mode, otherHospitals }: { config: Hosp
   const isDepartment = config.locations.find((l) => l.id === terminal)?.kind !== 'headquarters';
   // 訓練モードの本部端末だけ、無線の受信と「訓練」タブを出す（参加者の役は本部）
   const training = useTraining(mode === 'training' && !isDepartment);
+  // タブの件数：本部はすべて、部署はその部署に関係するものだけ
+  const myTransports = isDepartment ? activeTransportsForLocation(state, terminal) : activeTransports(state);
+  const mySupports = isDepartment ? openSupportsForLocation(state, terminal) : openSupports(state);
   const tabs = allTabs.filter((t) => (t.id !== 'department' || isDepartment) && (t.id !== 'training' || (mode === 'training' && !isDepartment && !!training)));
   const [tab, setTab] = useState<Tab>(() => readTab(`${config.id}.${terminal}`, tabs));
   const [preselect, setPreselect] = useState<string | null>(null);
@@ -213,11 +216,16 @@ function Headquarters({ config, terminal, mode, otherHospitals }: { config: Hosp
               >
                 {tab === t.id && <span aria-hidden="true">▼ </span>}
                 {t.label}
-                {t.id === 'transports' && activeTransportCount(state) > 0 && <span className="tab-count">{activeTransportCount(state)}件</span>}
-                {t.id === 'supports' && openSupports(state).length > 0 && (
-                  <span className="tab-count tab-count-alert">
-                    {openSupports(state).some((s) => supportAlert(s, config.supportPolicy, now)) && '⏱ '}
-                    {openSupports(state).length}件
+                {/* 件数は赤の二重枠で目立たせる。部署の端末では、その部署に関係するものだけを数える（関係のない搬送・要請で目立たせない） */}
+                {t.id === 'transports' && myTransports.length > 0 && (
+                  <span className="tab-count tab-count-alert" aria-label={isDepartment ? `この部署に関係する搬送 ${myTransports.length}件` : `進行中の搬送 ${myTransports.length}件`}>
+                    {myTransports.length}件
+                  </span>
+                )}
+                {t.id === 'supports' && mySupports.length > 0 && (
+                  <span className="tab-count tab-count-alert" aria-label={isDepartment ? `この部署に関係する支援要請 ${mySupports.length}件` : `対応中の支援要請 ${mySupports.length}件`}>
+                    {mySupports.some((s) => supportAlert(s, config.supportPolicy, now)) && '⏱ '}
+                    {mySupports.length}件
                   </span>
                 )}
               </button>
@@ -304,10 +312,6 @@ function saveTab(terminal: string, tab: Tab) {
   } catch {
     /* 保存できなくても動く */
   }
-}
-
-function activeTransportCount(state: import('@hdc/shared').AppState): number {
-  return state.transportOrder.filter((id) => !state.transports[id]!.closed && !state.transports[id]!.retracted).length;
 }
 
 function NoticeBar({ enteredBy }: { enteredBy: string | null }) {

@@ -70,6 +70,12 @@
 - 支援要請：`SupportRequested` `SupportAssigned` `SupportDispatched` `SupportReceived` `SupportCompleted` `SupportCancelled`
 - 共通：`EventCorrected` `MessageLogged`（無線・電話の連絡メモ）
 
+### 3.3.1 管理番号と記録の形の決まり【確定】
+
+- 管理番号の接頭辞（患者 `P-`、搬送 `T-`、支援要請 `S-`、連絡メモ `M-`、追加した入力者 `ST-`）は、どの病院でも同じシステムの識別子とする。病院ごとに変わる値ではないので、病院設定には置かない
+- 記録（イベント）の形は、項目を足すときは任意の項目として足す（古い記録もそのまま読める）。意味が変わる変更は、既存の種類を書き換えず、新しい種類のイベントを足す。記録に版の番号は持たせない
+- 段階ごとの担当は、病院設定の役職の権限（`permissions`）で決める。受け入れの了承は `acceptanceDecidedBy`、搬送の指示と要員の割り当ては `direct-transport` を持つ役職（とその役職がいる場所の端末）が行う
+
 ### 3.4 未確認と0
 
 - 数値は `{ value: number | null, confirmedAt: string | null }` で持つ。null は「未確認」と表示する

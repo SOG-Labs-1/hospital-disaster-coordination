@@ -484,6 +484,10 @@ export function decide(
     case 'AssignTransportStaff': {
       const t = openTransport(command.transportId);
       if (!t) break;
+      // 搬送要員の割り当ては、搬送を指示できる役職がいる場所（本部・搬送指揮）の端末から行う。部署の端末からは割り当てない
+      if (!config.positions.some((x) => x.locationId === meta.terminal && x.permissions.includes('direct-transport'))) {
+        errors.push('搬送要員の割り当ては、搬送を指示できる役職がいる端末（本部など）から行う');
+      }
       const { transporterIds, teamId } = command.payload;
       if (teamId && !config.transporterTeams.some((x) => x.id === teamId)) errors.push(`搬送班「${teamId}」が病院設定にない`);
       const busy: string[] = [];
