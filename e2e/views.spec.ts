@@ -96,7 +96,7 @@ test('掲示用画面：操作できる部品がなく、記録が変わると�
 test('掲示用画面：切断中は幅いっぱいの警告を出し、受け取っていない数値は出さない', async ({ browser }) => {
   const context = await browser.newContext({ viewport: { width: 1920, height: 1080 } });
   // 配信を止めて、サーバーとの接続が切れた状態を作る
-  await context.route('**/api/live/stream', (route) => route.abort());
+  await context.route('**/live/stream', (route) => route.abort());
   const board = await context.newPage();
   await board.goto('/?view=board');
   await expect(board.getByTestId('board-offline')).toContainText('✕ 切断中');

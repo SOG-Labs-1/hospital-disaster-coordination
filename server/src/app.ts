@@ -6,9 +6,12 @@ import { decide, modes, reduce, type AppState, type DomainEvent, type HospitalCo
 import { EventStore } from './store';
 
 // HTTP API と Server-Sent Events の配信。
-// 状態を変える入口は POST /api/:mode/commands だけで、必ず shared の decide() で検証してから追記する。
+// 状態を変える入口は POST /api/h/:hospital/:mode/commands だけで、必ず shared の decide() で検証してから追記する。
+// 複数の病院設定を同時に扱える。記録は病院ごと・実運用／訓練ごとに別ファイルに保存する。
 
 interface ModeContext {
+  config: HospitalConfig;
+  mode: Mode;
   store: EventStore;
   events: DomainEvent[];
   state: AppState;
@@ -16,8 +19,11 @@ interface ModeContext {
 }
 
 export interface AppOptions {
-  config: HospitalConfig;
+  hospitals: HospitalConfig[];
+  /** 記録の保存先。病院ごとにサブフォルダを作る */
   dataDir: string;
+  /** 病院を指定せずに開いたときに使う病院。省略時は病院が1つだけのときにその病院 */
+  defaultHospitalId?: string;
   /** ビルド済みの画面（web/dist）。あれば配信する */
   staticDir?: string;
   now?: () => Date;
@@ -32,19 +38,25 @@ export interface App {
 const MAX_BODY = 1_000_000;
 
 export function createApp(options: AppOptions): App {
-  const { config, dataDir, staticDir } = options;
+  const { hospitals, dataDir, staticDir } = options;
   const now = options.now ?? (() => new Date());
   const ulid = monotonicFactory();
+  if (hospitals.length === 0) throw new Error('病院設定が1つもない');
+  const defaultHospitalId = options.defaultHospitalId ?? (hospitals.length === 1 ? hospitals[0]!.id : null);
+  if (defaultHospitalId && !hospitals.some((h) => h.id === defaultHospitalId)) throw new Error(`既定の病院「${defaultHospitalId}」の設定がない`);
 
-  const contexts = {} as Record<Mode, ModeContext>;
-  for (const mode of modes) {
-    const store = EventStore.open(dataDir, mode);
-    const events = store.all();
-    contexts[mode] = { store, events, state: reduce(events), clients: new Set() };
+  const contexts = new Map<string, ModeContext>();
+  const key = (hospitalId: string, mode: Mode) => `${hospitalId}:${mode}`;
+  for (const config of hospitals) {
+    for (const mode of modes) {
+      const store = EventStore.open(join(dataDir, config.id), mode);
+      const events = store.all();
+      contexts.set(key(config.id, mode), { config, mode, store, events, state: reduce(events), clients: new Set() });
+    }
   }
 
   const heartbeat = setInterval(() => {
-    for (const mode of modes) for (const c of contexts[mode].clients) c.write(': ping\n\n');
+    for (const ctx of contexts.values()) for (const c of ctx.clients) c.write(': ping\n\n');
   }, options.heartbeatMs ?? 15_000);
 
   function broadcast(ctx: ModeContext, events: DomainEvent[]) {
@@ -54,11 +66,10 @@ export function createApp(options: AppOptions): App {
     }
   }
 
-  function handleCommand(mode: Mode, body: unknown) {
-    const ctx = contexts[mode];
+  function handleCommand(ctx: ModeContext, body: unknown) {
     // 検証から追記までを同期処理で行うので、同時に届いたコマンドが割り込むことはない
-    const result = decide(ctx.state, config, body as never, {
-      mode,
+    const result = decide(ctx.state, ctx.config, body as never, {
+      mode: ctx.mode,
       now: now().toISOString(),
       newId: () => ulid(),
     });
@@ -88,13 +99,21 @@ export function createApp(options: AppOptions): App {
     const path = url.pathname;
 
     if (path === '/api/health') return json(res, 200, { ok: true, serverTime: now().toISOString() });
-    if (path === '/api/config' && req.method === 'GET') return json(res, 200, config);
+    if (path === '/api/hospitals' && req.method === 'GET')
+      return json(res, 200, { hospitals: hospitals.map((h) => ({ id: h.id, name: h.name })), defaultHospitalId });
 
-    const m = path.match(/^\/api\/(live|training)\/(events|state|commands|stream)$/);
+    const c = path.match(/^\/api\/h\/([a-z0-9-]+)\/config$/);
+    if (c && req.method === 'GET') {
+      const config = hospitals.find((h) => h.id === c[1]);
+      return config ? json(res, 200, config) : json(res, 404, { status: 'error', errors: [`病院「${c[1]}」の設定がない`] });
+    }
+
+    const m = path.match(/^\/api\/h\/([a-z0-9-]+)\/(live|training)\/(events|state|commands|stream)$/);
     if (m) {
-      const mode = m[1] as Mode;
-      const ctx = contexts[mode];
-      switch (`${req.method} ${m[2]}`) {
+      const ctx = contexts.get(key(m[1]!, m[2] as Mode));
+      if (!ctx) return json(res, 404, { status: 'error', errors: [`病院「${m[1]}」の設定がない`] });
+      const mode = ctx.mode;
+      switch (`${req.method} ${m[3]}`) {
         case 'GET events': {
           const after = url.searchParams.get('after');
           const idx = after ? ctx.events.findIndex((e) => e.id === after) : -1;
@@ -112,7 +131,7 @@ export function createApp(options: AppOptions): App {
           } catch {
             return json(res, 400, { status: 'rejected', errors: ['JSON として読めない'] });
           }
-          const r = handleCommand(mode, body);
+          const r = handleCommand(ctx, body);
           return json(res, r.code, r.body);
         }
         case 'GET stream': {
@@ -139,9 +158,9 @@ export function createApp(options: AppOptions): App {
     server,
     close: async () => {
       clearInterval(heartbeat);
-      for (const mode of modes) {
-        for (const c of contexts[mode].clients) c.end();
-        contexts[mode].store.close();
+      for (const ctx of contexts.values()) {
+        for (const c of ctx.clients) c.end();
+        ctx.store.close();
       }
       await new Promise<void>((r) => server.close(() => r()));
     },

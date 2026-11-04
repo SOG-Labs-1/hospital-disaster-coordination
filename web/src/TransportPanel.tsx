@@ -42,9 +42,11 @@ interface Props extends CardProps {
 export function TransportPanel(props: Props) {
   const { config, state, now } = props;
   const all = state.transportOrder.map((id) => state.transports[id]!).filter((t) => !t.retracted);
+  // 引き渡しが未記録の搬送は、到着していても終わった扱いにせず調整中の一覧に残す
+  const pendingHandover = (t: TransportView) => !!t.steps.arrived && !t.steps.arrived.handover && !t.steps.handedOver;
   const moving = all.filter((t) => !t.closed && t.steps.departed);
-  const coordinating = all.filter((t) => !t.closed && !t.steps.departed);
-  const closed = all.filter((t) => t.closed);
+  const coordinating = all.filter((t) => (!t.closed && !t.steps.departed) || pendingHandover(t));
+  const closed = all.filter((t) => t.closed && !pendingHandover(t));
 
   return (
     <div className="layout">
@@ -266,7 +268,7 @@ const statusLabels: Record<TransportView['status'], { symbol: string; text: stri
   cancelled: { symbol: '✕', text: '中止' },
 };
 
-export function TransportCard({ transport: t, config, state, terminal, enteredBy, now, focus }: CardProps & { transport: TransportView; focus?: 'accept' | 'depart' | 'arrive' }) {
+export function TransportCard({ transport: t, config, state, terminal, enteredBy, now, focus }: CardProps & { transport: TransportView; focus?: 'accept' | 'depart' | 'arrive' | 'handover' }) {
   const { run, showNotice } = useCommands();
   const [action, setAction] = useState<Action>('none');
   const [report, setReport] = useState<ReportMetaValue>(emptyReportMeta);

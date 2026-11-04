@@ -35,14 +35,13 @@ it('存在しない病院設定や不正な id は読み込まない', () => {
   expect(() => loadHospitalConfig('nothing-here')).toThrow();
 });
 
-it('HOSPITAL_CONFIG の指定がなく設定が複数あるときは起動を止める', async () => {
+it('配信する病院は、指定がなければ config/hospitals/ のすべて', async () => {
   const { mkdtempSync, writeFileSync } = await import('node:fs');
   const { tmpdir } = await import('node:os');
-  const { resolveHospitalId } = await import('./config');
+  const { resolveHospitalIds } = await import('./config');
   const dir = mkdtempSync(join(tmpdir(), 'hdc-cfg-'));
-  writeFileSync(join(dir, 'a.yaml'), '');
-  expect(resolveHospitalId(undefined, dir)).toBe('a');
-  expect(resolveHospitalId('b', dir)).toBe('b');
   writeFileSync(join(dir, 'b.yaml'), '');
-  expect(() => resolveHospitalId(undefined, dir)).toThrow(/HOSPITAL_CONFIG/);
+  writeFileSync(join(dir, 'a.yaml'), '');
+  expect(resolveHospitalIds(undefined, dir)).toEqual(['a', 'b']);
+  expect(resolveHospitalIds('b, a', dir)).toEqual(['b', 'a']);
 });

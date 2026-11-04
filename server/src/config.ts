@@ -5,12 +5,12 @@ import { parseHospitalConfig, type HospitalConfig } from '@hdc/shared';
 export const repoRoot = resolve(import.meta.dirname, '../..');
 export const hospitalsDir = join(repoRoot, 'config/hospitals');
 
-/** 使う病院設定の id。指定がなければ、設定が1つだけあるときに限りそれを使う（病院名をコードに書かない） */
-export function resolveHospitalId(fromEnv: string | undefined, dir = hospitalsDir): string {
-  if (fromEnv) return fromEnv;
-  const ids = readdirSync(dir).filter((f) => f.endsWith('.yaml')).map((f) => f.replace(/\.yaml$/, ''));
-  if (ids.length === 1) return ids[0]!;
-  throw new Error(`環境変数 HOSPITAL_CONFIG で病院設定を選んでください（候補: ${ids.join(', ') || 'なし'}）`);
+/** 配信する病院設定の id の一覧。指定がなければ config/hospitals/ にあるすべて */
+export function resolveHospitalIds(fromEnv: string | undefined, dir = hospitalsDir): string[] {
+  if (fromEnv) return fromEnv.split(',').map((x) => x.trim()).filter(Boolean);
+  const ids = readdirSync(dir).filter((f) => f.endsWith('.yaml')).map((f) => f.replace(/\.yaml$/, '')).sort();
+  if (ids.length === 0) throw new Error(`病院設定が見つからない（${dir}）`);
+  return ids;
 }
 
 /** config/hospitals/<id>.yaml を読み込んで検証する。誤りがあれば起動を止める */

@@ -23,7 +23,7 @@ type Row = {
   text: string;
   /** 経過分の説明と分数 */
   elapsed: { text: string; minutes: number };
-} & ({ transport: TransportView; focus: 'accept' | 'depart' | 'arrive' } | { support: SupportView; focus?: 'receive' });
+} & ({ transport: TransportView; focus: 'accept' | 'depart' | 'arrive' | 'handover' } | { support: SupportView; focus?: 'receive' });
 
 /** 一覧に最初から出す件数。超えた分は「ほか N件を表示」で開く */
 const PINNED_VISIBLE = 4;
@@ -59,6 +59,15 @@ export function PinnedRequests(props: Props & { onChangeEnteredBy: (staffId: str
       elapsed: since('出発', t.steps.departed!.observedAt),
       transport: t,
       focus: 'arrive',
+    })),
+    ...p.handovers.map((t): Row => ({
+      key: `handover-${t.id}`,
+      label: '引き渡しの記録',
+      decision: false,
+      text: `${t.id} ${patient(t)}　${locationName(config, t.fromLocationId)}から到着済み`,
+      elapsed: since('到着', t.steps.arrived!.observedAt),
+      transport: t,
+      focus: 'handover',
     })),
     ...p.departures.map((t): Row => ({
       key: `depart-${t.id}`,

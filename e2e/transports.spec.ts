@@ -105,7 +105,7 @@ test('赤ゾーンから手術室への搬送を、要請から到着まで2端�
   await expect(hq.getByTestId('transporter-tr-01')).toContainText('最後の到着先：手術室');
   await expect(hq.getByTestId(`moving-${t}`)).toHaveCount(0);
 
-  const { events } = await (await hq.request.get('/api/live/events')).json();
+  const { events } = await (await hq.request.get('/api/h/claude/live/events')).json();
   const arrival = events.findLast((e: { type: string; subject: { id: string } }) => e.type === 'TransportArrived' && e.subject.id === t);
   expect(arrival).toMatchObject({ terminal: 'or', enteredBy: 'or-01', reportedBy: { name: '搬送A班' }, payload: { handover: true } });
 });

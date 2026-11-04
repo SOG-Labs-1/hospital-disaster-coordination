@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { reduce, type DomainEvent, type Mode } from '@hdc/shared';
-import { fetchEvents } from './api';
+import { apiBase, fetchEvents } from './api';
 
 export type SyncStatus = 'connecting' | 'connected' | 'disconnected';
 
@@ -31,7 +31,7 @@ export function useEventLog(mode: Mode) {
       return last;
     };
 
-    const source = new EventSource(`/api/${mode}/stream`);
+    const source = new EventSource(`${apiBase(mode)}/stream`);
     source.addEventListener('ready', async (msg) => {
       // 接続・再接続のたびに、取りこぼした記録を取り直す
       const { lastEventId } = JSON.parse((msg as MessageEvent).data) as { lastEventId: string | null };

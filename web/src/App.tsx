@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { modeLabels, modes, openSupports, supportAlert, type HospitalConfig, type Mode } from '@hdc/shared';
-import { fetchConfig } from './api';
+import { fetchConfig, fetchHospitals, setApiHospital, type HospitalList } from './api';
 import { ChronologyPanel } from './ChronologyPanel';
 import { DepartmentTab, PinnedRequests } from './DepartmentPanel';
 import { DisplayBoard } from './DisplayBoard';
@@ -10,7 +10,7 @@ import { formatDateTime } from './format';
 import { LocationBoard } from './LocationBoard';
 import { PatientList } from './PatientList';
 import { RegisterForm } from './RegisterForm';
-import { readEnteredBy, readMode, readTerminal, saveEnteredBy, setModeInUrl } from './session';
+import { readEnteredBy, readHospital, readMode, readTerminal, saveEnteredBy, setHospitalInUrl, setModeInUrl, setSessionHospital } from './session';
 import { TerminalSetup } from './TerminalSetup';
 import { TopBar } from './TopBar';
 import { SupportPanel } from './SupportPanel';
@@ -20,26 +20,40 @@ import { useEventLog } from './useEventLog';
 
 export function App() {
   const [config, setConfig] = useState<HospitalConfig | null>(null);
+  const [list, setList] = useState<HospitalList | null>(null);
+  const [needPick, setNeedPick] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     // サーバーの起動が遅れても、つながるまで取り直す
     let stopped = false;
-    const load = () =>
-      fetchConfig().then(
-        (c) => !stopped && setConfig(c),
-        (e: Error) => {
-          if (stopped) return;
-          setError(e.message);
-          setTimeout(load, 2000);
-        },
-      );
+    const load = async () => {
+      try {
+        const l = await fetchHospitals();
+        if (stopped) return;
+        setList(l);
+        const hospitalId = readHospital(
+          l.hospitals.map((h) => h.id),
+          l.defaultHospitalId,
+        );
+        if (!hospitalId) return setNeedPick(true);
+        setApiHospital(hospitalId);
+        setSessionHospital(hospitalId);
+        const c = await fetchConfig();
+        if (!stopped) setConfig(c);
+      } catch (e) {
+        if (stopped) return;
+        setError((e as Error).message);
+        setTimeout(load, 2000);
+      }
+    };
     load();
     return () => {
       stopped = true;
     };
   }, []);
 
+  if (needPick && list) return <HospitalSetup list={list} />;
   if (!config && error) return <main className="setup"><p className="inline-alert">⚠ {error}。サーバーが起動しているか確認してください。</p></main>;
   if (!config) return <main className="setup"><p>読み込み中…</p></main>;
 
@@ -50,10 +64,27 @@ export function App() {
   }
 
   const terminal = readTerminal();
-  if (!terminal || !config.locations.some((l) => l.id === terminal)) return <TerminalSetup config={config} />;
+  if (!terminal || !config.locations.some((l) => l.id === terminal)) return <TerminalSetup config={config} otherHospitals={(list?.hospitals.length ?? 1) > 1} />;
   const mode = readMode();
   if (!mode) return <ModeSetup />;
   return <Headquarters config={config} terminal={terminal} mode={mode} />;
+}
+
+/** 病院を選ぶ（複数の病院設定があり、既定の病院が決まっていないとき） */
+function HospitalSetup({ list }: { list: HospitalList }) {
+  return (
+    <main className="setup">
+      <h1>病院を選んでください</h1>
+      <p>この端末で使う病院の設定を選びます。選んだ病院はこのブラウザに保存されます。</p>
+      <div className="button-grid">
+        {list.hospitals.map((h) => (
+          <button key={h.id} type="button" className="btn btn-large" onClick={() => setHospitalInUrl(h.id)}>
+            {h.name}
+          </button>
+        ))}
+      </div>
+    </main>
+  );
 }
 
 /** ?mode= の値が正しくないときは、実運用か訓練かを選び直させる（書き間違いで訓練の入力が実運用に入らないように） */
@@ -84,12 +115,12 @@ function Headquarters({ config, terminal, mode }: { config: HospitalConfig; term
   // 本部以外の端末は「各部署の画面」：上部に依頼を固定表示し、「この部署」タブを先頭に置く
   const isDepartment = config.locations.find((l) => l.id === terminal)?.kind !== 'headquarters';
   const tabs = isDepartment ? allTabs : allTabs.filter((t) => t.id !== 'department');
-  const [tab, setTab] = useState<Tab>(() => readTab(terminal, tabs));
+  const [tab, setTab] = useState<Tab>(() => readTab(`${config.id}.${terminal}`, tabs));
   const [preselect, setPreselect] = useState<string | null>(null);
   const clearPreselect = useCallback(() => setPreselect(null), []);
   const openTab = (t: Tab) => {
     setTab(t);
-    saveTab(terminal, t);
+    saveTab(`${config.id}.${terminal}`, t);
   };
   const terminalName = config.locations.find((l) => l.id === terminal)?.name ?? terminal;
 

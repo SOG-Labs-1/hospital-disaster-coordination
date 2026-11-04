@@ -33,9 +33,13 @@ npm install
 npm run dev
 ```
 
-ブラウザで http://localhost:5173/?terminal=hq を開きます。`terminal` は端末を置く場所のIDです（病院設定の `locations` の id）。訓練モードは `&mode=training` を付けます。
+ブラウザで http://localhost:5173/?hospital=claude&terminal=hq を開きます。`terminal` は端末を置く場所のIDです（病院設定の `locations` の id）。訓練モードは `&mode=training` を付けます。
 
-使う病院設定は環境変数 `HOSPITAL_CONFIG` で選べます（例：`HOSPITAL_CONFIG=claude`）。`config/hospitals/` に設定が1つしかないときは、指定しなくてもそれを使います。サーバーのポートは `SERVER_PORT`（既定 4000）、記録の保存先は `DATA_DIR` で変えられます。
+`config/hospitals/` の病院設定（架空の「Claude総合病院(仮)」と「ひなた台中央病院(仮)」）はすべて読み込まれ、URL の `hospital` で選びます（例：`?hospital=hinata&terminal=hq`）。指定しないと病院を選ぶ画面が出ます。記録は病院ごと・実運用／訓練ごとに別のファイルに保存します。
+
+掲示用画面（本部の大型モニター）は `?hospital=claude&view=board` で開きます。
+
+サーバーのポートは `SERVER_PORT`（既定 4000）、記録の保存先は `DATA_DIR`（既定 `data/`）、配信する病院は `HOSPITALS`（カンマ区切り）、病院を指定せずに開いたときの病院は `DEFAULT_HOSPITAL` で変えられます。
 
 院内の1台のPCで本番のように動かす場合（画面をビルドしてサーバーから配信、http://localhost:4000 ）：
 

@@ -35,7 +35,7 @@ description: 病院設定ファイル（config/hospitals/*.yaml）を新しく�
 
    Claude Code で編集した場合は、PostToolUse フック（`.claude/settings.json`）が自動で同じ検証を実行する。エラーが出たら、表示された項目のパス（例: `capacity.3.triage`）を直す
 4. 参照の整合性（存在しない場所・区分・職種を指していないか、id の重複がないか）もスキーマが検証する
-5. 画面で確認する：`HOSPITAL_CONFIG=<病院id> npm run dev` で起動し、`http://localhost:5173/?terminal=<場所id>` を開く
+5. 画面で確認する：`npm run dev` で起動し（config/hospitals/ の設定はすべて読み込まれる）、`http://localhost:5173/?hospital=<病院id>&terminal=<場所id>` を開く
 
 ## よくある誤り
 

@@ -63,4 +63,5 @@
 - `npm run test:e2e` — Playwright（テスト用ポート 4100/5174、保存先 `e2e/.tmp`。初回は `npx playwright install chromium`）
 - `npm run typecheck` — 3パッケージの型検査
 - `npm run validate:config [-- ファイル]` — config/・scenarios/ の YAML 検証（編集時はフックが自動実行）
-- 環境変数：`HOSPITAL_CONFIG`（未指定なら config/hospitals/ に1つだけある設定を使う）、`SERVER_PORT`（既定 4000。`PORT` は使わない）、`DATA_DIR`
+- 環境変数：`HOSPITALS`（配信する病院をカンマ区切り。未指定なら config/hospitals/ のすべて）、`DEFAULT_HOSPITAL`（病院を指定せず開いたときの病院。未指定なら選ぶ画面）、`SERVER_PORT`（既定 4000。`PORT` は使わない）、`DATA_DIR`（記録の保存先。病院ごとにサブフォルダ）
+- 画面の URL：`?hospital=<病院id>&terminal=<場所id>`、訓練は `&mode=training`、掲示用画面は `?hospital=<病院id>&view=board`

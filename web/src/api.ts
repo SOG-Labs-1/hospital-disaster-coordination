@@ -7,22 +7,42 @@ export type CommandResponse =
   | { status: 'rejected'; errors: string[] }
   | { status: 'error'; errors: string[] };
 
+// 1つの画面で扱う病院は1つ。起動時に決めた病院の API を呼ぶ
+let hospitalId = '';
+export function setApiHospital(id: string) {
+  hospitalId = id;
+}
+export function apiBase(mode: Mode): string {
+  return `/api/h/${encodeURIComponent(hospitalId)}/${mode}`;
+}
+
+export interface HospitalList {
+  hospitals: { id: string; name: string }[];
+  defaultHospitalId: string | null;
+}
+
+export async function fetchHospitals(): Promise<HospitalList> {
+  const res = await fetch('/api/hospitals');
+  if (!res.ok) throw new Error('病院の一覧を読み込めない');
+  return res.json();
+}
+
 export async function fetchConfig(): Promise<HospitalConfig> {
-  const res = await fetch('/api/config');
+  const res = await fetch(`/api/h/${encodeURIComponent(hospitalId)}/config`);
   if (!res.ok) throw new Error('病院設定を読み込めない');
   return res.json();
 }
 
 export async function fetchEvents(mode: Mode, after?: string | null): Promise<DomainEvent[]> {
   const q = after ? `?after=${encodeURIComponent(after)}` : '';
-  const res = await fetch(`/api/${mode}/events${q}`);
+  const res = await fetch(`${apiBase(mode)}/events${q}`);
   if (!res.ok) throw new Error(`記録を読み込めない（${res.status}）`);
   return (await res.json()).events;
 }
 
 export async function sendCommand(mode: Mode, envelope: CommandEnvelopeInput): Promise<CommandResponse> {
   try {
-    const res = await fetch(`/api/${mode}/commands`, {
+    const res = await fetch(`${apiBase(mode)}/commands`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(envelope),

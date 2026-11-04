@@ -1,0 +1,136 @@
+# 病院設定B：ひなた台中央病院(仮)（小規模の病院）
+# すべて架空。実在の病院・職員とは関係ありません。
+# 「# 仮」と書いた数値は設計書 §13 で未決定のため、仮に置いた値です。
+#
+# 病院Aとの違い（同じ仕組みが設定だけで動くことを示す）
+# - 待合を黄ゾーンと緑ゾーンの両方に使う（1つの場所に2つの用途）
+# - 搬送の専任担当はおらず、本部長が搬送の調整を兼任する
+# - 受け入れ了承は、到着先の担当者なら誰でも判断できる
+# - 到着と引き渡しを分けて記録する
+
+id: hinata
+name: ひなた台中央病院(仮)
+fictional: true
+staleAfterMinutes: 20 # 仮
+
+locations:
+  - { id: hq, name: 本部（1階事務室）, kind: headquarters, hasTerminal: true }
+  - { id: treatment, name: 外来処置室, kind: emergency, hasTerminal: true }
+  - { id: waiting, name: 外来待合, kind: outpatient, hasTerminal: true }
+  - { id: or, name: 手術室, kind: operating-room, hasTerminal: false }
+  - { id: ward-2, name: 2階病棟, kind: ward, hasTerminal: true }
+  - id: ward-3
+    name: 3階病棟
+    kind: ward
+    hasTerminal: false
+    routeNote: 3階へは階段のみ（エレベーター1基は点検中） # 仮
+
+# 色だけで区別しないよう、記号と印刷時の枠線を区分ごとに変えている
+triageCategories:
+  - { id: red, label: 赤, symbol: ◆, description: 最優先治療（I）, color: '#c8102e', textColor: '#ffffff', printBorder: double }
+  - { id: yellow, label: 黄, symbol: ▲, description: 待機的治療（II）, color: '#ffd23f', textColor: '#000000', printBorder: solid }
+  - { id: green, label: 緑, symbol: ●, description: 保留（III）, color: '#2e7d32', textColor: '#ffffff', printBorder: dashed }
+  - { id: black, label: 黒, symbol: ✕, description: 救命困難・死亡（0）, color: '#1a1a1a', textColor: '#ffffff', printBorder: dotted }
+
+zones:
+  - { id: red-zone, name: 赤ゾーン, triage: [red] }
+  - { id: yellow-zone, name: 黄ゾーン, triage: [yellow] }
+  - { id: green-zone, name: 緑ゾーン, triage: [green] }
+
+# 待合は黄と緑の両方に使う
+zoneAssignments:
+  - { zoneId: red-zone, locationId: treatment }
+  - { zoneId: yellow-zone, locationId: waiting }
+  - { zoneId: green-zone, locationId: waiting }
+
+capacity:
+  - { locationId: treatment, triage: red, value: 2 } # 仮
+  - { locationId: waiting, triage: yellow, value: 6 } # 仮
+  - { locationId: waiting, triage: green, value: 20 } # 仮
+  - { locationId: or, triage: red, value: 1 } # 仮
+  - { locationId: ward-2, triage: yellow, value: 3 } # 仮
+  - { locationId: ward-3, triage: yellow, value: 2 } # 仮
+
+professions:
+  - { id: doctor, name: 医師 }
+  - { id: nurse, name: 看護師 }
+  - { id: clerk, name: 事務 }
+
+# 搬送の専任担当はいない。本部長が搬送の指示と支援の手配を兼任する
+positions:
+  - { id: hq-chief, name: 本部長（搬送調整を兼任）, locationId: hq, permissions: [direct-transport, assign-support, register-patient] }
+  - { id: hq-recorder, name: 記録担当, locationId: hq, permissions: [register-patient] }
+  - { id: treatment-lead, name: 外来処置室責任者, locationId: treatment, permissions: [accept-transport] }
+  - { id: waiting-lead, name: 外来待合責任者, locationId: waiting, permissions: [accept-transport] }
+  - { id: or-lead, name: 手術室責任者, locationId: or, permissions: [accept-transport] }
+  - { id: ward-2-lead, name: 2階病棟責任者, locationId: ward-2, permissions: [accept-transport] }
+  - { id: ward-3-lead, name: 3階病棟責任者, locationId: ward-3, permissions: [accept-transport] }
+
+# 入力者として選ぶ職員（すべて架空の名前）
+staff:
+  - { id: hq-01, name: 内田 千夏, professionId: clerk, locationId: hq }
+  - { id: hq-02, name: 遠藤 浩二, professionId: doctor, locationId: hq }
+  - { id: tr-01, name: 菊池 早苗, professionId: nurse, locationId: treatment }
+  - { id: wt-01, name: 久保 大輔, professionId: nurse, locationId: waiting }
+  - { id: w2-01, name: 坂本 由香, professionId: nurse, locationId: ward-2 }
+  - { id: w3-01, name: 杉山 誠, professionId: nurse, locationId: ward-3 }
+
+# 搬送要員（すべて架空の名前。班は組まない）
+transporters:
+  - { id: porter-1, name: Graham Pell }
+  - { id: porter-2, name: Hazel Ondrey }
+  - { id: porter-3, name: Ivo Brannick }
+
+transportMethods:
+  - { id: walk, name: 独歩 }
+  - { id: wheelchair, name: 車いす }
+  - { id: stretcher, name: ストレッチャー }
+
+transportPolicy:
+  # 受領確認と要員の割り当ては記録がなくても先へ進めてよい
+  optionalSteps: [acknowledged, staffAssigned]
+  # 到着と引き渡しを分けて記録する
+  handoverOnArrival: false
+  # 受け入れ了承は到着先の担当者なら誰でも判断できる
+  acceptanceDecidedBy: anyone-at-location
+  stepLabels:
+    requested: 要請
+    accepted: 受け入れ了承
+    staffAssigned: 要員の割り当て
+    ordered: 本部の指示
+    acknowledged: 受領確認
+    departed: 出発
+    arrived: 到着
+
+supportKinds:
+  - { id: staff, name: 人員, itemSource: professions }
+  - { id: supply, name: 物品, itemSource: resources }
+  - { id: other, name: その他, itemSource: none }
+
+supportPolicy:
+  unassignedAlertMinutes: 5 # 仮
+  undeliveredAlertMinutes: 15 # 仮
+  stepLabels:
+    requested: 要請
+    assigned: 受付（担当）
+    dispatched: 手配
+    received: 届いた
+    completed: 完了
+
+warningReasons:
+  - { id: confirmed-different, label: 別の患者であることを確認した }
+  - { id: tag-misread, label: タッグ番号の読み違いの可能性があり、後で確認する }
+  - { id: hq-instruction, label: 本部の指示による }
+  - { id: other, label: その他（理由を書く）, requiresDetail: true }
+
+resources:
+  - { id: stretcher, name: ストレッチャー, unit: 台 }
+  - { id: wheelchair, name: 車いす, unit: 台 }
+  - { id: oxygen, name: 酸素ボンベ, unit: 本 }
+  - { id: blanket, name: 毛布, unit: 枚 }
+
+checklist:
+  - { id: hq-setup, text: 本部の設置と本部長の決定を記録したか }
+  - { id: patient-location, text: 全患者の所在を確認時刻つきで把握しているか }
+  - { id: handover, text: 到着した患者の引き渡しを記録したか }
+  - { id: support-done, text: 支援要請の完了を確認したか }

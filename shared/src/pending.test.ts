@@ -42,6 +42,23 @@ describe('部署ごとの対応待ち', () => {
     expect(pendingForLocation(reduce(events), 'loc-a').departures).toHaveLength(0);
   });
 
+  it('到着と引き渡しを分ける病院では、引き渡しが未記録の搬送が到着先の対応待ちに出る', () => {
+    const cfg = testConfig({ transportPolicy: { handoverOnArrival: false } });
+    const events: DomainEvent[] = [];
+    let seq = 0;
+    const send = (env: CommandEnvelopeInput) => {
+      const r = decide(reduce(events), cfg, env, { mode: 'training', now: new Date(Date.parse('2026-11-04T09:00:00+09:00') + seq * 60000).toISOString(), newId: () => `E${++seq}` });
+      if (r.status !== 'accepted') throw new Error(JSON.stringify(r));
+      events.push(...r.events);
+    };
+    send({ command: { type: 'RegisterPatient', payload: { locationId: 'loc-a' } }, meta });
+    send({ command: { type: 'RequestTransport', payload: { patientId: 'P-001', toLocationId: 'loc-b' } }, meta });
+    send({ command: { type: 'RecordArrival', transportId: 'T-001', payload: {} }, meta, expectedVersion: tv(events, 'T-001') });
+    expect(ids(pendingForLocation(reduce(events), 'loc-b').handovers)).toEqual(['T-001']);
+    send({ command: { type: 'RecordHandover', transportId: 'T-001', payload: {} }, meta, expectedVersion: tv(events, 'T-001') });
+    expect(pendingForLocation(reduce(events), 'loc-b').handovers).toHaveLength(0);
+  });
+
   it('断った搬送は対応待ちから外れる', () => {
     const events = scenario([
       () => ({ command: { type: 'RegisterPatient', payload: { locationId: 'loc-a' } }, meta }),

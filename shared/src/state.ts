@@ -582,6 +582,13 @@ export function activeTransports(state: AppState): TransportView[] {
   return state.transportOrder.map((id) => state.transports[id]!).filter((t) => !t.retracted && !t.closed);
 }
 
+/** 到着したが引き渡しが未記録の搬送（到着と引き渡しを分ける病院だけで起きる） */
+export function handoverPending(state: AppState): TransportView[] {
+  return state.transportOrder
+    .map((id) => state.transports[id]!)
+    .filter((t) => !t.retracted && t.steps.arrived && !t.steps.arrived.handover && !t.steps.handedOver);
+}
+
 export function activeTransportsForPatient(state: AppState, patientId: string, excludeId?: string): TransportView[] {
   return activeTransports(state).filter((t) => t.patientId === patientId && t.id !== excludeId);
 }
@@ -729,6 +736,8 @@ export interface LocationPending {
   supportsToReceive: SupportView[];
   /** この場所が手配先になっている支援（届いた記録がない） */
   supportsToProvide: SupportView[];
+  /** この場所に到着したが、引き渡しが未記録の搬送（到着と引き渡しを分ける病院だけ） */
+  handovers: TransportView[];
 }
 
 /** 各部署の画面の上部に固定表示する「この部署への依頼・この部署が記録すること」 */
@@ -741,5 +750,6 @@ export function pendingForLocation(state: AppState, locationId: string): Locatio
     arrivals: transports.filter((t) => t.toLocationId === locationId && t.steps.departed),
     supportsToReceive: supports.filter((s) => (s.steps.dispatched?.toLocationId ?? s.fromLocationId) === locationId && !s.steps.received),
     supportsToProvide: supports.filter((s) => s.steps.dispatched?.providerLocationId === locationId && !s.steps.received),
+    handovers: handoverPending(state).filter((t) => t.toLocationId === locationId),
   };
 }

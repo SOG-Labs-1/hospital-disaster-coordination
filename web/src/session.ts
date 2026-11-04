@@ -32,26 +32,56 @@ export function setModeInUrl(mode: Mode) {
   location.search = params.toString();
 }
 
+/** URL の ?hospital= を優先し、なければこのブラウザに保存した値、なければサーバーの既定 */
+export function readHospital(available: string[], serverDefault: string | null): string | null {
+  const fromUrl = new URLSearchParams(location.search).get('hospital');
+  if (fromUrl === '') return null; // 「別の病院を選ぶ」を押したとき
+  if (fromUrl && available.includes(fromUrl)) {
+    safeSet('hdc.hospital', fromUrl);
+    return fromUrl;
+  }
+  if (fromUrl) return null; // 知らない病院を指定されたら選び直させる
+  const saved = safeGet('hdc.hospital');
+  if (saved && available.includes(saved)) return saved;
+  return serverDefault;
+}
+
+/** 病院を切り替える。空文字なら保存を消して、病院を選ぶ画面に戻す */
+export function setHospitalInUrl(hospitalId: string) {
+  safeSet('hdc.hospital', hospitalId || null);
+  const params = new URLSearchParams(location.search);
+  params.set('hospital', hospitalId);
+  // 病院が変われば場所も変わるので、端末の場所は選び直す
+  params.delete('terminal');
+  location.search = params.toString();
+}
+
+// 端末の場所と入力者は病院ごとに保存する（病院Aの場所を病院Bで使わない）
+let hospitalKey = '';
+export function setSessionHospital(id: string) {
+  hospitalKey = id;
+}
+
 /** URL の ?terminal= を優先し、なければこのブラウザに保存した値 */
 export function readTerminal(): string | null {
   const fromUrl = new URLSearchParams(location.search).get('terminal');
   if (fromUrl) {
-    safeSet('hdc.terminal', fromUrl);
+    safeSet(`hdc.terminal.${hospitalKey}`, fromUrl);
     return fromUrl;
   }
-  return safeGet('hdc.terminal');
+  return safeGet(`hdc.terminal.${hospitalKey}`);
 }
 
 export function setTerminalInUrl(terminal: string) {
-  safeSet('hdc.terminal', terminal);
+  safeSet(`hdc.terminal.${hospitalKey}`, terminal);
   const params = new URLSearchParams(location.search);
   params.set('terminal', terminal);
   location.search = params.toString();
 }
 
 export function readEnteredBy(terminal: string): string | null {
-  return safeGet(`hdc.enteredBy.${terminal}`);
+  return safeGet(`hdc.enteredBy.${hospitalKey}.${terminal}`);
 }
 export function saveEnteredBy(terminal: string, staffId: string | null) {
-  safeSet(`hdc.enteredBy.${terminal}`, staffId);
+  safeSet(`hdc.enteredBy.${hospitalKey}.${terminal}`, staffId);
 }

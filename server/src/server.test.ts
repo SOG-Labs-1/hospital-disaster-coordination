@@ -15,7 +15,7 @@ let base: string;
 
 beforeEach(async () => {
   dataDir = mkdtempSync(join(tmpdir(), 'hdc-test-'));
-  app = createApp({ config: testConfig(), dataDir });
+  app = createApp({ hospitals: [testConfig()], dataDir });
   await new Promise<void>((r) => app.server.listen(0, r));
   base = `http://localhost:${(app.server.address() as AddressInfo).port}`;
 });
@@ -28,7 +28,7 @@ afterEach(async () => {
 const meta = { enteredBy: 's1', terminal: 'hq' };
 
 async function post(mode: string, body: unknown) {
-  const res = await fetch(`${base}/api/${mode}/commands`, {
+  const res = await fetch(`${base}/api/h/test/${mode}/commands`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -44,10 +44,10 @@ const registerCmd = (tagNumber?: string) => ({
 describe('追記保存', () => {
   it('実運用と訓練は別ファイルに保存する', async () => {
     await post('training', registerCmd('1'));
-    expect(existsSync(storePath(dataDir, 'live'))).toBe(true);
-    expect(existsSync(storePath(dataDir, 'training'))).toBe(true);
-    const live = (await (await fetch(`${base}/api/live/events`)).json()) as any;
-    const training = (await (await fetch(`${base}/api/training/events`)).json()) as any;
+    expect(existsSync(storePath(join(dataDir, 'test'), 'live'))).toBe(true);
+    expect(existsSync(storePath(join(dataDir, 'test'), 'training'))).toBe(true);
+    const live = (await (await fetch(`${base}/api/h/test/live/events`)).json()) as any;
+    const training = (await (await fetch(`${base}/api/h/test/training/events`)).json()) as any;
     expect(live.events).toHaveLength(0);
     expect(training.events).toHaveLength(1);
     expect(training.events[0].mode).toBe('training');
@@ -56,11 +56,11 @@ describe('追記保存', () => {
   it('UPDATE と DELETE はデータベースが拒否する', async () => {
     await post('live', registerCmd('1'));
     await app.close();
-    const db = new DatabaseSync(storePath(dataDir, 'live'));
+    const db = new DatabaseSync(storePath(join(dataDir, 'test'), 'live'));
     expect(() => db.exec("UPDATE events SET type = 'x'")).toThrow(/追記のみ/);
     expect(() => db.exec('DELETE FROM events')).toThrow(/追記のみ/);
     db.close();
-    app = createApp({ config: testConfig(), dataDir }); // afterEach で閉じる
+    app = createApp({ hospitals: [testConfig()], dataDir }); // afterEach で閉じる
   });
 
   it('別のモードの記録は書き込めない', () => {
@@ -74,7 +74,7 @@ describe('追記保存', () => {
     await post('live', registerCmd('1'));
     await post('live', registerCmd('2'));
     await app.close();
-    app = createApp({ config: testConfig(), dataDir });
+    app = createApp({ hospitals: [testConfig()], dataDir });
     await new Promise<void>((r) => app.server.listen(0, r));
     base = `http://localhost:${(app.server.address() as AddressInfo).port}`;
     const r = await post('live', registerCmd('3'));
@@ -113,14 +113,14 @@ describe('コマンドAPI', () => {
 
   it('形の誤りは 400', async () => {
     expect((await post('live', { command: { type: 'DeleteEverything' }, meta })).code).toBe(400);
-    const res = await fetch(`${base}/api/live/commands`, { method: 'POST', body: '{' });
+    const res = await fetch(`${base}/api/h/test/live/commands`, { method: 'POST', body: '{' });
     expect(res.status).toBe(400);
   });
 
   it('events?after= で指定より後の記録だけ返す', async () => {
     const a = await post('live', registerCmd('1'));
     await post('live', registerCmd('2'));
-    const r = (await (await fetch(`${base}/api/live/events?after=${a.body.events[0].id}`)).json()) as any;
+    const r = (await (await fetch(`${base}/api/h/test/live/events?after=${a.body.events[0].id}`)).json()) as any;
     expect(r.events.map((e: DomainEvent) => e.subject.id)).toEqual(['P-002']);
   });
 });
@@ -128,7 +128,7 @@ describe('コマンドAPI', () => {
 describe('Server-Sent Events', () => {
   it('追記したイベントを同じモードの全端末に配信する', async () => {
     const ac = new AbortController();
-    const res = await fetch(`${base}/api/live/stream`, { signal: ac.signal });
+    const res = await fetch(`${base}/api/h/test/live/stream`, { signal: ac.signal });
     const reader = res.body!.getReader();
     const decoder = new TextDecoder();
     let text = '';
@@ -147,5 +147,30 @@ describe('Server-Sent Events', () => {
     const data = text.split('event: domain-event\ndata: ')[1]!.split('\n')[0]!;
     expect(JSON.parse(data)).toMatchObject({ type: 'PatientRegistered', mode: 'live', payload: { tagNumber: '1' } });
     expect(text).not.toContain('"99"');
+  });
+});
+
+describe('複数の病院', () => {
+  it('病院ごとに記録を別のフォルダに保存し、混ざらない', async () => {
+    await app.close();
+    const other = testConfig({ id: 'other', name: '別の病院(架空)' });
+    app = createApp({ hospitals: [testConfig(), other], dataDir });
+    await new Promise<void>((r) => app.server.listen(0, r));
+    base = `http://localhost:${(app.server.address() as AddressInfo).port}`;
+    const list = (await (await fetch(`${base}/api/hospitals`)).json()) as any;
+    expect(list).toEqual({ hospitals: [{ id: 'test', name: 'テスト病院(架空)' }, { id: 'other', name: '別の病院(架空)' }], defaultHospitalId: null });
+    expect(((await (await fetch(`${base}/api/h/other/config`)).json()) as any).name).toBe('別の病院(架空)');
+    expect((await fetch(`${base}/api/h/nowhere/config`)).status).toBe(404);
+
+    await fetch(`${base}/api/h/other/live/commands`, { method: 'POST', body: JSON.stringify(registerCmd('1')) });
+    const t = (await (await fetch(`${base}/api/h/test/live/events`)).json()) as any;
+    const o = (await (await fetch(`${base}/api/h/other/live/events`)).json()) as any;
+    expect(t.events).toHaveLength(0);
+    expect(o.events).toHaveLength(1);
+    expect(existsSync(storePath(join(dataDir, 'other'), 'live'))).toBe(true);
+  });
+
+  it('既定の病院が設定にないときは起動しない', () => {
+    expect(() => createApp({ hospitals: [testConfig()], dataDir, defaultHospitalId: 'nope' })).toThrow();
   });
 });
