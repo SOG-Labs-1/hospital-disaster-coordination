@@ -164,6 +164,7 @@ export interface AppState {
   supports: Record<string, SupportView>;
   supportOrder: string[];
   requestedSupportCount: number;
+  messageCount: number;
   /** 登録順 */
   patientOrder: string[];
   /** 対象ごとの版番号＝その対象のイベント件数 */
@@ -187,6 +188,7 @@ export function emptyState(): AppState {
     supports: {},
     supportOrder: [],
     requestedSupportCount: 0,
+    messageCount: 0,
     patientOrder: [],
     versions: {},
     registeredCount: 0,
@@ -203,6 +205,10 @@ export function versionOf(state: AppState, subject: Subject): number {
 
 export function formatPatientId(n: number): string {
   return `P-${String(n).padStart(3, '0')}`;
+}
+
+export function formatMessageId(n: number): string {
+  return `M-${String(n).padStart(3, '0')}`;
 }
 
 export function formatSupportId(n: number): string {
@@ -314,6 +320,11 @@ function applyEvent(state: AppState, e: DomainEvent, correction: Correction | un
   if (e.subject.kind === 'transporter') return applyTransporterEvent(state, e, correction);
   if (e.subject.kind === 'location') return applyLocationEvent(state, e, correction);
   if (e.subject.kind === 'support') return applySupportEvent(state, e, correction);
+  if (e.subject.kind === 'message') {
+    // 連絡メモは状態を変えない。クロノロジーに出すだけ
+    if (e.type === 'MessageLogged') state.messageCount += 1;
+    return;
+  }
 
   const patient = state.patients[e.subject.id];
   if (!patient) return;

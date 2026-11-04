@@ -19,7 +19,7 @@ export const ReporterSchema = z.object({
 export type Reporter = z.infer<typeof ReporterSchema>;
 
 export const SubjectSchema = z.object({
-  kind: z.enum(['patient', 'transport', 'transporter', 'location', 'support']),
+  kind: z.enum(['patient', 'transport', 'transporter', 'location', 'support', 'message']),
   id: z.string().min(1),
 });
 export type Subject = z.infer<typeof SubjectSchema>;
@@ -172,6 +172,25 @@ export const SupportReceivedPayload = z.object({ note: optionalText });
 export const SupportCompletedPayload = z.object({ note: optionalText });
 export const SupportCancelledPayload = z.object({ reason: z.string().trim().min(1) });
 
+// ---- 連絡メモ（無線・電話などのやりとりをそのまま残す） ----
+export const messageChannels = ['radio', 'phone', 'in-person', 'other'] as const;
+export const messageChannelLabels: Record<(typeof messageChannels)[number], string> = {
+  radio: '無線',
+  phone: '電話',
+  'in-person': '対面',
+  other: 'その他',
+};
+
+export const MessageLoggedPayload = z.object({
+  channel: z.enum(messageChannels),
+  /** 発信元・宛先の場所（分かれば） */
+  fromLocationId: z.string().optional(),
+  toLocationId: z.string().optional(),
+  text: z.string().trim().min(1),
+  /** 関係する患者・搬送・要請（例：P-001、T-002） */
+  relatedIds: z.array(z.string()).default([]),
+});
+
 // ---- 搬送要員 ----
 export const TransporterAvailabilityChangedPayload = z.object({
   available: z.boolean(),
@@ -217,6 +236,7 @@ export const payloadSchemas = {
   SupportReceived: SupportReceivedPayload,
   SupportCompleted: SupportCompletedPayload,
   SupportCancelled: SupportCancelledPayload,
+  MessageLogged: MessageLoggedPayload,
   LocationStatusReported: LocationStatusReportedPayload,
   StaffCountReported: StaffCountReportedPayload,
 } as const;

@@ -22,6 +22,7 @@ import {
 import {
   activeTransportsForPatient,
   findPatientsByIdentifier,
+  formatMessageId,
   formatPatientId,
   formatSupportId,
   formatTransportId,
@@ -94,6 +95,8 @@ export const CommandSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('RecordSupportReceived'), supportId: z.string(), payload: payloadSchemas.SupportReceived.default({}) }),
   z.object({ type: z.literal('CompleteSupport'), supportId: z.string(), payload: payloadSchemas.SupportCompleted.default({}) }),
   z.object({ type: z.literal('CancelSupport'), supportId: z.string(), payload: payloadSchemas.SupportCancelled }),
+  // 連絡メモ
+  z.object({ type: z.literal('LogMessage'), payload: payloadSchemas.MessageLogged }),
 ]);
 export type Command = z.infer<typeof CommandSchema>;
 export type CommandInput = z.input<typeof CommandSchema>;
@@ -147,7 +150,7 @@ export interface DecideContext {
 const FUTURE_TOLERANCE_MS = 5 * 60 * 1000;
 
 /** 版番号の確認をしないコマンド（対象を新しく作る、または事実の報告を足すだけのもの） */
-const versionFree = new Set<Command['type']>(['RegisterPatient', 'RequestTransport', 'RequestSupport', 'ReportLocationStatus', 'ReportStaffCount']);
+const versionFree = new Set<Command['type']>(['RegisterPatient', 'RequestTransport', 'RequestSupport', 'ReportLocationStatus', 'ReportStaffCount', 'LogMessage']);
 
 /** 受け入れ可能人数。報告があればその値、報告が一度もなければ病院設定の初期値。未確認と報告されていれば null */
 export function effectiveCapacity(
@@ -245,6 +248,12 @@ export function decide(
       if (p.providerLocationId && !locationIds.has(p.providerLocationId)) errors.push(`手配先「${p.providerLocationId}」が病院設定にない`);
       if (p.toLocationId && !locationIds.has(p.toLocationId)) errors.push(`届け先「${p.toLocationId}」が病院設定にない`);
       if (p.orderedBy) checkDecider(p.orderedBy, '指示した人');
+    }
+    if (type === 'MessageLogged') {
+      const p = payload as z.infer<typeof payloadSchemas.MessageLogged>;
+      for (const loc of [p.fromLocationId, p.toLocationId]) if (loc && !locationIds.has(loc)) errors.push(`場所「${loc}」が病院設定にない`);
+      for (const id of p.relatedIds)
+        if (!state.patients[id] && !state.transports[id] && !state.supports[id]) errors.push(`関係する記録「${id}」が見つからない`);
     }
     if (type === 'SupportAssigned') {
       checkDecider((payload as z.infer<typeof payloadSchemas.SupportAssigned>).assignee, '担当者');
@@ -551,6 +560,14 @@ export function decide(
       }
       if (command.type === 'RecordSupportReceived' && s.steps.received) errors.push(`${s.id} の受け取りは記録済み`);
       event = make(type, command.payload);
+      break;
+    }
+
+    // ---- 連絡メモ ----
+    case 'LogMessage': {
+      subject = { kind: 'message', id: formatMessageId(state.messageCount + 1) };
+      checkRefs('MessageLogged', command.payload);
+      event = make('MessageLogged', command.payload);
       break;
     }
 
