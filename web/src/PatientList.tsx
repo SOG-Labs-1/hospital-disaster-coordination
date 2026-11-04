@@ -330,7 +330,6 @@ function CorrectForm({ config, patient: p, onDone, meta, expectedVersion }: { co
     name: p.name ?? '',
     sex: p.sex,
     estimatedAge: p.estimatedAge ?? '',
-    features: p.features ?? '',
     locationId: p.locationId,
   };
   const [form, setForm] = useState(initial);
@@ -347,7 +346,7 @@ function CorrectForm({ config, patient: p, onDone, meta, expectedVersion }: { co
     if (r === 'accepted') onDone();
   }
 
-  const text = (k: 'tagNumber' | 'hospitalPatientId' | 'name' | 'estimatedAge' | 'features', label: string) => (
+  const text = (k: 'tagNumber' | 'hospitalPatientId' | 'name' | 'estimatedAge', label: string) => (
     <label className="field">
       <span>
         {label}
@@ -366,12 +365,11 @@ function CorrectForm({ config, patient: p, onDone, meta, expectedVersion }: { co
         if (ready) save();
       }}
     >
-      <p className="hint">変えた項目だけを、理由つきで記録します。元の記録は消えずに残ります。</p>
+      <p className="hint">変えた項目だけを、理由つきで記録します。元の記録は消えずに残ります。特徴メモと状態メモは「メモを直す」で直します。</p>
       {text('tagNumber', 'タッグ番号')}
       {text('hospitalPatientId', '院内患者ID')}
       {text('name', '氏名')}
       {text('estimatedAge', '推定年齢')}
-      {text('features', '特徴メモ')}
       <label className="field">
         <span>性別{'sex' in changed && <em className="changed-mark">変更あり</em>}</span>
         <select value={form.sex} onChange={(e) => set('sex', e.target.value)}>

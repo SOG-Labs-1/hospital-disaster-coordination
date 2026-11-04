@@ -576,3 +576,6 @@ h3 { font-size: var(--text); }
 .cap-remaining.over { color: var(--danger); border: 3px double var(--danger); padding: 0 6px; }
 .cap-detail { flex-basis: 100%; font-size: var(--text-small); color: var(--ink-muted); }
 .location-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr)); }
+
+/* 部署の画面：あとから来た依頼の印 */
+.pinned-new { font-weight: 700; padding: 0 8px; border: 2px dashed var(--ink); border-radius: var(--radius); white-space: nowrap; background: #fff; }

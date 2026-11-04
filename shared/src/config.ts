@@ -98,6 +98,11 @@ export const WarningReasonSchema = z.object({
   label: z.string().min(1),
   /** true なら補足の記入を必須にする（「その他」など） */
   requiresDetail: z.boolean().default(false),
+  /**
+   * この理由を出す警告の種類（警告コード）。省略するとすべての警告で出す。
+   * 警告ごとに合う理由だけを出して、迷わず選べるようにする
+   */
+  appliesTo: z.array(z.string().min(1)).optional(),
 });
 
 export const ResourceSchema = z.object({ id, name: z.string().min(1), unit: z.string().min(1) });

@@ -135,6 +135,15 @@ export const warningCodes = {
 } as const;
 export type WarningCode = keyof typeof warningCodes;
 
+/**
+ * 出ている警告に合う理由だけを返す。理由の appliesTo が省略されていれば、どの警告にも出す。
+ * 出ている警告のすべてに当てはまる理由に絞り、1つもなければ全部を返す（選べなくならないように）
+ */
+export function reasonsForWarnings(config: HospitalConfig, codes: readonly string[]) {
+  const fits = config.warningReasons.filter((r) => !r.appliesTo || codes.every((c) => r.appliesTo!.includes(c)));
+  return fits.length > 0 ? fits : config.warningReasons;
+}
+
 export interface DomainWarning {
   code: WarningCode;
   message: string;

@@ -1,7 +1,7 @@
 import { readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { contrastRatio } from '@hdc/shared';
+import { contrastRatio, reasonsForWarnings, warningCodes } from '@hdc/shared';
 import { loadHospitalConfig, repoRoot } from './config';
 
 const ids = readdirSync(join(repoRoot, 'config/hospitals'))
@@ -21,6 +21,15 @@ describe.each(ids)('病院設定 %s', (id) => {
     const borders = config.triageCategories.map((t) => t.printBorder);
     expect(new Set(symbols).size).toBe(symbols.length);
     expect(new Set(borders).size).toBe(borders.length);
+  });
+
+  it('警告の理由の appliesTo は、実在する警告の種類だけを指し、どの警告にも選べる理由がある', () => {
+    for (const r of config.warningReasons) {
+      for (const code of r.appliesTo ?? []) expect(Object.keys(warningCodes), `${r.id}: ${code}`).toContain(code);
+    }
+    for (const code of Object.keys(warningCodes)) {
+      expect(reasonsForWarnings(config, [code]).length, code).toBeGreaterThan(0);
+    }
   });
 
   it('トリアージ区分の文字色と背景色は WCAG 2.2 AA（4.5:1）を満たす', () => {

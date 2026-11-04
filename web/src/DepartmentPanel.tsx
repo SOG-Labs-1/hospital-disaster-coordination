@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { openSupports, pendingForLocation, type AppState, type HospitalConfig, type SupportView, type TransportView } from '@hdc/shared';
 import { minutesSince } from './format';
 import { locationLabel, locationName, patientShort } from './labels';
@@ -35,13 +35,17 @@ const PINNED_VISIBLE = 4;
 export function PinnedRequests(props: Props & { onChangeEnteredBy: (staffId: string) => void }) {
   const { config, state, terminal, enteredBy, now, onChangeEnteredBy } = props;
   const [openKey, setOpenKey] = useState<string | null>(null);
+  // 並び順を固定する：最初に開いたときの順番を覚え、あとから来た依頼は末尾に足して「新着」と示す。
+  // 新しい依頼が来るたびに並び替わると、「対応する」を押す瞬間に指の下の行が入れ替わるため（配置を変えない）
+  const order = useRef<string[] | null>(null);
+  const [fresh, setFresh] = useState<Set<string>>(() => new Set());
   const [showAll, setShowAll] = useState(false);
   const p = pendingForLocation(state, terminal);
   const patient = (t: TransportView) => patientShort(config, state.patients[t.patientId], t.patientId);
   const since = (label: string, iso: string) => ({ text: `${label}から${minutesSince(iso, now)}分`, minutes: minutesSince(iso, now) });
   const items = (s: SupportView) => (s.steps.dispatched?.items ?? s.items).map((it) => itemText(config, it)).join('、');
 
-  const rows: Row[] = [
+  const unordered: Row[] = [
     ...p.acceptRequests.map((t): Row => ({
       key: `accept-${t.id}`,
       label: '⚠ 受け入れの判断',
@@ -108,7 +112,30 @@ export function PinnedRequests(props: Props & { onChangeEnteredBy: (staffId: str
       elapsed: since('手配', s.steps.dispatched!.observedAt),
       support: s,
     })),
-  ].sort((a, b) => Number(b.decision) - Number(a.decision) || b.elapsed.minutes - a.elapsed.minutes);
+  ];
+  const priority = (a: Row, b: Row) => Number(b.decision) - Number(a.decision) || b.elapsed.minutes - a.elapsed.minutes;
+  // 記録の読み込み前（まだ0件）には順番を決めない。読み込んだ時点の依頼は「新着」にせず、優先の順に並べる
+  if (order.current === null && unordered.length > 0) order.current = [...unordered].sort(priority).map((r) => r.key);
+  const known = new Set(order.current ?? []);
+  const arrived = order.current ? unordered.filter((r) => !known.has(r.key)) : [];
+  if (order.current && arrived.length) {
+    order.current = [...order.current, ...arrived.map((r) => r.key)];
+    // 描画の途中で状態を変えないよう、新着の印は次の描画で付ける
+    queueMicrotask(() => setFresh((f) => new Set([...f, ...arrived.map((r) => r.key)])));
+  }
+  const position = new Map((order.current ?? []).map((k, i) => [k, i]));
+  const rows = [...unordered].sort((a, b) => position.get(a.key)! - position.get(b.key)!);
+  const resort = () => {
+    order.current = [...unordered].sort(priority).map((r) => r.key);
+    setFresh(new Set());
+  };
+  const open = (key: string | null) => {
+    setOpenKey(key);
+    if (key && fresh.has(key)) setFresh((f) => new Set([...f].filter((k) => k !== key)));
+  };
+  const hidden = rows.slice(PINNED_VISIBLE);
+  const hiddenFresh = hidden.filter((r) => fresh.has(r.key)).length;
+  const hiddenDecision = hidden.filter((r) => r.decision).length;
 
   const visible = showAll ? rows : rows.slice(0, PINNED_VISIBLE);
   const localStaff = config.staff.filter((s) => s.locationId === terminal);
@@ -125,10 +152,11 @@ export function PinnedRequests(props: Props & { onChangeEnteredBy: (staffId: str
           {visible.map((r) => (
             <li key={r.key} className={`pinned-row ${r.decision ? 'is-decision' : ''}`} data-testid={`pinned-${r.key}`}>
               <div className="pinned-line">
+                {fresh.has(r.key) && <span className="pinned-new">★ 新着</span>}
                 <span className="pinned-label">{r.label}</span>
                 <span className="pinned-text">{r.text}</span>
                 <span className="pinned-elapsed">{r.elapsed.text}</span>
-                <button type="button" className="btn" aria-expanded={openKey === r.key} onClick={() => setOpenKey(openKey === r.key ? null : r.key)}>
+                <button type="button" className="btn" aria-expanded={openKey === r.key} onClick={() => open(openKey === r.key ? null : r.key)}>
                   {openKey === r.key ? '閉じる' : '対応する'}
                 </button>
               </div>
@@ -156,7 +184,14 @@ export function PinnedRequests(props: Props & { onChangeEnteredBy: (staffId: str
       )}
       {rows.length > PINNED_VISIBLE && (
         <button type="button" className="btn btn-quiet" aria-expanded={showAll} onClick={() => setShowAll(!showAll)}>
-          {showAll ? `最初の${PINNED_VISIBLE}件だけ表示する` : `ほか ${rows.length - PINNED_VISIBLE}件を表示`}
+          {showAll
+            ? `最初の${PINNED_VISIBLE}件だけ表示する`
+            : `ほか ${hidden.length}件を表示${hiddenFresh || hiddenDecision ? `（${[hiddenDecision && `判断が必要 ${hiddenDecision}件`, hiddenFresh && `新着 ${hiddenFresh}件`].filter(Boolean).join('・')}）` : ''}`}
+        </button>
+      )}
+      {rows.length > 1 && (
+        <button type="button" className="btn btn-quiet" onClick={resort}>
+          判断が必要なもの・古いものを上に並べ直す
         </button>
       )}
     </section>

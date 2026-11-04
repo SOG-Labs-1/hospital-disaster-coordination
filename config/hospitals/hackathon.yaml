@@ -117,9 +117,11 @@ supportPolicy:
     received: 受け取り
     completed: 完了
 
+# 警告を承知で進めるときの理由。appliesTo は、その理由を出す警告の種類（省略するとすべての警告で出す）
 warningReasons:
-  - { id: confirmed-different, label: 別の患者であることを確認した }
-  - { id: tag-misread, label: タッグ番号の読み違いの可能性があり、後で確認する }
+  - { id: confirmed-different, label: 別の患者であることを確認した, appliesTo: [DUPLICATE_TAG_NUMBER, DUPLICATE_HOSPITAL_PATIENT_ID] }
+  - { id: tag-misread, label: タッグ番号の読み違いの可能性があり、後で確認する, appliesTo: [DUPLICATE_TAG_NUMBER] }
+  - { id: confirmed-different-staff, label: 別の人であることを確認した, appliesTo: [DUPLICATE_STAFF] }
   - { id: hq-instruction, label: 本部の指示による }
   - { id: other, label: その他（理由を書く）, requiresDetail: true }
 

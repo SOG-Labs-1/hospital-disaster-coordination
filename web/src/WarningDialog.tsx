@@ -1,7 +1,19 @@
 import { useEffect, useRef, useState } from 'react';
-import { sexLabels, type AppState, type DomainWarning, type HospitalConfig, type Override } from '@hdc/shared';
+import { reasonsForWarnings, sexLabels, type AppState, type DomainWarning, type HospitalConfig, type Override } from '@hdc/shared';
 import { formatTime } from './format';
 import { TriageBadge } from './Triage';
+
+// 警告の種類ごとの、理由を選ぶ欄の見出し（何を承知で進めるのかを言葉にする）
+const reasonTitles: Record<string, string> = {
+  DUPLICATE_TAG_NUMBER: '別の患者の場合は、理由を選んでください',
+  DUPLICATE_HOSPITAL_PATIENT_ID: '別の患者の場合は、理由を選んでください',
+  DUPLICATE_ACTIVE_TRANSPORT: '2件目の搬送として進める理由を選んでください',
+  TRANSPORTER_BUSY: '稼働中の要員に割り当てる理由を選んでください',
+  CAPACITY_EXCEEDED: '受け入れ枠を超えて進める理由を選んでください',
+  DUPLICATE_STAFF: '別の人として追加する理由を選んでください',
+};
+/** 同じ患者かどうかを確かめる必要がある警告（既存の患者の一覧を出す） */
+const patientDuplicateCodes = new Set(['DUPLICATE_TAG_NUMBER', 'DUPLICATE_HOSPITAL_PATIENT_ID']);
 
 /** 重複などの警告。止めずに、既存の患者を開くか、理由を記録して実行するかを選ばせる */
 export function WarningDialog(props: {
@@ -22,7 +34,12 @@ export function WarningDialog(props: {
     ref.current?.showModal();
   }, []);
 
-  const chosen = config.warningReasons.find((r) => r.id === reasonId);
+  const codes = warnings.map((w) => w.code);
+  const reasons = reasonsForWarnings(config, codes);
+  const chosen = reasons.find((r) => r.id === reasonId);
+  const titles = [...new Set(codes.map((c) => reasonTitles[c]).filter(Boolean))];
+  const reasonTitle = titles.length === 1 ? titles[0] : '警告を承知で進める理由を選んでください';
+  const showPatients = codes.some((c) => patientDuplicateCodes.has(c));
   const needsDetail = chosen?.requiresDetail ?? false;
   const reason = [chosen?.label, detail.trim()].filter(Boolean).join('：');
   const canConfirm = !!chosen && !(needsDetail && !detail.trim());
@@ -40,36 +57,38 @@ export function WarningDialog(props: {
         ))}
       </ul>
 
-      <div className="dialog-choice">
-        <h3>すでにいる患者（同じ人か確かめてください）</h3>
-        <ul className="existing-list">
-          {related.map((id) => {
-            const p = state.patients[id];
-            return (
-              <li key={id} className="existing" data-testid={`existing-${id}`}>
-                <div className="existing-head">
-                  <strong className="existing-number">{id}</strong>
-                  {p && <TriageBadge config={config} triage={p.triage} />}
-                </div>
-                {p && (
-                  <dl className="existing-facts">
-                    <div><dt>タッグ</dt><dd>{p.tagNumber ?? '未記入'}</dd></div>
-                    <div><dt>所在</dt><dd>{locationName(p.locationId)}</dd></div>
-                    <div>
-                      <dt>特徴</dt>
-                      <dd>{[p.sex !== 'unknown' && sexLabels[p.sex], p.estimatedAge, p.features].filter(Boolean).join('、') || '未記入'}</dd>
-                    </div>
-                    <div><dt>確認</dt><dd>{formatTime(p.lastObservedAt)}</dd></div>
-                  </dl>
-                )}
-                <button type="button" className="btn" onClick={() => onOpenPatient(id)}>
-                  同じ患者なので {id} を開く（記録しない）
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      </div>
+      {showPatients && related.length > 0 && (
+        <div className="dialog-choice">
+          <h3>すでにいる患者（同じ人か確かめてください）</h3>
+          <ul className="existing-list">
+            {related.map((id) => {
+              const p = state.patients[id];
+              return (
+                <li key={id} className="existing" data-testid={`existing-${id}`}>
+                  <div className="existing-head">
+                    <strong className="existing-number">{id}</strong>
+                    {p && <TriageBadge config={config} triage={p.triage} />}
+                  </div>
+                  {p && (
+                    <dl className="existing-facts">
+                      <div><dt>タッグ</dt><dd>{p.tagNumber ?? '未記入'}</dd></div>
+                      <div><dt>所在</dt><dd>{locationName(p.locationId)}</dd></div>
+                      <div>
+                        <dt>特徴</dt>
+                        <dd>{[p.sex !== 'unknown' && sexLabels[p.sex], p.estimatedAge, p.features].filter(Boolean).join('、') || '未記入'}</dd>
+                      </div>
+                      <div><dt>確認</dt><dd>{formatTime(p.lastObservedAt)}</dd></div>
+                    </dl>
+                  )}
+                  <button type="button" className="btn" onClick={() => onOpenPatient(id)}>
+                    同じ患者なので {id} を開く（記録しない）
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
 
       <form
         className="dialog-choice"
@@ -78,10 +97,10 @@ export function WarningDialog(props: {
           if (canConfirm) onConfirm({ codes: warnings.map((w) => w.code), reasonId, reason });
         }}
       >
-        <h3>別の患者の場合は、理由を選んでください</h3>
+        <h3>{reasonTitle}</h3>
         <fieldset className="radio-list">
           <legend className="visually-hidden">理由</legend>
-          {config.warningReasons.map((r) => (
+          {reasons.map((r) => (
             <label key={r.id} className="radio">
               <input type="radio" name="reason" value={r.id} checked={reasonId === r.id} onChange={() => setReasonId(r.id)} />
               {r.label}
