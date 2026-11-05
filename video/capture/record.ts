@@ -87,7 +87,7 @@ interface Frame {
 class Recorder {
   private frames: Frame[] = [];
   private cdp?: CDPSession;
-  constructor(private page: Page) {}
+  constructor(readonly page: Page) {}
 
   async start() {
     this.cdp = await this.page.context().newCDPSession(this.page);
@@ -108,7 +108,7 @@ class Recorder {
     this.startedAt = Date.now();
     return this.startedAt;
   }
-  private startedAt = 0;
+  startedAt = 0;
 
   /** from〜to（壁時計のミリ秒）の区間を 30fps の webm にする */
   async save(file: string, range: { from?: number; to?: number } = {}) {
@@ -166,6 +166,16 @@ const cursorScript = () => {
   });
 };
 
+// 録画に写したマウスの印の位置（1920×1080 の座標、壁時計のミリ秒）。映像で押した所を拡大・強調するために、クリップと一緒に JSON で保存する
+type CursorEvent = { t: number; x: number; y: number; press?: boolean };
+const cursorLog = new WeakMap<Page, CursorEvent[]>();
+function logCursor(page: Page, e: Omit<CursorEvent, 't'>) {
+  const k = 1920 / (page.viewportSize()?.width ?? VIEW.width);
+  const list = cursorLog.get(page) ?? [];
+  list.push({ t: Date.now(), x: Math.round(e.x * k), y: Math.round(e.y * k), ...(e.press ? { press: true } : {}) });
+  cursorLog.set(page, list);
+}
+
 async function moveCursor(page: Page, target: Locator) {
   // 見えていれば動かさない（画面が揺れないように）
   const moved = await target.evaluate((el) => {
@@ -181,10 +191,13 @@ async function moveCursor(page: Page, target: Locator) {
     const c = document.getElementById('__capture-cursor');
     if (c) Object.assign(c.style, { left: `${x}px`, top: `${y}px` });
   }, { x: box.x + box.width / 2, y: box.y + box.height / 2 });
+  logCursor(page, { x: box.x + box.width / 2, y: box.y + box.height / 2 });
   await sleep(650);
 }
 
 async function press(page: Page) {
+  const last = cursorLog.get(page)?.at(-1);
+  if (last) logCursor(page, { x: last.x / (1920 / (page.viewportSize()?.width ?? VIEW.width)), y: last.y / (1920 / (page.viewportSize()?.width ?? VIEW.width)), press: true });
   await page.evaluate(() => {
     const c = document.getElementById('__capture-cursor');
     if (!c) return;
@@ -284,6 +297,10 @@ const done: Clip[] = [];
 async function finish(rec: Recorder, clip: Omit<Clip, 'seconds'>, range?: { from?: number; to?: number }) {
   const seconds = await rec.save(join(OUT_DIR, clip.file), range);
   done.push({ ...clip, seconds: Math.round(seconds * 10) / 10 });
+  // マウスの印の位置（クリップの頭からの秒）。映像で押した所を拡大・強調するのに使う
+  const from = range?.from ?? rec.startedAt;
+  const events = (cursorLog.get(rec.page) ?? []).filter((e) => e.t >= from && (!range?.to || e.t <= range.to)).map((e) => ({ ...e, t: Math.round(e.t - from) / 1000 }));
+  if (events.length) writeFileSync(join(OUT_DIR, clip.file.replace(/\.webm$/, '.cursor.json')), JSON.stringify(events) + '\n');
   console.log(`  ✓ ${clip.file}（${seconds.toFixed(1)}秒）`);
 }
 
@@ -622,6 +639,46 @@ async function clipI() {
   await finish(rec, { id: 'i3', file: 'i3-training-review.webm', title: '訓練：振り返り（説明文は Claude）', note: '訓練を終えると振り返りが出る。確認項目と「記録から見えたこと」。照合と根拠の番号はプログラム、説明文は Claude（API のとき）。待ち時間は切ってある' }, { from: shown - 1500 });
 }
 
+/** i4. 訓練：本部役が、無線で聞いた内容を連絡メモに残し、ボードに患者を登録する（CAPTURE_AI=anthropic なら部署役は Claude API） */
+async function clipI4() {
+  const page = await openTerminal('hq', '青木 はるか', 'training');
+  await tab(page, /訓練/);
+  const scenario = page.getByTestId('scenario-claude-red-to-or');
+  await scenario.getByRole('button', { name: 'この訓練を選ぶ' }).click();
+  await scenario.getByRole('button', { name: 'この訓練を始める' }).click();
+  await page.getByTestId('training-run').filter({ hasText: '進行中' }).waitFor();
+  await page.getByRole('button', { name: /2倍速/ }).click();
+  const inbox = page.getByTestId('radio-inbox');
+  const first = inbox.locator('.radio-row').first();
+  await first.waitFor({ timeout: 180_000 });
+  await page.evaluate(() => scrollTo(0, 0));
+  await sleep(500);
+  const rec = new Recorder(page);
+  await rec.start();
+  await sleep(1200);
+  // 聞いた内容を連絡メモに残す（部署役の言葉は下書きとして出る）
+  await slowClick(page, first.getByRole('button', { name: /連絡メモに残す/ }), 800);
+  const draft = first.getByRole('form', { name: '連絡メモの下書き' });
+  await draft.waitFor();
+  await sleep(1200);
+  await slowClick(page, draft.getByRole('button', { name: 'この内容で残す' }), 1000);
+  // ボードに患者を登録する
+  await tab(page, PATIENT_TAB);
+  const form = page.getByRole('form', { name: '患者を登録する' });
+  await sleep(500);
+  await slowClick(page, form.locator('label.triage-choice', { hasText: '赤' }));
+  await slowSelect(page, form.getByLabel(/所在/), '救急外来');
+  await slowType(page, form.getByLabel('タッグ番号'), '101');
+  await slowType(page, form.getByLabel(/特徴メモ/), '紺の作業着');
+  await slowClick(page, form.getByRole('button', { name: '登録する' }), 0);
+  await page.getByTestId('notice').filter({ hasText: 'を登録しました' }).waitFor();
+  await sleep(300);
+  await smoothScrollTo(page, 0, 800);
+  await sleep(2200);
+  await finish(rec, { id: 'i4', file: 'i4-training-input.webm', title: '訓練：聞いた内容を記録し、ボードに入力する', note: `訓練モード。部署役：${process.env.CAPTURE_AI === 'anthropic' ? 'Claude API' : 'mock'}。最初の無線の報告を「連絡メモに残す」で記録し、患者（赤・タッグ101・紺の作業着）をボードに登録する。部署役の報告を待つ時間は切ってある` });
+  await page.request.post(`${WEB}/api/h/claude/training/sim/control`, { data: { action: 'pause' } }).catch(() => {});
+}
+
 /** j. どの病院でも：病院を選ぶ画面（2つの架空の病院）→ 中規模の Hackathon中央病院(仮) を災害運用で開き、本部の端末で院内の状況を見る */
 async function clipJ() {
   const page = await openPage('/?hospital=', { noSync: true });
@@ -667,16 +724,16 @@ async function apiSend(command: Record<string, unknown>, transportId?: string, m
   return body;
 }
 
-const all: Record<string, () => Promise<void>> = { a: clipA, b: clipB, c: clipC, d: clipD, e: clipE, f: clipF, g: clipG, h: clipH, i: clipI, j: clipJ, k: clipK };
+const all: Record<string, () => Promise<void>> = { a: clipA, b: clipB, c: clipC, d: clipD, e: clipE, f: clipF, g: clipG, h: clipH, i: clipI, i4: clipI4, j: clipJ, k: clipK };
 
 // ---------------- 実行 ----------------
 
 async function main() {
   const ai = process.env.CAPTURE_AI === 'anthropic' ? 'anthropic' : 'mock';
   // i（訓練）は API の返事を撮るためのもの。指定がなければ撮らない
-  const wanted = process.argv.slice(2).length ? process.argv.slice(2) : Object.keys(all).filter((k) => k !== 'i');
+  const wanted = process.argv.slice(2).length ? process.argv.slice(2) : Object.keys(all).filter((k) => k !== 'i' && k !== 'i4');
   for (const w of wanted) if (!all[w]) throw new Error(`クリップ「${w}」はない（a〜k）`);
-  if (wanted.includes('i') && ai !== 'anthropic') console.warn('i は CAPTURE_AI=anthropic のときに撮るためのもの。mock の決まった文で撮ります');
+  if ((wanted.includes('i') || wanted.includes('i4')) && ai !== 'anthropic') console.warn('i・i4 は CAPTURE_AI=anthropic のときに撮るためのもの。mock の決まった文で撮ります');
   if ((await portInUse(SERVER_PORT)) || (await portInUse(WEB_PORT))) throw new Error(`ポート ${SERVER_PORT} か ${WEB_PORT} が使われている`);
 
   rmSync(DATA_DIR, { recursive: true, force: true });
