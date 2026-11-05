@@ -158,7 +158,10 @@ if (process.env.PARAGRAPH === '1') {
     }
     const chosen = new Array(ends.length);
     if (ends.length) {
-      let q = dp.at(-1).indexOf(Math.min(...dp.at(-1)));
+      // 最後の文が、段落の終わり（n）にちょうど収まるかも見る
+      const last = durs.at(-1);
+      const total2 = dp.at(-1).map((v, q) => v + Math.abs(quiet[q][1] + last - n) / rate);
+      let q = total2.indexOf(Math.min(...total2));
       for (let j = ends.length - 1; j >= 0; j--) { chosen[j] = quiet[q]; q = prev[j][q]; }
     }
     // 行の切れ目＝その行の最後の文の終わり

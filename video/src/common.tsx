@@ -79,7 +79,9 @@ export function breakLine(text: string, max: number, marks: string[], minPart: n
   return best < 0 ? text : `${text.slice(0, best).trimEnd()}\n${text.slice(best).trimStart()}`;
 }
 
-export const Subtitles = ({ lines = lines30 as SubLine[], delay = AUDIO_DELAY }: { lines?: SubLine[]; delay?: number }) => {
+/** cinema：背景の箱なし。細い文字を字間を空けて置き、影で読みやすくする（映画の字幕のような雰囲気。3分版） */
+const SHADOW = '0 0 10px rgba(0,0,0,0.85), 0 1px 3px rgba(0,0,0,0.95), 0 0 2px rgba(0,0,0,0.9)';
+export const Subtitles = ({ lines = lines30 as SubLine[], delay = AUDIO_DELAY, variant = 'box' }: { lines?: SubLine[]; delay?: number; variant?: 'box' | 'cinema' }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const t = frame / fps;
@@ -89,6 +91,23 @@ export const Subtitles = ({ lines = lines30 as SubLine[], delay = AUDIO_DELAY }:
   if (i < 0) return null;
   const local = t - (at(i) - 0.08);
   const left = endAt(i) + 0.4 - t;
+  if (variant === 'cinema') {
+    const op = Math.min(interpolate(local, [0, 0.25], [0, 1], clamp), interpolate(left, [0, 0.25], [0, 1], clamp));
+    return (
+      <AbsoluteFill style={{ justifyContent: 'flex-end', alignItems: 'center', paddingBottom: 52 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, opacity: op }}>
+          <div style={{ fontFamily, fontSize: 36, fontWeight: 400, color: '#f3f6fa', letterSpacing: 5, maxWidth: 1800, textAlign: 'center', lineHeight: 1.55, whiteSpace: 'pre-line', textShadow: SHADOW }}>
+            {breakLine(lines[i]!.text, 40, ['。', '、'], 6)}
+          </div>
+          {lines[i]!.en && (
+            <div style={{ fontFamily: `'Helvetica Neue', 'Avenir Next', Arial, sans-serif`, fontWeight: 300, fontSize: 27, color: '#e8eef5', letterSpacing: 1.6, textAlign: 'center', lineHeight: 1.4, whiteSpace: 'pre-line', textShadow: SHADOW }}>
+              {breakLine(lines[i]!.en, 92, ['. ', '? ', ', '], 20)}
+            </div>
+          )}
+        </div>
+      </AbsoluteFill>
+    );
+  }
   return (
     <AbsoluteFill style={{ justifyContent: 'flex-end', alignItems: 'center', paddingBottom: 44 }}>
       <div

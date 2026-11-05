@@ -54,7 +54,7 @@ const Term = ({ word, children }: { word: string; children: ReactNode }) => {
   const frame = useCurrentFrame();
   const p = interpolate(frame, [8, 20], [0, 1], { ...clamp, easing: ease });
   return (
-    <div style={{ position: 'absolute', right: 64, top: 96, maxWidth: 620, fontFamily, opacity: p, translate: `${(1 - p) * 30}px 0px`, backgroundColor: 'rgba(7,13,24,0.92)', border: `2px solid ${c.warn}`, padding: '12px 20px' }}>
+    <div style={{ position: 'absolute', right: 64, top: 150, maxWidth: 620, fontFamily, opacity: p, translate: `${(1 - p) * 30}px 0px`, backgroundColor: 'rgba(7,13,24,0.92)', border: `2px solid ${c.warn}`, padding: '12px 20px' }}>
       <div style={{ fontSize: 26, fontWeight: 700, color: c.warn }}>{word}</div>
       <div style={{ fontSize: 24, color: c.text, marginTop: 4, lineHeight: 1.5 }}>{children}</div>
     </div>
@@ -116,6 +116,34 @@ const THREE = (i: number): CSSProperties => ({ left: 60 + i * 610, top: 300, wid
 
 /** 「情報の伝達」：BCP の説明のあと、大きな文字で課題を出す */
 const Problem = () => <Big sub="Communication">情報の伝達</Big>;
+
+/** モードの区切り：場面の頭に大きく出して、すぐ消える（災害運用＝実線の青、訓練＝破線のだいだい） */
+const ModeChapter = ({ mode }: { mode: 'live' | 'training' }) => {
+  const frame = useCurrentFrame();
+  const live = mode === 'live';
+  const col = live ? c.accent : c.warn;
+  const op = interpolate(frame, [0, 8, 40, 52], [0, 1, 1, 0], clamp);
+  return (
+    <AbsoluteFill style={{ backgroundColor: `rgba(7,13,24,${0.92 * op})`, alignItems: 'center', justifyContent: 'center', fontFamily, paddingBottom: 140 }}>
+      <div style={{ opacity: op, textAlign: 'center', scale: String(0.96 + 0.04 * op) }}>
+        <div style={{ display: 'inline-block', fontSize: 92, fontWeight: 700, color: col, border: `5px ${live ? 'solid' : 'dashed'} ${col}`, padding: '10px 48px', letterSpacing: 8 }}>{live ? '■ 災害運用モード' : '◇ 訓練モード'}</div>
+        <div style={{ marginTop: 26, fontSize: 34, color: c.text, letterSpacing: 4 }}>{live ? '災害のときに使う。AI は使わない' : 'ふだんの訓練。部署の役を Claude が担う'}</div>
+      </div>
+    </AbsoluteFill>
+  );
+};
+
+/** いまどちらのモードかを右上に出し続ける札 */
+const ModeBadge = ({ mode }: { mode: 'live' | 'training' }) => {
+  const frame = useCurrentFrame();
+  const live = mode === 'live';
+  const col = live ? c.accent : c.warn;
+  return (
+    <div style={{ position: 'absolute', right: 64, top: 90, fontFamily, fontSize: 26, fontWeight: 700, color: col, border: `3px ${live ? 'solid' : 'dashed'} ${col}`, padding: '4px 16px', backgroundColor: 'rgba(7,13,24,0.85)', opacity: interpolate(frame, [40, 52], [0, 1], clamp) }}>
+      {live ? '■ 災害運用モード' : '◇ 訓練モード'}
+    </div>
+  );
+};
 
 /** 部署どうしの情報がつながらない：本部と部署を結ぶ線が途切れ、患者・人・物に「？」 */
 const BrokenLinks = () => {
@@ -451,7 +479,7 @@ const buildShots = (stock: boolean): Shot[] => [
   { from: cut(16), to: cut(17), name: '依頼したこと／起きたこと', node: (d) => <Clip file="c-transport.webm" from={0} to={9} dur={d} style={ONE} /> },
   { from: cut(17), to: cut(18), name: '未確認・重複の警告・使いやすさ', node: (d) => (
     <>
-      <Tag>BIZ UDゴシック ／ 本文18px以上・ボタン48px以上 ／ 色＋記号＋文字（◆赤 ▲黄 ●緑）／ 白黒で読める印刷</Tag>
+      <Tag>大きな文字とボタン ／ 色＋記号＋文字（◆赤 ▲黄 ●緑）／ 白黒で読める印刷</Tag>
       <Clip file="d-hospital-status.webm" from={4} to={10.5} dur={d} label="報告のない場所は「未確認」（ゼロと区別）" style={TWO_L} />
       <Clip file="h-duplicate-warning.webm" from={5} to={13} dur={d} label="同じタッグ番号は警告。理由を残して先へ" style={TWO_R} />
     </>
@@ -460,7 +488,7 @@ const buildShots = (stock: boolean): Shot[] => [
   { from: cut(18), to: cut(19), name: '訓練：部署役の報告', node: (d) => (
     <>
       <Clip file="i1-training-report.webm" from={0} to={8.8} dur={d} style={ONE} />
-      <Tag color={c.warn} dashed style={CAP}>◇ 訓練モード ／ 部署役：Claude API（claude-sonnet-5-5）</Tag>
+      <Tag color={c.warn} dashed style={CAP}>部署役：Claude API（claude-sonnet-5-5）</Tag>
     </>
   ) },
   { from: cut(19), to: cut(20), name: '一人でも', node: () => (
@@ -526,11 +554,20 @@ export const Intro3min = ({ stock = false }: { stock?: boolean }) => {
           </Sequence>
         );
       })}
+      {/* 災害運用モードと訓練モードの区切り：場面の頭に大きく、そのあとは右上の札で示し続ける */}
+      <Sequence from={Math.round(cut(11) * fps)} durationInFrames={Math.round((cut(18) - cut(11)) * fps)} name="災害運用モードの区切り">
+        <ModeChapter mode="live" />
+        <ModeBadge mode="live" />
+      </Sequence>
+      <Sequence from={Math.round(cut(18) * fps)} durationInFrames={Math.round((cut(22) - cut(18)) * fps)} name="訓練モードの区切り">
+        <ModeChapter mode="training" />
+        <ModeBadge mode="training" />
+      </Sequence>
       {/* BCP の説明は、BCP と言ったところから「情報の伝達」の前まで長めに出す */}
       <Sequence from={Math.round((L(1) + 0.8) * fps)} durationInFrames={Math.round((L(3) - L(1) - 0.8) * fps)} name="BCPの説明">
         <Term word="BCP（事業継続計画）">災害のときも、病院の機能を続けるための計画</Term>
       </Sequence>
-      <Subtitles lines={lines} delay={DELAY3} />
+      <Subtitles lines={lines} delay={DELAY3} variant="cinema" />
       {/* 低音の効果音（自作。scripts/sfx.mjs）：場面ごとに違う音。ナレーションより大きくならないよう音量を測って決めた（2026-11-05） */}
       {([
         ['sfx/boom-tail.wav', L(3) - 0.05, 0.35, '効果音：情報の伝達'],
