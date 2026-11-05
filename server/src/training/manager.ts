@@ -49,6 +49,10 @@ export interface TrainingDeps {
   onChange?: () => void;
   /** 部署役の返事を待つ時間（ms）。過ぎたら決まった返事で補う */
   replyTimeoutMs?: number;
+  /** 進行中の回があるあいだは、新しい回を始めさせない（公開デモで、別の人の訓練を途中で終わらせないように） */
+  exclusiveRuns?: boolean;
+  /** 1日（日本時間）に部署役の AI で始められる回数。超えた回は決まった返事（mock）で動かす（費用の上限） */
+  runsPerDay?: number;
 }
 
 /** 時間内に終わらなければ失敗にする */
@@ -80,6 +84,13 @@ export class TrainingManager {
   private now: () => Date;
   /** AI が失敗したときに補う、決まった返事 */
   private fallback = new MockProvider();
+  /** この回の部署役。1日の上限を超えた回は決まった返事（mock）にする */
+  private runProvider: AiProvider | null = null;
+  private runsToday = { day: '', count: 0 };
+
+  private get provider(): AiProvider {
+    return this.runProvider ?? this.deps.provider;
+  }
 
   constructor(private deps: TrainingDeps) {
     this.store = new SimStore(deps.simStorePath);
@@ -93,7 +104,7 @@ export class TrainingManager {
   }
 
   get providerName(): string {
-    return this.deps.provider.name;
+    return this.provider.name;
   }
 
   scenario(): Scenario | undefined {
@@ -140,7 +151,7 @@ export class TrainingManager {
     const ctx = buildRoleContext(reduceSim(this.events, sc, this.deps.config), sc, this.deps.config, stimulusId);
     // AI（Claude API）が失敗・時間切れのときは、決まった返事（mock）で補い、そのことを記録する。
     // 訓練は API が止まっても続けられる（補った回数は画面に出す）
-    withTimeout(this.deps.provider.proposeForRole(ctx), this.deps.replyTimeoutMs ?? 20_000)
+    withTimeout(this.provider.proposeForRole(ctx), this.deps.replyTimeoutMs ?? 20_000)
       .then((proposals) => ({ proposals, failed: null as string | null }))
       .catch(async (err) => {
         console.error('部署役の提案を受け取れなかった。決まった返事で補う', err);
@@ -196,7 +207,7 @@ export class TrainingManager {
     this.explaining = true;
     const notes = this.view()!.notes;
     const findings = review.findings.map((f) => ({ id: f.id, title: f.title, detail: f.detail, evidence: f.evidence, participantNote: notes[f.id] }));
-    withTimeout(this.deps.provider.explainReview({ scenarioTitle: sc.title, findings }), (this.deps.replyTimeoutMs ?? 20_000) * 3)
+    withTimeout(this.provider.explainReview({ scenarioTitle: sc.title, findings }), (this.deps.replyTimeoutMs ?? 20_000) * 3)
       .catch((err) => {
         console.error('振り返りの説明文を受け取れなかった。前の説明文を残す', err);
         return null;
@@ -224,12 +235,23 @@ export class TrainingManager {
     switch (c.action) {
       case 'start': {
         if (!this.deps.scenarios.some((s) => s.id === c.scenarioId)) return { ok: false, error: `シナリオ「${c.scenarioId}」がない` };
+        if (live && this.deps.exclusiveRuns) {
+          const sc = this.scenario()!;
+          const speed = last?.speed ?? 1;
+          const leftMin = Math.max(1, Math.ceil((sc.durationMinutes * 60_000 - sim) / speed / 60_000));
+          return { ok: false, error: `ほかの方が訓練中です（残り約${leftMin}分）。終わってから始めてください` };
+        }
+        // 1日の上限を超えたら、この回は決まった返事（mock）で動かす
+        const day = new Date(this.now().getTime() + 9 * 3_600_000).toISOString().slice(0, 10);
+        if (this.runsToday.day !== day) this.runsToday = { day, count: 0 };
+        this.runsToday.count++;
+        this.runProvider = this.deps.runsPerDay !== undefined && this.runsToday.count > this.deps.runsPerDay ? this.fallback : null;
         if (live) this.append([{ type: 'RunEnded', simMs: sim, reason: 'manual' }]);
         this.runId = this.deps.newId();
         this.events = [];
         this.inflight.clear();
         this.deps.board.switchRun(this.runId);
-        this.append([{ type: 'RunStarted', runId: this.runId, scenarioId: c.scenarioId, hospitalId: this.deps.config.id, provider: this.deps.provider.name }]);
+        this.append([{ type: 'RunStarted', runId: this.runId, scenarioId: c.scenarioId, hospitalId: this.deps.config.id, provider: this.provider.name }]);
         break;
       }
       case 'pause':
@@ -299,7 +321,7 @@ export class TrainingManager {
   }
 
   recordExplanations(explanations: Extract<SimEvent, { type: 'ReviewExplained' }>['explanations']): void {
-    this.append([{ type: 'ReviewExplained', provider: this.deps.provider.name, explanations }]);
+    this.append([{ type: 'ReviewExplained', provider: this.provider.name, explanations }]);
     this.deps.onChange?.();
   }
 

@@ -1,6 +1,7 @@
 import { useState, type FormEvent, type ReactNode } from 'react';
 import type { HospitalConfig } from '@hdc/shared';
 import { formatSim, liveSimMs, trainingPost, type TrainingSnapshot } from './training';
+import { isPublicDemo } from './api';
 import { useCommands } from './useCommands';
 
 // 訓練モードの本部の画面。参加者は本部の役で、他部署は AI（または mock）が担う。
@@ -185,6 +186,7 @@ export function TrainingTab({ config, snapshot, now, review }: Props) {
             )}
           </div>
           <p className="hint">部署役：{providerLabel(snapshot.provider)}。部署役の連絡は上の「無線の受信」に届きます。聞いた内容は、自分でボード（患者・搬送・支援要請・院内の状況）に入力してください。</p>
+          {isPublicDemo && <p className="hint">公開デモでは、訓練は同時に1回だけです。ほかの方の訓練中は、終えずにお待ちください。部署役への連絡は Claude API に送られるので、個人の情報は書かないでください。</p>}
         </section>
       ) : (
         <section className="panel" aria-labelledby="scenario-title">
@@ -192,6 +194,7 @@ export function TrainingTab({ config, snapshot, now, review }: Props) {
           <p className="hint">
             あなたは本部の役です。他部署は部署役（{providerLabel(snapshot.provider)}）が担います。新しい回を始めると、訓練のボードは空から始まります（前の回の記録は残ります）。
           </p>
+          {isPublicDemo && <p className="hint">公開デモでは、訓練は同時に1回だけです。短く試すには「審査用5分シナリオ」を選んでください（2倍速で約2分半）。</p>}
           <ul className="scenario-list">
             {snapshot.scenarios.map((s) => (
               <li key={s.id} className="scenario" data-testid={`scenario-${s.id}`}>

@@ -24,6 +24,12 @@ if (process.env.DEMO_CAPTURE === '1' && realDir(dataDir) === realDir(join(repoRo
   process.exit(1);
 }
 
+const publicDemo = process.env.PUBLIC_DEMO === '1';
+if (publicDemo && process.env.DEMO_CAPTURE !== '1') {
+  console.error('PUBLIC_DEMO=1 は、デモ専用の保存先で起動したとき（DEMO_CAPTURE=1）だけ使えます');
+  process.exit(1);
+}
+
 // リポジトリの病院設定（架空のデモ用）と、画面から作った病院設定（data/hospitals。git の管理外）
 const createdDir = join(dataDir, 'hospitals');
 const hospitals = [...hospitalIds.map((id) => loadHospitalConfig(id)), ...loadCreatedHospitals(createdDir)];
@@ -40,9 +46,28 @@ const app = createApp({ hospitals, dataDir, defaultHospitalId, staticDir: join(r
   hospitalCreation: process.env.HOSPITAL_CREATION === '0' ? undefined : { template: loadHospitalTemplate(), dir: createdDir },
   // ALLOWED_HOSTS: localhost・IP アドレス・*.local 以外の名前で開くときに、カンマ区切りで指定する
   allowedHosts: (process.env.ALLOWED_HOSTS ?? '').split(',').map((h) => h.trim()).filter(Boolean),
+  // PUBLIC_DEMO=1：インターネットに公開する審査用のデモ（架空のデータだけ。下で、しばらく操作がなければ最初に戻す）
+  ...(publicDemo ? { publicDemo: { maxCreatedHospitals: 10, writesPerMinute: 120, trainingRunsPerDay: Number(process.env.TRAINING_RUNS_PER_DAY ?? 50) } } : {}),
   // デモ・録画専用の起動（npm run demo と video/capture/record.ts が DEMO_CAPTURE=1 を渡す）
   demoCapture: process.env.DEMO_CAPTURE === '1',
 });
+
+// 本文を送り終えない遅い接続で、資源を使い切られないように（全端末への配信の長い接続には効かない）
+app.server.requestTimeout = 30_000;
+app.server.headersTimeout = 20_000;
+
+// 公開デモ：最後の書き込みから一定時間（既定30分）操作がなければ、終了して最初の状態に戻す。
+// Cloud Run は終了したサーバーを新しく起動し直し、保存先は空になるので、起動のスクリプトが架空のデモ用データを入れ直す
+if (publicDemo) {
+  const idleMs = Number(process.env.DEMO_RESET_IDLE_MINUTES ?? 30) * 60_000;
+  setInterval(() => {
+    const last = app.lastWriteAt();
+    if (last !== null && Date.now() - last > idleMs) {
+      console.log('公開デモ：しばらく操作がないため、最初の状態に戻します（終了して起動し直す）');
+      app.close().then(() => process.exit(0));
+    }
+  }, 60_000).unref();
+}
 
 app.server.listen(port, () => {
   console.log(`病院リンクBCP（院内災害対応の調整ツール）: http://localhost:${port}`);

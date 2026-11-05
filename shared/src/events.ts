@@ -18,30 +18,30 @@ const isoDateTime = z.iso.datetime({ offset: true });
 export const RefIdSchema = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/, '番号の形が正しくない');
 
 export const ReporterSchema = z.object({
-  positionId: z.string().optional(),
-  locationId: z.string().optional(),
-  name: z.string().optional(),
+  positionId: z.string().max(200).optional(),
+  locationId: z.string().max(200).optional(),
+  name: z.string().max(200).optional(),
 });
 export type Reporter = z.infer<typeof ReporterSchema>;
 
 export const SubjectSchema = z.object({
   kind: z.enum(['patient', 'transport', 'transporter', 'location', 'support', 'message', 'staff']),
-  id: z.string().min(1),
+  id: z.string().max(200).min(1),
 });
 export type Subject = z.infer<typeof SubjectSchema>;
 
 /** 警告を承知で実行したときの記録 */
 export const OverrideSchema = z.object({
-  codes: z.array(z.string()).min(1),
-  reasonId: z.string().optional(),
-  reason: z.string().trim().min(1, '理由を書いてください'),
+  codes: z.array(z.string().max(200)).max(100).min(1),
+  reasonId: z.string().max(200).optional(),
+  reason: z.string().trim().max(1000).min(1, '理由を書いてください'),
 });
 export type Override = z.infer<typeof OverrideSchema>;
 
 export const sexes = ['male', 'female', 'unknown'] as const;
 export const sexLabels: Record<(typeof sexes)[number], string> = { male: '男性', female: '女性', unknown: '不明' };
 
-const optionalText = z.string().trim().optional();
+const optionalText = z.string().trim().max(1000).optional();
 
 export const PatientRegisteredPayload = z.object({
   tagNumber: optionalText,
@@ -52,11 +52,11 @@ export const PatientRegisteredPayload = z.object({
   estimatedAge: optionalText,
   features: optionalText,
   /** トリアージ区分の id（病院設定）。未判定は null */
-  triage: z.string().nullable().default(null),
+  triage: z.string().max(200).nullable().default(null),
   /** 所在（物理的にいる場所） */
-  locationId: z.string().min(1),
+  locationId: z.string().max(200).min(1),
   /** 担当部署。省略時は所在と同じ */
-  departmentLocationId: z.string().optional(),
+  departmentLocationId: z.string().max(200).optional(),
   conditionNote: optionalText,
   freeNote: optionalText,
 });
@@ -71,11 +71,11 @@ export const identifierLabels: Record<(typeof identifierKinds)[number], string> 
 
 export const PatientIdentifierAddedPayload = z.object({
   kind: z.enum(identifierKinds),
-  value: z.string().trim().min(1),
+  value: z.string().trim().max(1000).min(1),
 });
 
 export const PatientTriageChangedPayload = z.object({
-  triage: z.string().nullable(),
+  triage: z.string().max(200).nullable(),
 });
 
 export const noteFields = ['features', 'conditionNote', 'freeNote'] as const;
@@ -87,7 +87,7 @@ export const noteFieldLabels: Record<(typeof noteFields)[number], string> = {
 
 export const PatientNoteUpdatedPayload = z.object({
   field: z.enum(noteFields),
-  value: z.string(),
+  value: z.string().max(200),
 });
 
 /**
@@ -105,26 +105,26 @@ export const PatientDetailsCorrectedPayload = z.object({
       estimatedAge: optionalText,
       features: optionalText,
       conditionNote: optionalText,
-      locationId: z.string().optional(),
-      departmentLocationId: z.string().optional(),
+      locationId: z.string().max(200).optional(),
+      departmentLocationId: z.string().max(200).optional(),
     })
     .refine((f) => Object.values(f).some((v) => v !== undefined), '直す項目を1つ以上書く'),
-  reason: z.string().trim().min(1),
+  reason: z.string().trim().max(1000).min(1),
 });
 
 /** 同じ人だと分かった2件の記録を1つにまとめる。subject がまとめ先、sourceId がまとめられる側 */
 export const PatientsMergedPayload = z.object({
   sourceId: RefIdSchema,
-  reason: z.string().trim().min(1),
+  reason: z.string().trim().max(1000).min(1),
 });
 
 /** 訂正。対象のイベント（corrects）を取り消すか、中身を差し替える */
 export const EventCorrectedPayload = z.object({
-  reason: z.string().trim().min(1),
+  reason: z.string().trim().max(1000).min(1),
   /** true なら対象を取り消す（なかったことにする） */
   retract: z.boolean().default(false),
   /** 差し替える中身（対象イベントの payload と同じ形） */
-  replacement: z.record(z.string(), z.unknown()).optional(),
+  replacement: z.record(z.string().max(200), z.unknown()).optional(),
 });
 
 // ---- 搬送 ----
@@ -133,34 +133,34 @@ export const EventCorrectedPayload = z.object({
 
 /** 判断した人（受け入れ了承・指示など）。入力者（enteredBy）とは別に記録する */
 export const DeciderSchema = z.object({
-  positionId: z.string().optional(),
-  staffId: z.string().optional(),
-  name: z.string().trim().optional(),
+  positionId: z.string().max(200).optional(),
+  staffId: z.string().max(200).optional(),
+  name: z.string().trim().max(1000).optional(),
   /** 責任者の代行として判断した */
   asDeputy: z.boolean().default(false),
 });
 export type Decider = z.infer<typeof DeciderSchema>;
 
-export const EscortSchema = z.object({ professionId: z.string(), count: z.number().int().min(1) });
+export const EscortSchema = z.object({ professionId: z.string().max(200), count: z.number().int().min(1).max(999) });
 
 export const TransportRequestedPayload = z.object({
   patientId: RefIdSchema,
-  fromLocationId: z.string().min(1),
-  toLocationId: z.string().min(1),
-  methodId: z.string().optional(),
-  escorts: z.array(EscortSchema).default([]),
+  fromLocationId: z.string().max(200).min(1),
+  toLocationId: z.string().max(200).min(1),
+  methodId: z.string().max(200).optional(),
+  escorts: z.array(EscortSchema).max(100).default([]),
   note: optionalText,
 });
 export const TransportAcceptedPayload = z.object({ decidedBy: DeciderSchema, note: optionalText });
-export const TransportDeclinedPayload = z.object({ decidedBy: DeciderSchema, reason: z.string().trim().min(1) });
+export const TransportDeclinedPayload = z.object({ decidedBy: DeciderSchema, reason: z.string().trim().max(1000).min(1) });
 export const TransportStaffAssignedPayload = z.object({
-  transporterIds: z.array(RefIdSchema).min(1),
-  teamId: z.string().optional(),
+  transporterIds: z.array(RefIdSchema).max(100).min(1),
+  teamId: z.string().max(200).optional(),
 });
 export const TransportOrderedPayload = z.object({ orderedBy: DeciderSchema, note: optionalText });
 export const TransportAcknowledgedPayload = z.object({ note: optionalText });
-export const TransportCancelledPayload = z.object({ reason: z.string().trim().min(1) });
-export const TransportRedirectedPayload = z.object({ toLocationId: z.string().min(1), reason: z.string().trim().min(1) });
+export const TransportCancelledPayload = z.object({ reason: z.string().trim().max(1000).min(1) });
+export const TransportRedirectedPayload = z.object({ toLocationId: z.string().max(200).min(1), reason: z.string().trim().max(1000).min(1) });
 export const TransportDepartedPayload = z.object({ note: optionalText });
 /** 到着。病院設定で到着＝引き渡しの場合は、所在と担当部署が同時に移る */
 export const TransportArrivedPayload = z.object({
@@ -176,35 +176,35 @@ export const TransportHandedOverPayload = z.object({ note: optionalText });
 
 /** 何を求めるか。職種・資源は病院設定の id、その他は自由記述 */
 export const SupportItemSchema = z.object({
-  professionId: z.string().optional(),
-  resourceId: z.string().optional(),
-  text: z.string().trim().optional(),
-  quantity: z.number().int().min(1).nullable().default(null),
+  professionId: z.string().max(200).optional(),
+  resourceId: z.string().max(200).optional(),
+  text: z.string().trim().max(1000).optional(),
+  quantity: z.number().int().min(1).max(99999).nullable().default(null),
 });
 export type SupportItem = z.infer<typeof SupportItemSchema>;
 
 export const SupportRequestedPayload = z.object({
   /** 要請した場所（部署または本部） */
-  fromLocationId: z.string().min(1),
-  kindId: z.string().min(1),
-  items: z.array(SupportItemSchema).min(1),
+  fromLocationId: z.string().max(200).min(1),
+  kindId: z.string().max(200).min(1),
+  items: z.array(SupportItemSchema).min(1).max(50),
   note: optionalText,
 });
 export const SupportAssignedPayload = z.object({ assignee: DeciderSchema, note: optionalText });
 export const SupportDispatchedPayload = z.object({
   /** 誰に（手配先の場所。外部などは providerName） */
-  providerLocationId: z.string().optional(),
-  providerName: z.string().trim().optional(),
+  providerLocationId: z.string().max(200).optional(),
+  providerName: z.string().trim().max(1000).optional(),
   /** 何を（省略時は要請どおり） */
-  items: z.array(SupportItemSchema).optional(),
+  items: z.array(SupportItemSchema).max(50).optional(),
   /** どこへ（省略時は要請した場所） */
-  toLocationId: z.string().optional(),
+  toLocationId: z.string().max(200).optional(),
   orderedBy: DeciderSchema.optional(),
   note: optionalText,
 });
 export const SupportReceivedPayload = z.object({ note: optionalText });
 export const SupportCompletedPayload = z.object({ note: optionalText });
-export const SupportCancelledPayload = z.object({ reason: z.string().trim().min(1) });
+export const SupportCancelledPayload = z.object({ reason: z.string().trim().max(1000).min(1) });
 
 // ---- 連絡メモ（無線・電話などのやりとりをそのまま残す） ----
 export const messageChannels = ['radio', 'phone', 'in-person', 'other'] as const;
@@ -218,26 +218,26 @@ export const messageChannelLabels: Record<(typeof messageChannels)[number], stri
 export const MessageLoggedPayload = z.object({
   channel: z.enum(messageChannels),
   /** 発信元・宛先の場所（分かれば） */
-  fromLocationId: z.string().optional(),
-  toLocationId: z.string().optional(),
-  text: z.string().trim().min(1),
+  fromLocationId: z.string().max(200).optional(),
+  toLocationId: z.string().max(200).optional(),
+  text: z.string().trim().max(1000).min(1),
   /** 関係する患者・搬送・要請（例：P-001、T-002） */
-  relatedIds: z.array(RefIdSchema).default([]),
+  relatedIds: z.array(RefIdSchema).max(100).default([]),
 });
 
 // ---- 入力者（職員）の追加 ----
 /** 画面から追加した入力者。病院設定の職員一覧に加えて、名前の一覧から選べる */
 export const StaffRegisteredPayload = z.object({
-  name: z.string().trim().min(2, 'フルネームで書く'),
-  locationId: z.string().min(1),
-  professionId: z.string().min(1),
-  staffNumber: z.string().trim().optional(),
+  name: z.string().trim().max(1000).min(2, 'フルネームで書く'),
+  locationId: z.string().max(200).min(1),
+  professionId: z.string().max(200).min(1),
+  staffNumber: z.string().trim().max(1000).optional(),
 });
 
 // ---- 場所と災害時の用途（ゾーン）の対応の変更 ----
 /** その場所の用途を、確認時刻（observedAt）から変える。空の配列なら用途なし */
 export const ZoneAssignmentChangedPayload = z.object({
-  zoneIds: z.array(z.string()),
+  zoneIds: z.array(z.string().max(200)).max(100),
   note: optionalText,
 });
 
@@ -249,17 +249,17 @@ export const TransporterAvailabilityChangedPayload = z.object({
 
 // ---- 場所 ----
 /** 数値の報告。null は「未確認」。確認時刻はイベントの observedAt */
-const reportedCount = z.number().int().min(0).nullable();
+const reportedCount = z.number().int().min(0).max(99999).nullable();
 
 export const LocationStatusReportedPayload = z.object({
   /** 受け入れ可否。null は未確認 */
   accepting: z.boolean().nullable().optional(),
   /** 区分ごとの受け入れ可能人数（報告した区分だけ更新する） */
-  capacity: z.array(z.object({ triage: z.string(), value: reportedCount })).default([]),
+  capacity: z.array(z.object({ triage: z.string().max(200), value: reportedCount })).max(50).default([]),
   note: optionalText,
 });
 export const StaffCountReportedPayload = z.object({
-  counts: z.array(z.object({ professionId: z.string(), value: reportedCount })).min(1),
+  counts: z.array(z.object({ professionId: z.string().max(200), value: reportedCount })).min(1).max(50),
 });
 
 export const payloadSchemas = {
@@ -325,16 +325,16 @@ export type DomainEvent = { [T in EventType]: EventBase<T> }[EventType];
 
 export const DomainEventSchema = z
   .object({
-    id: z.string().min(1),
+    id: z.string().max(200).min(1),
     type: z.enum(eventTypes as [EventType, ...EventType[]]),
     subject: SubjectSchema,
     payload: z.unknown(),
     reportedBy: ReporterSchema.nullable(),
-    enteredBy: z.string().min(1),
-    terminal: z.string().min(1),
+    enteredBy: z.string().max(200).min(1),
+    terminal: z.string().max(200).min(1),
     observedAt: isoDateTime,
     recordedAt: isoDateTime,
-    corrects: z.string().optional(),
+    corrects: z.string().max(200).optional(),
     override: OverrideSchema.optional(),
     mode: ModeSchema,
   })

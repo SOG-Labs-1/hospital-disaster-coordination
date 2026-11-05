@@ -1,0 +1,18 @@
+# 入れ物に入れないもの（秘密・記録・大きなもの）
+.env
+.env.*
+!.env.example
+.git
+node_modules
+**/node_modules
+data
+.demo-data
+.capture-data
+e2e
+test-results
+playwright-report
+video
+docs
+web/dist
+**/*.sqlite
+.DS_Store

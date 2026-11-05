@@ -21,12 +21,19 @@ export interface HospitalList {
   defaultHospitalId: string | null;
   /** 画面から病院を作れるか */
   canCreate: boolean;
+  /** インターネットに公開した審査用のデモか（画面に案内を出す） */
+  publicDemo?: boolean;
 }
+
+/** 公開デモか（病院の一覧を読み込んだときに決まる）。訓練の画面の案内に使う */
+export let isPublicDemo = false;
 
 export async function fetchHospitals(): Promise<HospitalList> {
   const res = await fetch('/api/hospitals');
   if (!res.ok) throw new Error('病院の一覧を読み込めない');
-  return res.json();
+  const list = (await res.json()) as HospitalList;
+  isPublicDemo = !!list.publicDemo;
+  return list;
 }
 
 export async function fetchConfig(): Promise<HospitalConfig> {

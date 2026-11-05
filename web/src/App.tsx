@@ -85,6 +85,17 @@ function HospitalSetup({ list }: { list: HospitalList }) {
       <p className="brand">
         病院リンクBCP <span lang="en">Hospital Link BCP</span>
       </p>
+      {list.publicDemo && (
+        <section className="demo-guide" aria-labelledby="demo-guide-title" data-testid="demo-guide">
+          <h2 id="demo-guide-title">公開デモ（審査用）</h2>
+          <ul>
+            <li>病院を選び、ブラウザのタブを3つ（本部・救急外来・手術室）開いて端末の場所を選ぶと、端末どうしで記録がすぐに同期することが分かります。</li>
+            <li>データはすべて架空です。<strong>実在の人や病院の情報は入力しないでください。</strong>ほかの方の操作も同じ記録に表示されます。</li>
+            <li>しばらく操作がないと、記録は最初の状態に戻ります。</li>
+            <li>訓練モードでは、部署役を Claude（Claude API）が演じます。訓練で送った文は Claude API に送られます。</li>
+          </ul>
+        </section>
+      )}
       <h1>病院を選んでください</h1>
       <p>この端末で使う病院の設定を選びます。選んだ病院はこのブラウザに保存されます。訓練をするときは「訓練モードで開く」を押します（訓練の記録は災害運用とは別に保存されます）。</p>
       <ul className="hospital-list">

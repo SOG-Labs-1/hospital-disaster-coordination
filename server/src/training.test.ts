@@ -252,3 +252,50 @@ describe('AI が止まっても訓練は続く', () => {
     expect((await post('/training/sim/note', { findingId: id, note: '電話で確認した' })).code).toBe(200);
   });
 });
+
+describe('公開デモ（審査用）', () => {
+  async function restartAsDemo(runsPerDay: number) {
+    await app.close();
+    const anthropicLike: AiProvider = { ...new MockProvider(), name: 'anthropic', proposeForRole: (ctx) => new MockProvider().proposeForRole(ctx), explainReview: (i) => new MockProvider().explainReview(i) };
+    app = createApp({
+      hospitals: [config],
+      dataDir,
+      now: () => new Date(clock),
+      training: { scenarios, provider: anthropicLike, tickMs: 1_000_000 },
+      publicDemo: { maxCreatedHospitals: 10, writesPerMinute: 1000, trainingRunsPerDay: runsPerDay },
+    });
+    await new Promise<void>((r) => app.server.listen(0, r));
+    base = `http://localhost:${(app.server.address() as AddressInfo).port}/api/h/claude`;
+  }
+
+  it('審査用5分シナリオが一覧の先頭にある', async () => {
+    expect((await snapshot()).scenarios[0].id).toBe('claude-judge-5min');
+  });
+
+  it('ほかの方の訓練が進行中なら、新しく始められない（残り時間を出す）。終わったら始められる', async () => {
+    await restartAsDemo(50);
+    expect((await post('/training/sim/control', { action: 'start', scenarioId: 'claude-judge-5min' })).code).toBe(200);
+    await advanceBy(60_000);
+    const r = await post('/training/sim/control', { action: 'start', scenarioId: 'claude-red-to-or' });
+    expect(r.code).toBe(400);
+    expect(r.body.errors[0]).toContain('ほかの方が訓練中です（残り約4分）');
+    await post('/training/sim/control', { action: 'end' });
+    expect((await post('/training/sim/control', { action: 'start', scenarioId: 'claude-red-to-or' })).code).toBe(200);
+  });
+
+  it('1日の上限を超えた回は、決まった返事（mock）で動かす', async () => {
+    await restartAsDemo(1);
+    await post('/training/sim/control', { action: 'start', scenarioId: 'claude-judge-5min' });
+    expect((await snapshot()).provider).toBe('anthropic');
+    await post('/training/sim/control', { action: 'end' });
+    await post('/training/sim/control', { action: 'start', scenarioId: 'claude-judge-5min' });
+    expect((await snapshot()).provider).toBe('mock');
+  });
+
+  it('病院の一覧に公開デモの目印を返し、検索エンジンに載せない', async () => {
+    await restartAsDemo(50);
+    const res = await fetch(`${base.replace(/\/api\/h\/claude$/, '')}/api/hospitals`);
+    expect(((await res.json()) as any).publicDemo).toBe(true);
+    expect(res.headers.get('x-robots-tag')).toContain('noindex');
+  });
+});

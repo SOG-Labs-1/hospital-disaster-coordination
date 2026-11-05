@@ -200,6 +200,11 @@ h3 { font-size: var(--text); }
 /* 製品名（病院を選ぶ画面の上） */
 .brand { margin: 0 0 8px; font-weight: 700; font-size: 1.25rem; letter-spacing: 0.04em; }
 .brand span { margin-left: 0.6em; font-size: 1rem; font-weight: 400; color: var(--ink-muted); }
+/* 公開デモの案内（病院を選ぶ画面の上）。実線の枠と見出しで、色だけに頼らず示す */
+.demo-guide { border: 2px solid var(--line-strong); background: var(--caution-bg); padding: 12px 20px; margin: 0 0 20px; }
+.demo-guide h2 { margin: 0 0 6px; font-size: 1.15rem; }
+.demo-guide ul { margin: 0; padding-left: 1.2em; }
+.demo-guide li { margin: 4px 0; }
 
 /* ---- 患者一覧 ---- */
 .filter-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: var(--gap); }

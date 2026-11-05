@@ -47,10 +47,17 @@ export interface AppOptions {
    * それ以外の名前（院内の DNS 名など）で開くときに指定する（DNS リバインディング対策）
    */
   allowedHosts?: string[];
+  /**
+   * インターネットに公開する審査用のデモ（PUBLIC_DEMO=1）。架空のデータだけを使い、記録は定期的に最初に戻す。
+   * 画面に案内を出し、書き込みの頻度と、作れる病院の数を絞り、訓練は同時に1回だけ・1日の回数に上限を付ける
+   */
+  publicDemo?: { maxCreatedHospitals: number; writesPerMinute: number; trainingRunsPerDay: number };
 }
 
 export interface App {
   server: Server;
+  /** 最後に記録を書き込んだ時刻（公開デモで、しばらく操作がなければ最初に戻すため）。まだなければ null */
+  lastWriteAt: () => number | null;
   close: () => Promise<void>;
   /** 訓練の進行役（テスト用） */
   training: (hospitalId: string) => TrainingManager | undefined;
@@ -59,6 +66,8 @@ export interface App {
 const MAX_BODY = 1_000_000;
 /** 画面から作れる病院の数（作りすぎて開くファイルが尽きないように） */
 const MAX_CREATED_HOSPITALS = 20;
+/** 全端末への配信（SSE）の同時接続の上限（病院・モードごと）。つなぎっぱなしで資源を使い切られないように */
+const MAX_STREAM_CLIENTS = 200;
 
 /** 病院名の比べ方：全角・半角の違い、見えない文字（ゼロ幅など）、空白を無視する（そっくりな名前の病院を作らせない） */
 export function normalizeHospitalName(name: string): string {
@@ -147,6 +156,7 @@ export function createApp(options: AppOptions): App {
         simStorePath: join(dataDir, config.id, 'training-sim.sqlite'),
         provider: options.training.provider,
         replyTimeoutMs: options.training.replyTimeoutMs,
+        ...(options.publicDemo ? { exclusiveRuns: true, runsPerDay: options.publicDemo.trainingRunsPerDay } : {}),
         newId: () => ulid(),
         now,
         onChange: () => broadcastSim(config.id),
@@ -221,6 +231,24 @@ export function createApp(options: AppOptions): App {
     return { code, body: result };
   }
 
+  let lastWriteAt: number | null = null;
+  // 書き込みの頻度の上限（公開デモ）：送り元ごとに1分あたりの回数を数える
+  const writeCounts = new Map<string, { minute: number; count: number }>();
+  function tooManyWrites(req: IncomingMessage): boolean {
+    if (!options.publicDemo) return false;
+    const forwarded = String(req.headers['x-forwarded-for'] ?? '').split(',')[0]!.trim();
+    const client = forwarded || req.socket.remoteAddress || 'unknown';
+    const minute = Math.floor(Date.now() / 60_000);
+    const c = writeCounts.get(client);
+    if (!c || c.minute !== minute) {
+      if (writeCounts.size > 10_000) writeCounts.clear();
+      writeCounts.set(client, { minute, count: 1 });
+      return false;
+    }
+    c.count++;
+    return c.count > options.publicDemo.writesPerMinute;
+  }
+
   const server = createServer(async (req, res) => {
     try {
       await route(req, res);
@@ -235,14 +263,23 @@ export function createApp(options: AppOptions): App {
     const url = new URL(req.url ?? '/', 'http://localhost');
     const path = url.pathname;
     if (!isAllowedHost(req.headers.host, options.allowedHosts)) return json(res, 421, { status: 'error', errors: ['このホスト名では開けない（ALLOWED_HOSTS に追加する）'] });
+    if (options.publicDemo) res.setHeader('X-Robots-Tag', 'noindex, nofollow');
     if (req.method === 'POST') {
       const refusal = writeRefusal(req);
       if (refusal) return json(res, refusal.code, { status: 'rejected', errors: [refusal.error] });
+      if (tooManyWrites(req)) return json(res, 429, { status: 'rejected', errors: ['書き込みが多すぎます。少し待ってから操作してください'] });
+      // 公開デモでは、外から（Cloud Run の中継を通って）来た書き込みだけを数える。起動時のデモ用データの投入は数えない
+      if (!options.publicDemo || req.headers['x-forwarded-for']) lastWriteAt = Date.now();
     }
 
     if (path === '/api/health') return json(res, 200, { ok: true, serverTime: now().toISOString(), ...(options.demoCapture ? { demoCapture: true } : {}) });
     if (path === '/api/hospitals' && req.method === 'GET')
-      return json(res, 200, { hospitals: hospitals.map((h) => ({ id: h.id, name: h.name })), defaultHospitalId: defaultHospitalId(), canCreate: !!options.hospitalCreation });
+      return json(res, 200, {
+        hospitals: hospitals.map((h) => ({ id: h.id, name: h.name })),
+        defaultHospitalId: defaultHospitalId(),
+        canCreate: !!options.hospitalCreation,
+        ...(options.publicDemo ? { publicDemo: true } : {}),
+      });
     if (path === '/api/hospital-template' && req.method === 'GET') {
       if (!options.hospitalCreation) return json(res, 404, { status: 'error', errors: ['病院を作る機能は使えない'] });
       return json(res, 200, options.hospitalCreation.template);
@@ -260,7 +297,8 @@ export function createApp(options: AppOptions): App {
       const id = `h-${ulid().toLowerCase().slice(-10)}`;
       const r = buildHospitalConfig(body.draft as never, creation.template, id);
       if (!r.ok) return json(res, 400, { status: 'rejected', errors: r.errors });
-      if (hospitals.length - options.hospitals.length >= MAX_CREATED_HOSPITALS) return json(res, 400, { status: 'rejected', errors: [`画面から作れる病院は${MAX_CREATED_HOSPITALS}件まで`] });
+      const maxCreated = options.publicDemo?.maxCreatedHospitals ?? MAX_CREATED_HOSPITALS;
+      if (hospitals.length - options.hospitals.length >= maxCreated) return json(res, 400, { status: 'rejected', errors: [`画面から作れる病院は${maxCreated}件まで${options.publicDemo ? '（公開デモは、しばらく操作がないと最初の状態に戻ります）' : ''}`] });
       if (hospitals.some((h) => normalizeHospitalName(h.name) === normalizeHospitalName(r.config.name))) return json(res, 400, { status: 'rejected', errors: [`同じ名前の病院「${r.config.name}」がすでにある`] });
       mkdirSync(creation.dir, { recursive: true });
       // 作った病院設定はファイルとして残す（記録の保存先と同じく git の管理外）。次の起動でも読み込む
@@ -283,6 +321,7 @@ export function createApp(options: AppOptions): App {
       const action = t[2] ?? 'snapshot';
       if (req.method === 'GET' && action === 'snapshot') return json(res, 200, snapshotOf(t[1]!));
       if (req.method === 'GET' && action === 'stream') {
+        if (simClients.get(t[1]!)!.size >= MAX_STREAM_CLIENTS) return json(res, 503, { status: 'error', errors: ['接続が多すぎます。少し待ってから開き直してください'] });
         res.writeHead(200, { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-cache, no-transform', Connection: 'keep-alive' });
         res.write(`retry: 2000\nevent: sim\ndata: ${JSON.stringify(snapshotOf(t[1]!))}\n\n`);
         const set = simClients.get(t[1]!)!;
@@ -337,6 +376,7 @@ export function createApp(options: AppOptions): App {
           return json(res, r.code, r.body);
         }
         case 'GET stream': {
+          if (ctx.clients.size >= MAX_STREAM_CLIENTS) return json(res, 503, { status: 'error', errors: ['接続が多すぎます。少し待ってから開き直してください'] });
           res.writeHead(200, {
             'Content-Type': 'text/event-stream; charset=utf-8',
             'Cache-Control': 'no-cache, no-transform',
@@ -358,6 +398,7 @@ export function createApp(options: AppOptions): App {
 
   return {
     server,
+    lastWriteAt: () => lastWriteAt,
     training: (hospitalId) => managers.get(hospitalId),
     close: async () => {
       clearInterval(heartbeat);

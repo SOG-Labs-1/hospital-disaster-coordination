@@ -12,7 +12,8 @@ import { spawn } from 'node:child_process';
 import { join } from 'node:path';
 
 const root = join(import.meta.dirname, '../..');
-const port = process.env.DEMO_PORT ?? '4600';
+// Cloud Run などでは、待ち受けるポートが PORT で渡される
+const port = process.env.DEMO_PORT ?? process.env.PORT ?? '4600';
 const api = `http://localhost:${port}`;
 const dataDir = join(root, '.demo-data');
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -23,6 +24,8 @@ const server = spawn('npx', ['tsx', 'server/src/main.ts'], {
   env: { ...process.env, SERVER_PORT: port, DATA_DIR: dataDir, DEMO_CAPTURE: '1', AI_PROVIDER: process.env.AI_PROVIDER ?? 'mock' },
 });
 const stop = () => server.kill('SIGTERM');
+// サーバーが終わったら、このスクリプトも終わる（公開デモで最初の状態に戻すとき、入れ物ごと起動し直すため）
+server.on('exit', (code) => process.exit(code ?? 0));
 process.on('SIGINT', stop);
 process.on('SIGTERM', stop);
 

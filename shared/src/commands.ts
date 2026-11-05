@@ -39,7 +39,7 @@ import {
 // コマンド（画面からの依頼）を検証し、追記するイベントを決める。
 // ここは純粋な関数で、保存や配信はしない。
 
-const optionalText = z.string().trim().optional();
+const optionalText = z.string().trim().max(1000).optional();
 
 export const CommandSchema = z.discriminatedUnion('type', [
   // 患者
@@ -58,27 +58,27 @@ export const CommandSchema = z.discriminatedUnion('type', [
     payload: z.object({
       patientId: RefIdSchema,
       /** 省略時は患者のいまの所在 */
-      fromLocationId: z.string().optional(),
-      toLocationId: z.string().min(1),
-      methodId: z.string().optional(),
-      escorts: z.array(EscortSchema).default([]),
+      fromLocationId: z.string().max(200).optional(),
+      toLocationId: z.string().max(200).min(1),
+      methodId: z.string().max(200).optional(),
+      escorts: z.array(EscortSchema).max(100).default([]),
       note: optionalText,
     }),
   }),
   z.object({ type: z.literal('AcceptTransport'), transportId: RefIdSchema, payload: z.object({ decidedBy: DeciderSchema, note: optionalText }) }),
-  z.object({ type: z.literal('DeclineTransport'), transportId: RefIdSchema, payload: z.object({ decidedBy: DeciderSchema, reason: z.string().trim().min(1) }) }),
+  z.object({ type: z.literal('DeclineTransport'), transportId: RefIdSchema, payload: z.object({ decidedBy: DeciderSchema, reason: z.string().trim().max(1000).min(1) }) }),
   z.object({
     type: z.literal('AssignTransportStaff'),
     transportId: RefIdSchema,
-    payload: z.object({ transporterIds: z.array(RefIdSchema).min(1), teamId: z.string().optional() }),
+    payload: z.object({ transporterIds: z.array(RefIdSchema).max(100).min(1), teamId: z.string().max(200).optional() }),
   }),
   z.object({ type: z.literal('OrderTransport'), transportId: RefIdSchema, payload: z.object({ orderedBy: DeciderSchema, note: optionalText }) }),
   z.object({ type: z.literal('AcknowledgeTransport'), transportId: RefIdSchema, payload: z.object({ note: optionalText }).default({}) }),
-  z.object({ type: z.literal('CancelTransport'), transportId: RefIdSchema, payload: z.object({ reason: z.string().trim().min(1) }) }),
+  z.object({ type: z.literal('CancelTransport'), transportId: RefIdSchema, payload: z.object({ reason: z.string().trim().max(1000).min(1) }) }),
   z.object({
     type: z.literal('RedirectTransport'),
     transportId: RefIdSchema,
-    payload: z.object({ toLocationId: z.string().min(1), reason: z.string().trim().min(1) }),
+    payload: z.object({ toLocationId: z.string().max(200).min(1), reason: z.string().trim().max(1000).min(1) }),
   }),
   // 搬送（事実）
   z.object({ type: z.literal('RecordDeparture'), transportId: RefIdSchema, payload: z.object({ note: optionalText }).default({}) }),
@@ -113,8 +113,8 @@ export type CommandInput = z.input<typeof CommandSchema>;
 export const CommandEnvelopeSchema = z.object({
   command: CommandSchema,
   meta: z.object({
-    enteredBy: z.string().min(1),
-    terminal: z.string().min(1),
+    enteredBy: z.string().max(200).min(1),
+    terminal: z.string().max(200).min(1),
     reportedBy: ReporterSchema.nullable().default(null),
     /** 現場で確認した時刻。省略時は記録時刻 */
     observedAt: z.iso.datetime({ offset: true }).optional(),
