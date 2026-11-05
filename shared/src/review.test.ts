@@ -70,8 +70,8 @@ describe('振り返りの照合（このツールを使った訓練）', () => {
     step(run, 60_000); // 患者2人・受け入れ状況・支援要請は、部署の端末から記録される
     // 本部は搬送を依頼・指示し、無線で搬送要員に伝える（受領確認・出発の記録・支援の受付はしない）
     run.boardSend(() => ({ command: { type: 'RequestTransport', payload: { patientId: 'P-001', toLocationId: 'loc-b' } }, meta }));
-    step(run, 10_000);
-    step(run, 0);
+    step(run, 0); // 依頼を見て、到着先の部署役に渡す
+    step(run, 10_000); // 了承が到着先の端末から記録される
     run.boardSend(() => ({ command: { type: 'OrderTransport', transportId: 'T-001', payload: { orderedBy: { positionId: 'hq-transport' } } }, meta, expectedVersion: tv(run, 'T-001') }));
     radio(run, 'T-001、場所Bへお願いします');
     step(run, 0);

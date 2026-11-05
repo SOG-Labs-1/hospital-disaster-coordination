@@ -47,6 +47,11 @@ test('訓練を始めると部署の記録がボードに入り、搬送を調�
   await hq.getByRole('button', { name: '無線で伝える' }).click();
   const inbox = hq.getByTestId('radio-inbox');
   await expect(inbox.locator('.radio-row', { hasText: '出発しました' })).toContainText('搬送要員（佐藤）', { timeout: 30_000 });
+  // 聞いた無線を、対応記録の連絡メモに残せる（報告元は搬送要員の名前）
+  const departedRow = inbox.locator('.radio-row', { hasText: '出発しました' });
+  await departedRow.getByRole('button', { name: '連絡メモに残す' }).click();
+  await departedRow.getByRole('form', { name: '連絡メモの下書き' }).getByRole('button', { name: 'この内容で残す' }).click();
+  await expect(hq.getByTestId('notice')).toContainText('連絡メモ');
   await hq.getByRole('tab', { name: /搬送/ }).click();
   await clickAction(card, '出発を記録');
   await hq.screenshot({ path: 'test-results/training-running.png', fullPage: true });

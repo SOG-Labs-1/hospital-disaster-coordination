@@ -4,8 +4,9 @@ import { formatSim, liveSimMs, trainingPost, type TrainingSnapshot } from './tra
 import { isPublicDemo } from './api';
 import { useCommands } from './useCommands';
 
-// 訓練モードの本部の画面。参加者は本部の役で、他部署は AI（または mock）が担う。
-// 部署役の連絡はボードを自動で更新しない。参加者が聞いて、自分でボードに入力する。
+// 訓練モードの本部の画面。参加者は本部の役で、他部署と搬送要員は AI（または mock）が担う。
+// 「このツールを使った訓練」：部署の記録（患者の登録・受け入れの判断・支援要請・到着）は部署の端末からボードに入る。
+// 無線でやりとりするのは搬送要員だけ。無線で聞いたこと（出発など）は、参加者が自分でボードに記録する。
 
 interface Props {
   config: HospitalConfig;
@@ -41,8 +42,12 @@ export function RadioInbox({ config, snapshot, terminal, enteredBy, now }: Props
     if (!enteredBy || !text.trim()) return;
     const ok = await run(
       () => ({
-        command: { type: 'LogMessage', payload: { channel: 'radio', fromLocationId: m.from, toLocationId: terminal, text: text.trim(), relatedIds: [] } },
-        meta: { enteredBy, terminal, reportedBy: { locationId: m.from } },
+        // 搬送要員は場所ではないので、報告元は名前で残す（部署からの無線なら場所で残す）
+        command: {
+          type: 'LogMessage',
+          payload: { channel: 'radio', ...(m.from === 'transporter' ? {} : { fromLocationId: m.from }), toLocationId: terminal, text: text.trim(), relatedIds: [] },
+        },
+        meta: { enteredBy, terminal, reportedBy: m.from === 'transporter' ? { name: m.fromName } : { locationId: m.from } },
       }),
       { doneText: '連絡メモ {id} として残しました' },
     );
@@ -56,10 +61,10 @@ export function RadioInbox({ config, snapshot, terminal, enteredBy, now }: Props
     <section className={`radio-inbox ${unheard.length ? 'has-items' : ''}`} aria-labelledby="radio-title" data-testid="radio-inbox">
       <h2 id="radio-title">
         <span aria-hidden="true">📻</span> 無線の受信 <span className="count">聞いていない {unheard.length}件</span>
-        {snapshot.pendingReplies > 0 && <span className="radio-pending">… 本部からの連絡に、部署役が返事を考えています</span>}
+        {snapshot.pendingReplies > 0 && <span className="radio-pending">… 本部からの無線に、搬送要員が返事を考えています</span>}
       </h2>
       {unheard.length === 0 ? (
-        <p className="hint">新しい連絡はありません。部署からの連絡はここに届きます（ボードは自動では変わりません）。</p>
+        <p className="hint">新しい連絡はありません。搬送要員からの無線はここに届きます。部署からの記録（患者・受け入れの返事・支援要請・到着）は、ボードに直接入ります。</p>
       ) : (
         <ul className="radio-list">
           {unheard.map((m) => (
@@ -186,7 +191,7 @@ export function TrainingTab({ config, snapshot, now, review }: Props) {
             )}
           </div>
           <p className="hint">
-            部署役：{providerLabel(snapshot.provider)}。部署（救急外来・手術室・病棟）は、ふつうの端末と同じように記録します。患者の登録・受け入れの返事・支援要請・到着は、このボードに入ってきます。あなた（本部）は、搬送と支援要請を調整してください。無線でやりとりするのは搬送要員だけです（「無線の受信」に届きます）。
+            部署役：{providerLabel(snapshot.provider)}。部署（{(snapshot.scenarios.find((x) => x.id === snapshot.run?.scenarioId)?.roles ?? []).map((r) => config.locations.find((l) => l.id === r.locationId)?.name ?? r.locationId).join('・')}）は、ふつうの端末と同じように記録します。患者の登録・受け入れの返事・支援要請・到着は、このボードに入ってきます。あなた（本部）は、搬送と支援要請を調整してください。無線でやりとりするのは搬送要員だけです（「無線の受信」に届きます）。
           </p>
           {isPublicDemo && <p className="hint">公開デモでは、訓練は同時に1回だけです。ほかの方の訓練中は、終えずにお待ちください。部署役への連絡は Claude API に送られるので、個人の情報は書かないでください。</p>}
         </section>
@@ -268,7 +273,7 @@ function MessageToRole({ snapshot }: { config: HospitalConfig; snapshot: Trainin
         </fieldset>
         <label className="field">
           <span>伝えること</span>
-          <input value={text} onChange={(e) => setText(e.target.value)} autoComplete="off" maxLength={300} placeholder="例：T-001、救急外来から手術室へ運んでください" />
+          <input value={text} onChange={(e) => setText(e.target.value)} autoComplete="off" maxLength={300} placeholder="例：T-001、（出発元）から（到着先）へ運んでください" />
         </label>
         <button type="submit" className="btn btn-primary" disabled={!to || !text.trim()}>
           無線で伝える

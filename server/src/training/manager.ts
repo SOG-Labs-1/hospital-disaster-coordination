@@ -148,7 +148,8 @@ export class TrainingManager {
     this.writeBoard(sc);
     // 再起動などで、渡したまま返事を受け取っていない刺激があれば渡し直す
     const view = reduceSim(this.events, sc, this.deps.config);
-    for (const [id, st] of view.stimuli) if (st.dispatched && !st.resolved && !this.inflight.has(id)) this.ask(id);
+    // 終わった回には聞き直さない（終了後の返事は振り返りに混ぜない。API も呼ばない）
+    if (!view.ended) for (const [id, st] of view.stimuli) if (st.dispatched && !st.resolved && !this.inflight.has(`${this.runId}:${id}`)) this.ask(id);
     if (this.events.length !== before) this.deps.onChange?.();
     this.explainOnceAfterEnd();
   }
@@ -158,24 +159,39 @@ export class TrainingManager {
     const view = reduceSim(this.events, sc, this.deps.config);
     if (view.ended) return;
     for (const w of pendingBoardWrites(view, sc, this.deps.config, reduce(this.deps.board.events()))) {
+      // 記録しないと決めたもの（行き先が変わった後の古い判断など）は、記録しなかったことだけを残す
+      if (w.skipReason) {
+        this.append([{ type: 'BoardWritten', key: w.key, ok: false, error: w.skipReason }]);
+        continue;
+      }
       let r = this.deps.board.submit(w.envelope);
+      // 了承がボードの受け入れ可能数を超える（参加者が手で別の了承を記録していた など）なら、断りとして記録する
+      let declinedInstead = false;
+      if (r.status === 'warnings' && w.declineInstead) {
+        r = this.deps.board.submit(w.declineInstead);
+        declinedInstead = r.status === 'accepted';
+      }
       // 同じタッグ番号などの警告は、部署で確かめた扱いで理由を付けて記録する（ふつうの端末と同じ手順）
       if (r.status === 'warnings' && w.overrideReason) {
         const codes = (r.warnings ?? []).map((x) => x.code);
         const reasonId = reasonsForWarnings(this.deps.config, codes as never)[0]?.id;
         r = this.deps.board.submit({ ...w.envelope, override: { codes, reasonId, reason: w.overrideReason } });
       }
+      // 版番号の食い違い（参加者の操作と重なった）は一時的なので、印を付けずに次の進行でやり直す
+      if (r.status === 'conflict') continue;
       const ok = r.status === 'accepted';
       if (!ok) console.warn(`訓練：部署の端末からの記録（${w.key}）を入れられなかった`, r.errors ?? r.status);
-      this.append([{ type: 'BoardWritten', key: w.key, ok, ...(ok ? {} : { error: (r.errors ?? [r.status]).join('、').slice(0, 300) }), ...(w.timelineIndex !== undefined ? { timelineIndex: w.timelineIndex } : {}), ...(r.events?.length ? { boardIds: [...new Set(r.events.map((e) => e.subject.id))] } : {}) }]);
+      this.append([{ type: 'BoardWritten', key: w.key, ok, ...(ok ? {} : { error: (r.errors ?? [r.status]).join('、').slice(0, 300) }), ...(w.timelineIndex !== undefined ? { timelineIndex: w.timelineIndex } : {}), ...(w.decisionFor ? { decisionFor: w.decisionFor } : {}), ...(declinedInstead ? { declinedInstead } : {}), ...(r.events?.length ? { boardIds: [...new Set(r.events.map((e) => e.subject.id))] } : {}) }]);
     }
   }
 
   private ask(stimulusId: string): void {
     const sc = this.scenario();
     if (!sc) return;
-    this.inflight.add(stimulusId);
     const runId = this.runId;
+    // 刺激の番号（S-001）は回ごとに同じ番号を使うので、回を含めて覚える（前の回の遅れた返事が、新しい回の待ちを消さないように）
+    const key = `${runId}:${stimulusId}`;
+    this.inflight.add(key);
     const ctx = buildRoleContext(reduceSim(this.events, sc, this.deps.config), sc, this.deps.config, stimulusId);
     // AI（Claude API）が失敗・時間切れのときは、決まった返事（mock）で補い、そのことを記録する。
     // 訓練は API が止まっても続けられる（補った回数は画面に出す）
@@ -186,13 +202,19 @@ export class TrainingManager {
         return { proposals: await this.fallback.proposeForRole(ctx), failed: String((err as Error)?.message ?? err) };
       })
       .then(async ({ proposals, failed }) => {
-        this.inflight.delete(stimulusId);
+        this.inflight.delete(key);
         if (this.runId !== runId) return; // 回が変わった後の返事は使わない
-        if (failed) this.append([{ type: 'ProviderFailed', stimulusId, error: failed }]);
         let resolved = resolveProposals(this.events, sc, this.deps.config, stimulusId, proposals, this.now());
+        // すでに解決済み・終了した回なら何もしない（失敗とも数えない）
+        if (resolved.length === 0) return;
+        if (failed) this.append([{ type: 'ProviderFailed', stimulusId, error: failed }]);
         // 報告するべき場面で提案がすべて却下されたら、本部に何も届かなくなるので決まった返事で補う（補ったことは記録する）
         // 受け入れの判断（部署）と、到着・知らせの無線（搬送要員）は、必ず何かを返す
-        const mustReport = ['notice', 'patientArrivedByTransport', 'transportRequest'].includes(ctx.stimulus.kind);
+        // ただし、返事を考えているあいだに参加者が取り消し・行き先変更・判断の記録をした依頼には、補わない（正しい却下）
+        const st = ctx.stimulus;
+        const tNow = st.kind === 'transportRequest' ? reduceSim(this.events, sc, this.deps.config).transports[st.transportId] : undefined;
+        const stale = st.kind === 'transportRequest' && (!tNow || tNow.cancelled || tNow.toLocationId !== ctx.locationId || tNow.roleAccepted !== null);
+        const mustReport = !stale && ['notice', 'patientArrivedByTransport', 'transportRequest'].includes(st.kind);
         if (!failed && mustReport && resolved.every((e) => e.type === 'ProposalResolved' && !e.accepted)) {
           const backup = await this.fallback.proposeForRole(ctx);
           this.append([{ type: 'ProviderFailed', stimulusId, error: '提案がすべて却下されたため、決まった返事で補った' }]);
@@ -207,7 +229,7 @@ export class TrainingManager {
 
   /** 返事待ちの部署役・説明文がなくなるまで待つ（テスト用） */
   async settle(): Promise<void> {
-    while (this.inflight.size || this.explaining) await new Promise((r) => setTimeout(r, 5));
+    while ([...this.inflight].some((k) => k.startsWith(`${this.runId}:`)) || this.explaining) await new Promise((r) => setTimeout(r, 5));
   }
 
   /** 振り返り。訓練が終わってからだけ作る（実際の状態は訓練中の参加者には見せない） */
@@ -266,7 +288,9 @@ export class TrainingManager {
     switch (c.action) {
       case 'start': {
         if (!this.deps.scenarios.some((s) => s.id === c.scenarioId)) return { ok: false, error: `シナリオ「${c.scenarioId}」がない` };
-        if (live && this.deps.exclusiveRuns) {
+        // 一時停止のまま10分以上たった回は、放置されたとみなして新しく始められる（公開デモ）
+        const abandoned = !!last && !last.running && this.now().getTime() - last.at > 10 * 60_000;
+        if (live && this.deps.exclusiveRuns && !abandoned) {
           const sc = this.scenario()!;
           const speed = last?.speed ?? 1;
           const leftMin = Math.max(1, Math.ceil((sc.durationMinutes * 60_000 - sim) / speed / 60_000));

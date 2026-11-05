@@ -89,7 +89,7 @@ export function buildReview(input: { scenario: Scenario; config: HospitalConfig;
   };
   /** その刺激に対する部署役の連絡（R-番号） */
   const messagesFor = (pred: (stimulus: SimView['stimuli'] extends Map<string, infer V> ? V : never) => boolean) =>
-    view.proposals.filter((p) => p.accepted && p.messageId && pred(view.stimuli.get(p.stimulusId)!)).map((p) => p.messageId!);
+    view.proposals.filter((p) => p.accepted && p.messageId && pred(view.stimuli.get(p.stimulusId)!)).flatMap((p) => (p.messageId ? [p.messageId] : []));
   const boardTransports = board.transportOrder.map((id) => board.transports[id]!).filter((t) => !t.retracted);
 
   // 1. 情報が確認・共有されなかった
@@ -182,15 +182,15 @@ export function buildReview(input: { scenario: Scenario; config: HospitalConfig;
     if (bt.steps.ordered && !bt.steps.acknowledged)
       add({ category: 'unconfirmed', kind: 'no-record', title: `${bt.id} の指示の受領確認がない`, detail: '指示を出したが、相手が受け取ったかを確かめた記録がない。', evidence: [bt.id] });
     if (tt?.departedSimMs !== undefined && !bt.steps.departed) {
-      const r = view.proposals.filter((p) => p.accepted && p.proposal?.action === 'report_departure' && 'transportId' in p.proposal && p.proposal.transportId === bt.id).map((p) => p.messageId!);
+      const r = view.proposals.filter((p) => p.accepted && p.proposal?.action === 'report_departure' && 'transportId' in p.proposal && p.proposal.transportId === bt.id).flatMap((p) => (p.messageId ? [p.messageId] : []));
       add({ category: 'unconfirmed', kind: 'no-record', title: `${bt.id} の出発がボードに記録されていない`, detail: `実際には${minutes(tt.departedSimMs)}分ごろに出発している。`, evidence: [bt.id, ...r] });
     }
     if (tt?.arrivedSimMs !== undefined && !bt.steps.arrived) {
-      const r = view.proposals.filter((p) => p.accepted && p.proposal?.action === 'report_arrival' && 'transportId' in p.proposal && p.proposal.transportId === bt.id).map((p) => p.messageId!);
+      const r = view.proposals.filter((p) => p.accepted && p.proposal?.action === 'report_arrival' && 'transportId' in p.proposal && p.proposal.transportId === bt.id).flatMap((p) => (p.messageId ? [p.messageId] : []));
       add({ category: 'unconfirmed', kind: 'no-record', title: `${bt.id} の到着がボードに記録されていない`, detail: `実際には${minutes(tt.arrivedSimMs)}分ごろに${loc(tt.toLocationId)}に着いている。`, evidence: [bt.id, ...r] });
     }
     if (!bt.steps.accepted && !bt.steps.declined) {
-      const r = view.proposals.filter((p) => p.accepted && (p.proposal?.action === 'accept_transport' || p.proposal?.action === 'decline_transport') && 'transportId' in p.proposal! && p.proposal.transportId === bt.id).map((p) => p.messageId!);
+      const r = view.proposals.filter((p) => p.accepted && (p.proposal?.action === 'accept_transport' || p.proposal?.action === 'decline_transport') && 'transportId' in p.proposal! && p.proposal.transportId === bt.id).flatMap((p) => (p.messageId ? [p.messageId] : []));
       if (r.length || bt.steps.departed || bt.steps.arrived)
         add({
           category: 'broken-handoff',
@@ -265,7 +265,10 @@ function evaluate(rule: CheckRule, view: SimView, board: AppState, matches: Reco
     }
     case 'supportAssigned': {
       const ss = Object.values(board.supports).filter((s) => !s.retracted && s.fromLocationId === rule.fromLocationId);
-      const ok = ss.find((s) => s.steps.assigned && Date.parse(s.steps.assigned.observedAt) - Date.parse(s.steps.requested.observedAt) <= rule.withinMinutes * 60000);
+      // かかった時間は、シナリオの時間（一時停止・倍速を考える）で比べる
+      const runStart = view.clock[0]?.at ?? 0;
+      const sim = (iso: string) => simMsOfWall(view, Date.parse(iso), runStart);
+      const ok = ss.find((s) => s.steps.assigned && sim(s.steps.assigned.observedAt) - sim(s.steps.requested.observedAt) <= rule.withinMinutes * 60000);
       return ok ? { result: 'met', evidence: [ok.id] } : { result: ss.length ? 'not-met' : view.needs.some((n) => n.locationId === rule.fromLocationId && n.requested) ? 'no-record' : 'not-met', evidence: ss.map((s) => s.id) };
     }
     case 'supportCompleted': {
@@ -294,7 +297,9 @@ function evaluate(rule: CheckRule, view: SimView, board: AppState, matches: Reco
     }
     case 'supportDispatched': {
       const ss = Object.values(board.supports).filter((s) => !s.retracted && s.fromLocationId === rule.fromLocationId);
-      const ok = ss.find((s) => s.steps.dispatched && (!rule.withinMinutes || Date.parse(s.steps.dispatched.observedAt) - Date.parse(s.steps.requested.observedAt) <= rule.withinMinutes * 60000));
+      const runStart = view.clock[0]?.at ?? 0;
+      const sim = (iso: string) => simMsOfWall(view, Date.parse(iso), runStart);
+      const ok = ss.find((s) => s.steps.dispatched && (!rule.withinMinutes || sim(s.steps.dispatched.observedAt) - sim(s.steps.requested.observedAt) <= rule.withinMinutes * 60000));
       return ok ? { result: 'met', evidence: [ok.id] } : { result: 'not-met', evidence: ss.map((s) => s.id) };
     }
     case 'duplicateTagHandled': {

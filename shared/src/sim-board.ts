@@ -2,7 +2,7 @@ import type { CommandEnvelopeInput } from './commands';
 import type { HospitalConfig } from './config';
 import type { Decider } from './events';
 import type { Scenario } from './scenario';
-import { TRANSPORTER_ROLE, type SimView } from './simulator';
+import { containsMedicalAdvice, TRANSPORTER_ROLE, type SimView } from './simulator';
 import { versionOf, type AppState } from './state';
 
 // 「このツールを使った訓練」：部署の端末から参加者のボードに記録するもの。
@@ -19,7 +19,16 @@ export interface BoardWrite {
   envelope: CommandEnvelopeInput;
   /** 同じタッグ番号などの警告が出たときに、理由を付けて記録してよいか（部署の端末で、確かめて登録した扱い） */
   overrideReason?: string;
+  /** 部署役（AI）の判断から作った記録なら、その搬送（記録に失敗したら、シミュレーターでも判断を取り消すため） */
+  decisionFor?: string;
+  /** 了承がボードの受け入れ可能数の警告になったときに、代わりに記録する断り */
+  declineInstead?: CommandEnvelopeInput;
+  /** 記録しない理由（行き先が変わった後の古い判断など）。記録せずに、記録しなかったことだけを残す */
+  skipReason?: string;
 }
+
+/** 部署役（AI）の判断から作った記録の印。ボードの上でも、人の判断と見分けられるようにする */
+export const AI_ROLE_REPORTER = '訓練の部署役（AI）';
 
 /** その部署の端末で入力する職員（病院設定でその場所にいる職員の最初の人。いなければ場所の決まっていない職員） */
 export function staffAt(config: HospitalConfig, locationId: string): string | null {
@@ -38,10 +47,20 @@ export function pendingBoardWrites(view: SimView, scenario: Scenario, config: Ho
   const out: BoardWrite[] = [];
   if (!view.runId) return out;
   const meta = (locationId: string) => ({ enteredBy: staffAt(config, locationId) ?? '', terminal: locationId, reportedBy: null });
+  // 入力する職員が見つからなくても飛ばさない（コマンドの検証で失敗し、失敗として残る）
   const add = (w: BoardWrite) => {
-    if (view.boardWritten.has(w.key) || !w.envelope.meta.enteredBy) return;
+    if (view.boardWritten.has(w.key)) return;
     out.push(w);
   };
+
+  // 0. 開始時の部署の状態（受け入れ可否・受け入れ枠）を、その部署の端末から記録する（ボードとシナリオの実際をそろえる）
+  scenario.initial.forEach((x, i) => {
+    if (!x.capacity && x.accepting === undefined) return;
+    add({
+      key: `initial-${i}`,
+      envelope: { command: { type: 'ReportLocationStatus', locationId: x.locationId, payload: { accepting: x.accepting, capacity: x.capacity ?? [] } }, meta: meta(x.locationId) },
+    });
+  });
 
   // 1. シナリオの出来事：部署の端末から記録する
   scenario.timeline.forEach((t, i) => {
@@ -93,12 +112,32 @@ export function pendingBoardWrites(view: SimView, scenario: Scenario, config: Ho
     const bt = board.transports[p.transportId];
     if (!bt || bt.retracted || bt.closed || bt.steps.accepted || bt.steps.declined) continue;
     const subject = { kind: 'transport' as const, id: bt.id };
+    // 判断した部署が、いまの到着先でなければ記録しない（行き先を変えた後の、前の行き先の判断）
+    if (r.role !== bt.toLocationId) {
+      add({ key: `decision-${r.id}`, envelope: { command: { type: 'AcceptTransport', transportId: bt.id, payload: { decidedBy: deciderAt(config, r.role) } }, meta: meta(r.role) }, skipReason: '行き先が変わった後の、前の行き先の判断' });
+      continue;
+    }
+    // 記録に残す文は、AI の判断だと分かるように印を付け、記録に入れる直前の文でも医療の判断の言葉を確かめる（念のための二重の確認）
+    const text = p.action === 'accept_transport' ? `（${AI_ROLE_REPORTER}）${p.message}` : `（${AI_ROLE_REPORTER}）${p.reason}：${p.message}`;
+    if (containsMedicalAdvice(text, config)) continue;
+    const m = { ...meta(bt.toLocationId), reportedBy: { locationId: bt.toLocationId, name: AI_ROLE_REPORTER } };
     add({
-      key: `decision-${r.stimulusId}`,
+      key: `decision-${r.id}`,
+      decisionFor: bt.id,
       envelope:
         p.action === 'accept_transport'
-          ? { command: { type: 'AcceptTransport', transportId: bt.id, payload: { decidedBy: deciderAt(config, bt.toLocationId), note: p.message } }, meta: meta(bt.toLocationId), expectedVersion: versionOf(board, subject) }
-          : { command: { type: 'DeclineTransport', transportId: bt.id, payload: { decidedBy: deciderAt(config, bt.toLocationId), reason: `${p.reason}（${p.message}）` } }, meta: meta(bt.toLocationId), expectedVersion: versionOf(board, subject) },
+          ? { command: { type: 'AcceptTransport', transportId: bt.id, payload: { decidedBy: deciderAt(config, bt.toLocationId), note: text } }, meta: m, expectedVersion: versionOf(board, subject) }
+          : { command: { type: 'DeclineTransport', transportId: bt.id, payload: { decidedBy: deciderAt(config, bt.toLocationId), reason: text } }, meta: m, expectedVersion: versionOf(board, subject) },
+      // ボードでは受け入れ可能数を超える（参加者が手で別の了承を記録していた など）なら、了承せずに断りとして記録する
+      ...(p.action === 'accept_transport'
+        ? {
+            declineInstead: {
+              command: { type: 'DeclineTransport', transportId: bt.id, payload: { decidedBy: deciderAt(config, bt.toLocationId), reason: `（${AI_ROLE_REPORTER}）受け入れ可能数を超えるため、受け入れできません` } },
+              meta: m,
+              expectedVersion: versionOf(board, subject),
+            },
+          }
+        : {}),
     });
   }
 

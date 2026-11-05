@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 // AI部署役が出せる行動（提案）。これ以外の形は受け付けない。
-// 提案はシミュレーターが検証してから反映する。参加者のボード（記録）は変えない。
+// 提案はシミュレーターが検証してから反映する。部署の受け入れの判断だけは、検証を通ったものを、さらにコマンドの検証を通して到着先の端末の記録にする（sim-board.ts）。
 // 医療判断（診断・トリアージ判定・治療の助言）をする行動は用意しない。
 
 /** 本部へ無線で伝える言葉。すべての提案に付く */
@@ -18,7 +18,7 @@ export const ProposalSchema = z.discriminatedUnion('action', [
     capacity: z.array(z.object({ triage: z.string(), value: z.number().int().min(0) })).default([]),
   }),
   z.object({ action: z.literal('accept_transport'), transportId: z.string(), message }),
-  z.object({ action: z.literal('decline_transport'), transportId: z.string(), reason: z.string().trim().min(1), message }),
+  z.object({ action: z.literal('decline_transport'), transportId: z.string(), reason: z.string().trim().min(1).max(200), message }),
   /** 自部署で起きた支援の必要を本部へ要請する */
   z.object({ action: z.literal('request_support'), message }),
   z.object({ action: z.literal('report_departure'), transportId: z.string(), message }),

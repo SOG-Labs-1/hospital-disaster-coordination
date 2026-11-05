@@ -131,7 +131,7 @@ export function createApp(options: AppOptions): App {
   }
   for (const config of hospitals) addContexts(config);
 
-  // 訓練：病院ごとに進行役を置く。進行役はボードを読むだけで、書き込まない
+  // 訓練：病院ごとに進行役を置く。進行役が参加者のボードに書き込むのは、部署の端末からの記録として board.submit を通すときだけ（検証は参加者の操作と同じ）
   const managers = new Map<string, TrainingManager>();
   const simClients = new Map<string, Set<ServerResponse>>();
   function snapshotOf(hospitalId: string) {

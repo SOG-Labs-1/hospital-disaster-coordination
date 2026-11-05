@@ -65,7 +65,9 @@ export type SimEvent = SimBase &
     | { type: 'ReviewNoteAdded'; findingId: string; note: string }
     | { type: 'ReviewExplained'; provider: string; explanations: { findingId: string; text: string; evidence: string[] }[] }
     /** 部署の端末から、参加者のボードに記録した（部署役の入力。ふつうの端末と同じ検証を通す） */
-    | { type: 'BoardWritten'; key: string; ok: boolean; error?: string; timelineIndex?: number; boardIds?: string[] }
+    | { type: 'BoardWritten'; key: string; ok: boolean; error?: string; timelineIndex?: number; boardIds?: string[]; decisionFor?: string; declinedInstead?: boolean }
+    /** 参加者がボードに記録した受け入れの了承・断り（部署役のいない行き先など）。実際の状態にも反映する */
+    | { type: 'TransportDecisionObserved'; transportId: string; accepted: boolean }
   );
 export type SimEventInput = SimEvent extends infer E ? (E extends SimEvent ? Omit<E, 'id' | 'at'> : never) : never;
 
@@ -241,6 +243,11 @@ function applySim(v: SimView, e: SimEvent, scenario: Scenario): void {
       t.roleAccepted = null;
       return;
     }
+    case 'TransportDecisionObserved': {
+      const t = v.transports[e.transportId];
+      if (t) t.roleAccepted = e.accepted;
+      return;
+    }
     case 'TransportCancelledInSim':
       v.transports[e.transportId]!.cancelled = true;
       return;
@@ -299,6 +306,10 @@ function applySim(v: SimView, e: SimEvent, scenario: Scenario): void {
       return;
     case 'BoardWritten': {
       v.boardWritten.add(e.key);
+      // 部署役の判断を記録できなかったら（受け入れ枠の超過の警告など）、シミュレーターでも判断がなかったことにする（ボードと食い違わない）
+      if (!e.ok && e.decisionFor && v.transports[e.decisionFor]) v.transports[e.decisionFor]!.roleAccepted = null;
+      // ボードの受け入れ可能数を超えるため、了承の代わりに断りとして記録した
+      if (e.ok && e.declinedInstead && e.decisionFor && v.transports[e.decisionFor]) v.transports[e.decisionFor]!.roleAccepted = false;
       const t = e.ok && e.timelineIndex !== undefined ? scenario.timeline[e.timelineIndex] : undefined;
       if (t?.type === 'supportNeed') {
         const need = v.needs.find((n) => n.locationId === t.locationId && !n.requested);
@@ -564,6 +575,9 @@ export function advance(input: AdvanceInput): AdvanceResult {
       if (tt.departedSimMs === undefined) queue(e.payload.toLocationId, { kind: 'transportRequest', transportId: tt.id, patientText: text, fromLocationId: tt.fromLocationId });
     }
     if (e.type === 'TransportCancelled' && tt) push({ type: 'TransportCancelledInSim', transportId: tt.id });
+    // ボードの受け入れの了承・断り（参加者が手で記録したもの、部署役のいない行き先など）も、実際の状態に反映する
+    if ((e.type === 'TransportAccepted' || e.type === 'TransportDeclined') && tt && tt.roleAccepted !== (e.type === 'TransportAccepted'))
+      push({ type: 'TransportDecisionObserved', transportId: tt.id, accepted: e.type === 'TransportAccepted' });
     if (e.type === 'SupportRequested') push({ type: 'SupportObserved', supportId: e.subject.id, fromLocationId: e.payload.fromLocationId });
     if (e.type === 'SupportDispatched' && view.supports[e.subject.id] && view.supports[e.subject.id]!.dispatchedSimMs === undefined)
       push({ type: 'SupportDispatchedInSim', supportId: e.subject.id, simMs: sim });
@@ -758,7 +772,9 @@ function validateTransporterProposal(view: SimView, config: HospitalConfig, p: P
       if (!t || t.cancelled) return `搬送「${p.transportId}」が見つからない`;
       if (t.departedSimMs !== undefined) return 'すでに出発している';
       if (t.roleAccepted === false) return '到着先が受け入れを断っている';
-      if (t.patientKey && view.patients[t.patientKey]?.locationId !== t.fromLocationId) return 'その患者は出発元にいない';
+      // 到着先の了承がないまま運び出さない（搬送要員は本部に確かめる）
+      if (t.roleAccepted !== true) return '到着先の受け入れの了承がまだない';
+      if (!t.patientKey || view.patients[t.patientKey]?.locationId !== t.fromLocationId) return 'その患者は出発元にいない';
       return null;
     case 'report_arrival':
       if (!t) return `搬送「${p.transportId}」が見つからない`;
@@ -780,7 +796,8 @@ export function resolveProposals(
 ): SimEventInput[] {
   const view = reduceSim(simEvents, scenario, config);
   const st = view.stimuli.get(stimulusId);
-  if (!st || st.resolved) return [];
+  // 終わった回への返事は受け付けない（振り返りに、終了後の返事が混ざらないように）
+  if (!st || st.resolved || view.ended) return [];
   const sim = simMsAt(view, now);
   const out: SimEventInput[] = [];
   let messages = view.inbox.length;

@@ -39,14 +39,24 @@ export class Run {
   writeBoard() {
     if (this.view().ended) return;
     for (const w of pendingBoardWrites(this.view(), this.sc, this.config, reduce(this.board))) {
+      if (w.skipReason) {
+        this.add([{ type: 'BoardWritten', key: w.key, ok: false, error: w.skipReason }]);
+        continue;
+      }
       const send = (env: CommandEnvelopeInput) => decide(reduce(this.board), this.config, env, { mode: 'training', now: new Date(this.wall).toISOString(), newId: () => `B${this.board.length + 1}` });
       let r = send(w.envelope);
       if (r.status === 'warnings' && w.overrideReason) {
         const codes = r.warnings.map((x) => x.code);
         r = send({ ...w.envelope, override: { codes, reasonId: reasonsForWarnings(this.config, codes)[0]?.id, reason: w.overrideReason } });
       }
+      let declinedInstead = false;
+      if (r.status === 'warnings' && w.declineInstead) {
+        r = send(w.declineInstead);
+        declinedInstead = r.status === 'accepted';
+      }
+      if (r.status === 'conflict') continue;
       if (r.status === 'accepted') this.board.push(...r.events);
-      this.add([{ type: 'BoardWritten', key: w.key, ok: r.status === 'accepted', ...(r.status === 'accepted' ? {} : { error: JSON.stringify(r).slice(0, 200) }), ...(w.timelineIndex !== undefined ? { timelineIndex: w.timelineIndex } : {}) }]);
+      this.add([{ type: 'BoardWritten', key: w.key, ok: r.status === 'accepted', ...(r.status === 'accepted' ? {} : { error: JSON.stringify(r).slice(0, 200) }), ...(w.timelineIndex !== undefined ? { timelineIndex: w.timelineIndex } : {}), ...(w.decisionFor ? { decisionFor: w.decisionFor } : {}), ...(declinedInstead ? { declinedInstead } : {}) }]);
     }
   }
   view() {

@@ -22,7 +22,9 @@ describe('AI の分離', () => {
     }
   });
 
-  it('訓練の進行役は、参加者のボードに書き込まない（コマンドの検証も保存も使わない）', () => {
+  // 進行役は、渡された board.submit（中でコマンドの検証 decide を通る）からだけ、部署の端末の記録として書き込む。
+  // 自分で decide や保存を使って、検証を飛ばして書き込むことはしない
+  it('訓練の進行役は、コマンドの検証も保存も直接使わない（渡された submit からだけ記録する）', () => {
     for (const f of filesIn('server/src/training')) {
       const src = read(f);
       expect(imports(src).filter((i) => i === '../store' || i === '../app'), f).toEqual([]);

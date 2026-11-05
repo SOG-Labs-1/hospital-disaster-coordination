@@ -125,8 +125,9 @@ describe('訓練の進行（mock の部署役）', () => {
     await post('/training/sim/control', { action: 'start', scenarioId: 'claude-red-to-or' });
     const second = (await snapshot()).run.runId;
     expect(second).not.toBe(first);
+    // 新しい回のボードには、前の回の記録はなく、開始時の部署の状態（受け入れ枠）だけが部署の端末から入る
     const board = (await (await fetch(`${base}/training/events`)).json()) as any;
-    expect(board.events).toHaveLength(0);
+    expect(board.events.every((e: any) => e.type === 'LocationStatusReported')).toBe(true);
     const files = readdirSync(join(dataDir, 'claude', 'training')).filter((f) => f.endsWith('.sqlite'));
     expect(files.sort()).toEqual([`${first}.sqlite`, `${second}.sqlite`].sort());
     // 災害運用の記録は別のファイルで、訓練とは混ざらない
@@ -166,12 +167,14 @@ describe('訓練の進行（mock の部署役）', () => {
     await post('/training/sim/control', { action: 'start', scenarioId: 'claude-red-to-or' });
     await post('/training/commands', { command: { type: 'RegisterPatient', payload: { locationId: 'er', tagNumber: '101' } }, meta });
     const runId = (await snapshot()).run.runId;
+    const before = (await boardEvents()).length;
     await app.close();
     app = createApp({ hospitals: [config], dataDir, now: () => new Date(clock), training: { scenarios, provider: new MockProvider(), tickMs: 1_000_000 } });
     await new Promise<void>((r) => app.server.listen(0, r));
     base = `http://localhost:${(app.server.address() as AddressInfo).port}/api/h/claude`;
     expect((await snapshot()).run.runId).toBe(runId);
-    expect(((await (await fetch(`${base}/training/events`)).json()) as any).events).toHaveLength(1);
+    // 再起動の前後で、ボードの記録は増えも減りもしない（同じ記録を二度入れない）
+    expect(((await (await fetch(`${base}/training/events`)).json()) as any).events).toHaveLength(before);
   });
 });
 
