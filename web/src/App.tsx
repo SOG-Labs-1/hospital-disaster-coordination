@@ -82,6 +82,9 @@ export function App() {
 function HospitalSetup({ list }: { list: HospitalList }) {
   return (
     <main className="setup">
+      <p className="brand">
+        病院リンクBCP <span lang="en">Hospital Link BCP</span>
+      </p>
       <h1>病院を選んでください</h1>
       <p>この端末で使う病院の設定を選びます。選んだ病院はこのブラウザに保存されます。訓練をするときは「訓練モードで開く」を押します（訓練の記録は災害運用とは別に保存されます）。</p>
       <ul className="hospital-list">
@@ -162,7 +165,7 @@ function Headquarters({ config, terminal, mode, otherHospitals }: { config: Hosp
   const terminalName = config.locations.find((l) => l.id === terminal)?.name ?? terminal;
 
   useEffect(() => {
-    document.title = `【${modeLabels[mode]}】${config.name} 調整ツール`;
+    document.title = `【${modeLabels[mode]}】${config.name}｜病院リンクBCP`;
   }, [mode, config.name]);
 
   return (

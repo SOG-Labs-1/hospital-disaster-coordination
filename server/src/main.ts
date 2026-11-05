@@ -45,7 +45,7 @@ const app = createApp({ hospitals, dataDir, defaultHospitalId, staticDir: join(r
 });
 
 app.server.listen(port, () => {
-  console.log(`院内災害対応 調整ツール: http://localhost:${port}`);
+  console.log(`病院リンクBCP（院内災害対応の調整ツール）: http://localhost:${port}`);
   for (const h of hospitals) console.log(`  病院設定: ${h.name}（${h.id}）`);
   console.log(`  記録の保存先: ${dataDir}/<病院id>/（live.sqlite / training/<回>.sqlite / training-sim.sqlite）`);
   console.log(`  訓練シナリオ: ${scenarios.map((s) => s.id).join(', ') || 'なし'}　部署役: ${provider.name}`);

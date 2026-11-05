@@ -197,6 +197,9 @@ h3 { font-size: var(--text); }
 .more summary { min-height: var(--tap); display: flex; align-items: center; cursor: pointer; font-weight: 700; color: var(--primary); text-decoration: underline; }
 
 .setup { max-width: 960px; margin: 40px auto; padding: 0 20px; }
+/* 製品名（病院を選ぶ画面の上） */
+.brand { margin: 0 0 8px; font-weight: 700; font-size: 1.25rem; letter-spacing: 0.04em; }
+.brand span { margin-left: 0.6em; font-size: 1rem; font-weight: 400; color: var(--ink-muted); }
 
 /* ---- 患者一覧 ---- */
 .filter-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: var(--gap); }
