@@ -3,6 +3,7 @@
 import { interpolate, useCurrentFrame } from 'remotion';
 import { clamp, ease } from '../common';
 import { c, fontFamily } from '../theme';
+import { Patient, Staff } from './HospitalPictogram';
 
 export type NodeId = 'hq' | 'er' | 'or' | 'ward' | 'hall';
 const NAMES: Record<NodeId, string> = { hq: '本部', er: '救急外来', or: '手術室', ward: '病棟', hall: '外来ホール' };
@@ -46,8 +47,11 @@ export const Hub = ({ state }: { state: 'radio' | 'broken' | 'connected' | 'tria
         const br = state === 'broken' ? interpolate(frame, [26 + i * 6, 36 + i * 6], [0, 1], clamp) : 0;
         const mx = (cx + d.x) / 2, my = (cy + d.y) / 2;
         // つながったとき：線の上を情報の点が行き来する
-        const k = ((frame / 30) * 0.7 + i * 0.25) % 1;
-        const toHq = i % 2 === 0;
+        // 部署 → 本部（報告・依頼）と、本部 → 部署（返事・指示）を交互に。部署ごとに少しずらす
+        const cyc = ((frame / 30) * 0.45 + i * 0.25) % 1;
+        const toHq = cyc < 0.5;
+        const k0 = toHq ? cyc * 2 : (cyc - 0.5) * 2;
+        const k = k0 < 0.5 ? 2 * k0 * k0 : 1 - (-2 * k0 + 2) ** 2 / 2;
         const dot = toHq ? { x: d.x + (cx - d.x) * k, y: d.y + (cy - d.y) * k } : { x: cx + (d.x - cx) * k, y: cy + (d.y - cy) * k };
         const stroke = connected ? c.accent : c.line;
         const dash = state === 'radio' ? '14 10' : undefined;
@@ -57,7 +61,7 @@ export const Hub = ({ state }: { state: 'radio' | 'broken' | 'connected' | 'tria
             <line x1={mx + (d.x - mx) * 0.12 * br} y1={my + (d.y - my) * 0.12 * br} x2={d.x} y2={d.y} stroke={stroke} strokeWidth={connected ? 5 : 3} strokeDasharray={dash} />
             {state === 'broken' && <text x={mx} y={my + 14} fill={c.red} fontFamily={fontFamily} fontSize={44} fontWeight={700} textAnchor="middle" opacity={br}>✕</text>}
             {state === 'radio' && <text x={mx} y={my - 14} fill={c.sub} fontFamily={fontFamily} fontSize={22} textAnchor="middle">無線</text>}
-            {connected && <circle cx={dot.x} cy={dot.y} r={9} fill={c.accent} opacity={interpolate(frame, [20, 30], [0, 1], clamp)} />}
+            {state === 'connected' && <circle cx={dot.x} cy={dot.y} r={11} fill={toHq ? c.warn : c.accent} stroke="#fff" strokeWidth={2} opacity={interpolate(frame, [20, 30], [0, 1], clamp)} />}
             <rect x={d.x - 150} y={d.y - 50} width={300} height={100} fill="rgba(7,13,24,0.92)" stroke={connected ? c.accent : c.line} strokeWidth={connected ? 3 : 2} />
             <text x={d.x - (connected ? 30 : 0)} y={d.y + 10} fill={c.text} fontFamily={fontFamily} fontSize={30} fontWeight={700} textAnchor="middle">{NAMES[id]}</text>
             {connected && <Pc x={d.x + 100} y={d.y} on={interpolate(frame, [12 + i * 4, 22 + i * 4], [0, 1], clamp)} />}
@@ -75,35 +79,22 @@ export const Hub = ({ state }: { state: 'radio' | 'broken' | 'connected' | 'tria
       {state === 'triage' && (
         <g>
           {([
-            ['red', 'or', 20],
-            ['yellow', 'ward', 50],
-            ['green', 'hall', 80],
+            ['red', 'or', 25],
+            ['yellow', 'ward', 60],
+            ['green', 'hall', 95],
           ] as const).map(([tri, to, at], i) => {
-            const k = interpolate(frame, [at, at + 30], [0, 1], { ...clamp, easing: ease });
-            const from = { x: P.er.x - 60 + i * 60, y: P.er.y + 80 };
-            const dest = { x: P[to].x - 60 + i * 0, y: P[to].y + 80 };
+            const k = interpolate(frame, [at, at + 32], [0, 1], { ...clamp, easing: ease });
+            const from = { x: P.er.x - 110 + i * 110, y: P.er.y + 140 };
+            const dest = { x: P[to].x - 40, y: P[to].y + 140 };
             const x = from.x + (dest.x - from.x) * k;
-            const y = from.y + (dest.y - from.y) * k - Math.sin(k * Math.PI) * 60;
-            const col = { red: c.red, yellow: c.yellow, green: c.green }[tri];
-            const sym = { red: '◆', yellow: '▲', green: '●' }[tri];
+            const y = from.y + (dest.y - from.y) * k;
             return (
-              <g key={tri} transform={`translate(${x} ${y})`} opacity={interpolate(frame, [4, 14], [0, 1], clamp)}>
-                <rect x={-26} y={-22} width={52} height={44} fill={col} stroke="#000" strokeWidth={2} />
-                <text x={0} y={12} fill={tri === 'yellow' ? '#000' : '#fff'} fontFamily={fontFamily} fontSize={30} fontWeight={700} textAnchor="middle">{sym}</text>
+              <g key={tri} opacity={interpolate(frame, [4, 14], [0, 1], clamp)}>
+                <Patient x={x} y={y} s={1.15} tri={tri} />
+                <Staff x={x + 70} y={y + 12} s={0.9} />
               </g>
             );
           })}
-          <text x={960} y={800} fill={c.text} fontFamily={fontFamily} fontSize={40} fontWeight={700} textAnchor="middle" opacity={interpolate(frame, [20, 32], [0, 1], clamp)}>
-            <tspan fill={c.red}>◆赤</tspan>　＞　<tspan fill={c.yellow}>▲黄</tspan>　＞　<tspan fill={c.green}>●緑</tspan>
-          </text>
-        </g>
-      )}
-      {state === 'radio' && (
-        <g>
-          {/* ホワイトボード */}
-          <rect x={cx - 110} y={cy + 80} width={220} height={90} fill="#e9eef4" stroke={c.line} strokeWidth={2} />
-          {[0, 1, 2].map((r) => <line key={r} x1={cx - 90} y1={cy + 104 + r * 22} x2={cx + 40 + (r % 2) * 40} y2={cy + 104 + r * 22} stroke="#4a5568" strokeWidth={3} />)}
-          <text x={cx} y={cy + 196} fill={c.sub} fontFamily={fontFamily} fontSize={22} textAnchor="middle">ホワイトボードに手書き</text>
         </g>
       )}
     </svg>
@@ -111,7 +102,7 @@ export const Hub = ({ state }: { state: 'radio' | 'broken' | 'connected' | 'tria
 };
 
 /** 小さな地図（操作の場面）。active：いま応答している所、flow：情報が伝わる向き、patient：患者のいる所（move なら救急外来→手術室へ動く） */
-export const HubMini = ({ active, flow, done = [], patient = 'er', move = 0, left = 1240, top = 172 }: { active: NodeId[]; flow?: [NodeId, NodeId][]; done?: NodeId[]; patient?: NodeId | 'move'; move?: number; left?: number; top?: number }) => {
+export const HubMini = ({ active, flow, done = [], patient = 'er', move = 0, left = 1248, top = 52 }: { active: NodeId[]; flow?: [NodeId, NodeId][]; done?: NodeId[]; patient?: NodeId | 'move'; move?: number; left?: number; top?: number }) => {
   const frame = useCurrentFrame();
   const P = MINI;
   const p = interpolate(frame, [0, 12], [0, 1], { ...clamp, easing: ease });
