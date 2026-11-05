@@ -68,7 +68,9 @@ npm run demo
 
 - 部署役からの連絡は「無線の受信」に届きます。聞いた内容を、本部役として自分でボードに記録します。
 - 終わると、記録の漏れを振り返ります。
-- 既定では API を使わない決まった返事（mock）で動きます。Claude に部署役を演じさせるときは、下の「Claude API を使う」のとおり `.env` にキーを入れ、次のように起動します。
+- 既定では API を使わない決まった返事（mock）で動きます。訓練タブに「部署役：mock」と出ます。
+- **APIキーがなくても**、本物の Claude API で訓練したときの返事を [docs/training-with-claude.md](docs/training-with-claude.md) で読めます（部署役の無線の返事、医療的な判断を断った返事、プログラムが却下した提案、振り返りの説明文）。
+- Claude に部署役を演じさせるときは、`.env.example` を `.env` にコピーして `ANTHROPIC_API_KEY` を入れ（モデルは入っています）、次のように起動します。訓練タブに「部署役：Claude（AI）」と出ます。
 
 ```bash
 AI_PROVIDER=anthropic npm run demo
