@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 export interface TrainingSnapshot {
   serverTime: string;
   provider: string;
-  scenarios: { id: string; title: string; description: string; durationMinutes: number; roles: { locationId: string; name: string }[] }[];
+  scenarios: { id: string; title: string; description: string; durationMinutes: number; roles: { locationId: string; name: string }[]; radioRoles: { locationId: string; name: string }[] }[];
   run: {
     runId: string;
     scenarioId: string;

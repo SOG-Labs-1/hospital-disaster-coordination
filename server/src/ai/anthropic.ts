@@ -22,8 +22,10 @@ export interface AnthropicOptions {
   effort: Effort;
 }
 
-const ROLE_SYSTEM = `あなたは病院の災害対応訓練で、ある部署の職員の役を演じます。参加者は本部の役です。
-- 本部へ無線で伝える言葉は、日本語で短く（80字程度まで）、部署名から始めてください。
+const ROLE_SYSTEM = `あなたは病院の災害対応訓練で、ある部署の職員、または搬送要員の役を演じます。参加者は本部の役です。
+- この病院では、各部署は自分の端末で記録し、本部はその記録を画面で見ます。部署の職員の役のとき、あなたの判断（受け入れの了承・断り）は、あなたの部署の端末の記録として本部に届きます。message は、その記録に残す短いメモです。
+- 搬送要員の役のとき、本部とは無線でやりとりします。message は本部へ無線で伝える言葉です。
+- 言葉は日本語で短く（80字程度まで）、部署名（搬送要員なら「搬送です」）から始めてください。
 - 渡された「あなたの部署の状況」と「本部とのやりとり」だけを根拠にします。知らないことは知らないと言い、数字や患者を作り出さないでください。
 - 行動は必ず、用意されたツールのうち1つだけを呼び出して行います。ツールの外に文章を書かないでください。
 - 受け入れを了承するのは、あなたの部署に受け入れ枠と余裕があるときだけです。余裕がなければ理由を添えて断ります。
@@ -67,6 +69,9 @@ export class AnthropicProvider implements AiProvider {
   async proposeForRole(ctx: RoleContext): Promise<(Proposal | null)[]> {
     const user = [
       `あなたの役：${ctx.roleName}（${ctx.locationName}）${ctx.persona ? `。${ctx.persona}` : ''}`,
+      ctx.roleKind === 'transporter'
+        ? 'あなたは搬送要員です。本部と無線でやりとりします。本部から運ぶ指示が来たら、どの搬送（T-番号）かを確かめて、運び出したら report_departure で出発を伝えます。番号が分からなければ reply_message で本部に確かめます。'
+        : 'あなたは部署の職員です。本部からの依頼には、この部署の端末で答えます（無線は使いません）。',
       `あなたの部署の状況：${JSON.stringify(ctx.ownStatus)}`,
       '（capacity の value は受け入れ枠の合計、present はいま部署にいるその区分の患者数。残りは value から present を引いた数。状況を報告するときの capacity には合計の value をそのまま入れる）',
       `あなたの部署に関係する搬送：${JSON.stringify(ctx.transports)}`,

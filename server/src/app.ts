@@ -162,6 +162,8 @@ export function createApp(options: AppOptions): App {
         onChange: () => broadcastSim(config.id),
         board: {
           events: () => ctx.events,
+          // 部署の端末からの記録（訓練）。参加者の操作と同じ検証を通す。進行役の中から呼ぶので、進行役を進め直さない
+          submit: (envelope) => handleCommand(ctx, envelope, { fromSimulator: true }).body as never,
           // 訓練の回ごとに、ボード（参加者の記録）を別のファイルに切り替える
           switchRun: (runId) => {
             switchTrainingBoard(ctx, runId);
@@ -202,7 +204,7 @@ export function createApp(options: AppOptions): App {
     }
   }
 
-  function handleCommand(ctx: ModeContext, body: unknown) {
+  function handleCommand(ctx: ModeContext, body: unknown, opts: { fromSimulator?: boolean } = {}) {
     // 検証から追記までを同期処理で行うので、同時に届いたコマンドが割り込むことはない
     const result = decide(ctx.state, ctx.config, body as never, {
       mode: ctx.mode,
@@ -224,7 +226,7 @@ export function createApp(options: AppOptions): App {
       ctx.state = next;
       broadcast(ctx, result.events);
       // 訓練では、参加者の記録をすぐにシミュレーターに見せる（部署役への依頼などが届く）
-      if (ctx.mode === 'training') managers.get(ctx.config.id)?.tick();
+      if (ctx.mode === 'training' && !opts.fromSimulator) managers.get(ctx.config.id)?.tick();
       return { code: 200, body: { ...result, lastEventId: ctx.state.lastEventId } };
     }
     const code = { conflict: 409, warnings: 422, rejected: 400 }[result.status];

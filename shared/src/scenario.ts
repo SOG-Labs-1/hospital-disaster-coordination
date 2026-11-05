@@ -6,6 +6,10 @@ import { formatIssues } from './config';
 
 // 訓練シナリオ（scenarios/*.yaml）のスキーマ。すべて架空。
 // 患者の区分（トリアージ）はシナリオの作者が書く架空の値で、AI は判定しない。
+//
+// 訓練は「このツールを使った訓練」：各部署は自分の端末で記録する（患者の登録・受け入れ状況・到着・支援要請は、
+// シナリオのプログラムが部署の端末から記録する）。部署役（AI）が判断するのは搬送の受け入れの可否だけで、その判断も
+// 部署の端末の記録として届く。無線でやりとりするのは搬送要員（transporter）だけ。
 
 const id = z.string().regex(/^[a-z0-9][a-z0-9-]*$/, 'id は英小文字・数字・ハイフンで書く');
 
@@ -32,9 +36,9 @@ export type ScenarioPatient = z.infer<typeof ScenarioPatientSchema>;
 const capacityList = z.array(z.object({ triage: z.string(), value: z.number().int().min(0) }));
 
 export const TimelineEventSchema = z.discriminatedUnion('type', [
-  /** 患者がその場所に着いた。その場所の部署役が本部へ報告する */
+  /** 患者がその場所に着いた。その場所の端末から患者を登録する（シナリオのプログラムが記録する） */
   z.object({ type: z.literal('patientArrives'), at, locationId: z.string(), patient: ScenarioPatientSchema }),
-  /** 場所の受け入れ状況が変わった（実際の状態）。その場所の部署役が本部へ報告する */
+  /** 場所の受け入れ状況が変わった（実際の状態）。その場所の端末から院内の状況に記録する */
   z.object({
     type: z.literal('locationStatus'),
     at,
@@ -43,9 +47,9 @@ export const TimelineEventSchema = z.discriminatedUnion('type', [
     capacity: capacityList.optional(),
     note: z.string().optional(),
   }),
-  /** 部署で支援が必要になった。その部署役が本部へ要請する */
+  /** 部署で支援が必要になった。その部署の端末から支援要請を出す */
   z.object({ type: z.literal('supportNeed'), at, locationId: z.string(), kindId: z.string(), items: z.array(SupportItemSchema).min(1), note: z.string().optional() }),
-  /** 経路の問題など、知らせるべき出来事。reporter の部署役が本部へ伝える */
+  /** 経路の問題など、知らせるべき出来事。reporter が搬送要員（transporter）なら無線で、部署なら端末の連絡メモで本部へ伝える */
   z.object({ type: z.literal('notice'), at, reporter: z.string(), text: z.string().min(1) }),
 ]);
 export type TimelineEvent = z.infer<typeof TimelineEventSchema>;
@@ -60,6 +64,12 @@ export const CheckRuleSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('supportCompleted'), fromLocationId: z.string() }),
   z.object({ type: z.literal('locationStatusRecorded'), locationId: z.string() }),
   z.object({ type: z.literal('duplicateTagHandled'), tagNumber: z.string() }),
+  /** 本部が、その患者の搬送を（決まった時間内に）依頼したか */
+  z.object({ type: z.literal('transportRequested'), patientKey: id, toLocationId: z.string().optional(), withinMinutes: z.number().positive().optional() }),
+  /** 本部が、搬送要員から無線で聞いた出発をボードに記録したか */
+  z.object({ type: z.literal('departureRecorded'), patientKey: id }),
+  /** 本部が、部署の支援要請の手配（誰がどこから送るか）を記録したか */
+  z.object({ type: z.literal('supportDispatched'), fromLocationId: z.string(), withinMinutes: z.number().positive().optional() }),
 ]);
 export type CheckRule = z.infer<typeof CheckRuleSchema>;
 
@@ -77,6 +87,8 @@ export const ScenarioSchema = z
     durationMinutes: z.number().positive(),
     /** AI が担う部署役。参加者は本部 */
     roles: z.array(z.object({ locationId: z.string(), name: z.string().min(1), persona: z.string().default('') })).min(1),
+    /** 搬送要員の役（AI）。本部と無線でやりとりする（本部の指示を受けて運び、出発・到着を伝える） */
+    transporter: z.object({ name: z.string().min(1), persona: z.string().default('') }).optional(),
     /** 開始時の実際の状態（書かない場所は、受け入れ可・病院設定の初期値） */
     initial: z
       .array(
@@ -129,18 +141,13 @@ export function checkScenarioAgainstConfig(s: Scenario, config: HospitalConfig):
     x.capacity?.forEach((c) => !tri.has(c.triage) && errors.push(`initial.${i}：区分「${c.triage}」が病院設定にない`));
     x.staff.forEach((c) => !prof.has(c.professionId) && errors.push(`initial.${i}：職種「${c.professionId}」が病院設定にない`));
   });
-  const roleLocs = new Set(s.roles.map((r) => r.locationId));
   s.timeline.forEach((e, i) => {
     const w = `timeline.${i}`;
     if (e.type === 'patientArrives') {
       needLoc(e.locationId, w);
       if (!tri.has(e.patient.triage)) errors.push(`${w}：区分「${e.patient.triage}」が病院設定にない`);
-      if (!roleLocs.has(e.locationId)) errors.push(`${w}：「${e.locationId}」の部署役（roles）がない（報告する人がいない）`);
     }
-    if (e.type === 'locationStatus' || e.type === 'supportNeed') {
-      needLoc(e.locationId, w);
-      if (!roleLocs.has(e.locationId)) errors.push(`${w}：「${e.locationId}」の部署役（roles）がない`);
-    }
+    if (e.type === 'locationStatus' || e.type === 'supportNeed') needLoc(e.locationId, w);
     if (e.type === 'locationStatus') e.capacity?.forEach((c) => !tri.has(c.triage) && errors.push(`${w}：区分「${c.triage}」が病院設定にない`));
     if (e.type === 'supportNeed') {
       const kind = config.supportKinds.find((k) => k.id === e.kindId);
@@ -150,7 +157,9 @@ export function checkScenarioAgainstConfig(s: Scenario, config: HospitalConfig):
         if (kind?.itemSource === 'resources' && !config.resources.some((r) => r.id === it.resourceId)) errors.push(`${w}：物品「${it.resourceId}」が病院設定にない`);
       }
     }
-    if (e.type === 'notice' && !roleLocs.has(e.reporter)) errors.push(`${w}：「${e.reporter}」の部署役（roles）がない`);
+    if (e.type === 'notice') {
+      if (e.reporter === 'transporter' ? !s.transporter : !loc.has(e.reporter)) errors.push(`${w}：知らせる人「${e.reporter}」がいない（場所の id か、搬送要員 transporter）`);
+    }
   });
   s.checks.forEach((c, i) => {
     for (const key of ['locationId', 'toLocationId', 'fromLocationId'] as const)

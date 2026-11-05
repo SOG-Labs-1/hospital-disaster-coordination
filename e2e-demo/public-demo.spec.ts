@@ -90,8 +90,8 @@ test('3つのタブ：本部で登録・依頼すると、手術室と掲示用�
   await board.screenshot({ path: 'test-results/demo-board.png' });
 });
 
-test('訓練：審査用5分シナリオを始めると、Claude の部署役から無線が届き、終えると振り返りが出る', async ({ browser }) => {
-  test.setTimeout(240_000);
+test('訓練：審査用5分シナリオを始めると、患者は救急外来の端末から入り、手術室（Claude）が判断し、搬送要員（Claude）と無線でやりとりできる', async ({ browser }) => {
+  test.setTimeout(300_000);
   const hq = await open(browser, 'training', '/?hospital=claude&terminal=hq&mode=training');
   await expect(hq.getByTestId('mode-badge')).toHaveText(/訓練/);
   await hq.getByRole('button', { name: /青木 はるか/ }).click();
@@ -109,13 +109,28 @@ test('訓練：審査用5分シナリオを始めると、Claude の部署役か
   await expect(hq.getByTestId('training-run')).toContainText('進行中');
   await hq.getByRole('button', { name: /2倍速/ }).click();
 
-  // 救急外来の部署役（Claude）から、タッグ201の報告が届く
-  const inbox = hq.getByTestId('radio-inbox');
-  await expect(inbox.locator('.radio-row', { hasText: '201' }).first()).toContainText('救急外来', { timeout: 90_000 });
+  // 救急外来の端末から、赤の患者（タッグ201）が登録される
+  await hq.getByRole('tab', { name: /^(● )?患者/ }).click();
+  const p1 = hq.getByTestId('patient-P-001');
+  await expect(p1).toContainText('201', { timeout: 60_000 });
+
+  // 手術室への搬送を依頼する → 手術室の部署役（Claude）が判断し、手術室の端末から記録される
+  await p1.getByRole('button', { name: '搬送を依頼する' }).click();
+  const tf = hq.getByRole('form', { name: '搬送を依頼する' });
+  await tf.getByLabel(/^到着先/).selectOption({ label: '手術室' });
+  await tf.getByRole('button', { name: '搬送を依頼する' }).click();
+  await hq.getByRole('tab', { name: /搬送/ }).click();
+  const card = hq.getByTestId('transport-T-001');
+  await expect(card).toContainText(/了承済み|断り/, { timeout: 90_000 });
+
+  // 搬送要員（Claude）に無線で指示すると、無線で返事が届く
+  await hq.getByRole('tab', { name: /訓練/ }).click();
+  await hq.getByRole('form', { name: '部署への連絡' }).getByLabel('伝えること').fill('T-001、救急外来から手術室へ運んでください');
+  await hq.getByRole('button', { name: '無線で伝える' }).click();
+  await expect(hq.getByTestId('radio-inbox').locator('.radio-row').first()).toContainText('搬送要員', { timeout: 90_000 });
   await hq.screenshot({ path: 'test-results/demo-training.png', fullPage: true });
 
   // 終えると振り返りが出る
-  await hq.getByRole('tab', { name: /訓練/ }).click();
   await hq.getByRole('button', { name: '訓練を終える' }).click();
   await hq.getByRole('button', { name: '終了する' }).click();
   await expect(hq.getByTestId('review')).toBeVisible({ timeout: 20_000 });

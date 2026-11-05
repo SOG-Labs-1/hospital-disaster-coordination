@@ -185,7 +185,9 @@ export function TrainingTab({ config, snapshot, now, review }: Props) {
               </button>
             )}
           </div>
-          <p className="hint">部署役：{providerLabel(snapshot.provider)}。部署役の連絡は上の「無線の受信」に届きます。聞いた内容は、自分でボード（患者・搬送・支援要請・院内の状況）に入力してください。</p>
+          <p className="hint">
+            部署役：{providerLabel(snapshot.provider)}。部署（救急外来・手術室・病棟）は、ふつうの端末と同じように記録します。患者の登録・受け入れの返事・支援要請・到着は、このボードに入ってきます。あなた（本部）は、搬送と支援要請を調整してください。無線でやりとりするのは搬送要員だけです（「無線の受信」に届きます）。
+          </p>
           {isPublicDemo && <p className="hint">公開デモでは、訓練は同時に1回だけです。ほかの方の訓練中は、終えずにお待ちください。部署役への連絡は Claude API に送られるので、個人の情報は書かないでください。</p>}
         </section>
       ) : (
@@ -201,7 +203,7 @@ export function TrainingTab({ config, snapshot, now, review }: Props) {
                 <h3>{s.title}</h3>
                 <p>{s.description}</p>
                 <p className="hint">
-                  {s.durationMinutes}分　部署役：{s.roles.map((r) => r.name).join('、')}
+                  {s.durationMinutes}分　部署役：{[...s.roles.map((r) => r.name), ...s.radioRoles.map((r) => `${r.name}（無線）`)].join('、')}
                 </p>
                 {confirm === s.id ? (
                   <div className="button-row">
@@ -229,10 +231,10 @@ export function TrainingTab({ config, snapshot, now, review }: Props) {
   );
 }
 
-/** 本部から部署役へ連絡する（無線で呼びかける）。返事は「無線の受信」に届く */
+/** 本部から搬送要員へ無線で連絡する（搬送の指示など）。返事は「無線の受信」に届く。部署とは、このツールの記録でやりとりする */
 function MessageToRole({ snapshot }: { config: HospitalConfig; snapshot: TrainingSnapshot }) {
   const { showNotice } = useCommands();
-  const roles = snapshot.scenarios.find((s) => s.id === snapshot.run?.scenarioId)?.roles ?? [];
+  const roles = snapshot.scenarios.find((s) => s.id === snapshot.run?.scenarioId)?.radioRoles ?? [];
   const [to, setTo] = useState(roles[0]?.locationId ?? '');
   const [text, setText] = useState('');
 
@@ -246,9 +248,11 @@ function MessageToRole({ snapshot }: { config: HospitalConfig; snapshot: Trainin
     } else showNotice({ kind: 'error', text: r.error });
   }
 
+  if (roles.length === 0) return null;
   return (
     <section className="panel" aria-labelledby="send-title">
-      <h2 id="send-title">部署へ無線で連絡する</h2>
+      <h2 id="send-title">搬送要員へ無線で連絡する</h2>
+      <p className="hint">搬送の番号（例：T-001）と、どこからどこへ運ぶかを伝えます。部署とは、このツールの記録でやりとりします。</p>
       <form onSubmit={onSubmit} aria-label="部署への連絡">
         <fieldset className="group">
           <legend>宛先</legend>
@@ -264,7 +268,7 @@ function MessageToRole({ snapshot }: { config: HospitalConfig; snapshot: Trainin
         </fieldset>
         <label className="field">
           <span>伝えること</span>
-          <input value={text} onChange={(e) => setText(e.target.value)} autoComplete="off" maxLength={300} placeholder="例：受け入れられるか確認します" />
+          <input value={text} onChange={(e) => setText(e.target.value)} autoComplete="off" maxLength={300} placeholder="例：T-001、救急外来から手術室へ運んでください" />
         </label>
         <button type="submit" className="btn btn-primary" disabled={!to || !text.trim()}>
           無線で伝える

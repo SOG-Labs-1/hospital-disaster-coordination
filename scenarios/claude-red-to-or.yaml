@@ -1,5 +1,7 @@
 # 訓練シナリオ：赤ゾーンから手術室への搬送と、病棟からの応援要請が重なる（すべて架空）
-# 参加者は本部。救急外来・手術室・3階東病棟は AI が部署役を担う。
+# 「このツールを使った訓練」：各部署は端末で記録する（患者の登録・受け入れ状況・支援要請・到着はシナリオのプログラムが記録）。
+# 手術室の受け入れの判断は AI の部署役が行い、端末の記録として届く。無線でやりとりするのは搬送要員（AI）だけ。
+# 参加者は本部。
 # 患者の区分はシナリオの作者が書いた架空の値で、AI は判定しない。
 
 id: claude-red-to-or
@@ -15,7 +17,8 @@ description: >
 # 参加者に見せる説明（先の出来事は書かない）
 briefing: >
   市内で架空の多数傷病者事故が起きました。救急外来（赤ゾーン）に患者が運ばれ始めています。
-  あなたは災害対策本部の調整担当です。部署からの無線を聞き、ボードに記録しながら調整してください。
+  各部署は自分の端末で記録するので、患者や支援要請は本部の画面に入ってきます。
+  あなたは災害対策本部の調整担当です。搬送と支援要請を調整してください。搬送要員とは無線でやりとりします。
 
 roles:
   - locationId: er
@@ -27,6 +30,10 @@ roles:
   - locationId: ward-3e
     name: 3階東病棟のリーダー
     persona: 病棟の入院患者の対応に追われていて、少し焦っている。
+
+transporter:
+  name: 搬送要員（佐藤）
+  persona: 落ち着いていて手際がよい。指示は番号と行き先で確かめる。
 
 initial:
   - locationId: or
@@ -73,7 +80,7 @@ timeline:
     patient: { key: p4, tagNumber: "101", triage: green, sex: female, estimatedAge: 20代, features: 白いパーカー、眼鏡 }
   - type: notice
     at: "06:00"
-    reporter: er
+    reporter: transporter
     text: 中央エレベーターが停止。東側のエレベーターを使う必要がある
   - type: patientArrives
     at: "09:00"
@@ -81,27 +88,24 @@ timeline:
     patient: { key: p5, tagNumber: "105", triage: yellow, sex: male, estimatedAge: 60代, features: 青い帽子 }
 
 checks:
-  - id: register-red
-    text: 赤の患者（タッグ101・紺の作業着）を登録したか
-    rule: { type: patientRegistered, patientKey: p1 }
-  - id: register-second-red
-    text: 2人目の赤の患者（タッグ103）を登録したか
-    rule: { type: patientRegistered, patientKey: p3 }
+  - id: request-red
+    text: 赤の患者（タッグ101・紺の作業着）の手術室への搬送を、着いてから3分以内に依頼したか
+    rule: { type: transportRequested, patientKey: p1, toLocationId: or, withinMinutes: 3 }
   - id: duplicate-tag
-    text: 同じタッグ番号101の2人を別の患者として登録したか
+    text: 同じタッグ番号101の2人が、ボードで別の患者になっているか（番号だけで取り違えていないか）
     rule: { type: duplicateTagHandled, tagNumber: "101" }
   - id: transport-ack
-    text: 手術室への搬送の指示に受領確認を取ったか
+    text: 搬送の指示に受領確認を取ったか
     rule: { type: transportAcknowledged, patientKey: p1 }
+  - id: departure-recorded
+    text: 搬送要員から無線で聞いた出発を、ボードに記録したか
+    rule: { type: departureRecorded, patientKey: p1 }
   - id: transport-arrived
-    text: タッグ101（紺の作業着）の手術室への到着を記録したか
+    text: タッグ101（紺の作業着）が手術室に着いたことが、ボードで確かめられるか
     rule: { type: transportArrived, patientKey: p1, toLocationId: or }
-  - id: or-status
-    text: 手術室の受け入れ状況を記録したか
-    rule: { type: locationStatusRecorded, locationId: or }
   - id: support-assigned
     text: 3階東病棟の応援要請に5分以内に担当を付けたか
     rule: { type: supportAssigned, fromLocationId: ward-3e, withinMinutes: 5 }
-  - id: support-completed
-    text: 3階東病棟の応援要請の完了を確認したか
-    rule: { type: supportCompleted, fromLocationId: ward-3e }
+  - id: support-dispatched
+    text: 3階東病棟の応援要請の手配を記録したか
+    rule: { type: supportDispatched, fromLocationId: ward-3e }

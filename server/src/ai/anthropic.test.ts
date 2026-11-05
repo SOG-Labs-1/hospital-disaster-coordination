@@ -19,6 +19,7 @@ function fakeClient(reply: Partial<Anthropic.Beta.Messages.BetaMessage>) {
 }
 
 const ctx: RoleContext = {
+  roleKind: 'department',
   locationId: 'or',
   locationName: '手術室',
   roleName: '手術室の看護師',

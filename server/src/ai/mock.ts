@@ -26,7 +26,7 @@ export class MockProvider implements AiProvider {
       case 'needSupport':
         return [{ action: 'request_support', message: `${me}です。応援をお願いします。${ctx.stimulusText.replace(/^.*：/, '').replace(/。本部へ要請する。$/, '')}。` }];
       case 'notice':
-        return [{ action: 'reply_message', message: `${me}です。${s.text}。` }];
+        return [{ action: 'reply_message', message: `${ctx.roleKind === 'transporter' ? '搬送' : me}です。${s.text}。` }];
       case 'transportRequest': {
         const room = ctx.ownStatus.accepting && ctx.ownStatus.capacity.some((c) => c.value > 0);
         return room
@@ -36,11 +36,21 @@ export class MockProvider implements AiProvider {
       case 'transportOrdered':
         return [{ action: 'report_departure', transportId: s.transportId, message: `${me}です。${s.transportId}、患者さんが出発しました。` }];
       case 'patientArrivedByTransport':
-        return [{ action: 'report_arrival', transportId: s.transportId, message: `${me}です。${s.transportId}の患者さんが到着しました。引き継ぎます。` }];
+        return [{ action: 'report_arrival', transportId: s.transportId, message: `搬送です。${s.transportId}、到着先に着きました。引き渡しました。` }];
       case 'supportArrived':
         return [{ action: 'reply_message', message: `${me}です。応援（${s.itemsText}）が届きました。ありがとうございます。` }];
-      case 'hqMessage':
+      case 'hqMessage': {
+        // 搬送要員：本部の無線の指示に、搬送の番号（T-001）があれば、その搬送を運び出す。番号がなく、出発前の搬送が1件だけならそれを運ぶ
+        if (ctx.roleKind === 'transporter') {
+          const named = s.text.match(/T-\d+/)?.[0];
+          const waiting = ctx.transports.filter((t) => t.status === '受け入れ了承済み・出発前' || t.status === '受け入れの返事待ち');
+          const id = named ?? (waiting.length === 1 ? waiting[0]!.id : undefined);
+          return id
+            ? [{ action: 'report_departure', transportId: id, message: `搬送です。${id}、了解しました。患者さんと出発しました。` }]
+            : [{ action: 'reply_message', message: '搬送です。了解しました。どの搬送か、番号を教えてください。' }];
+        }
         return [{ action: 'reply_message', message: `${me}です。了解しました。` }];
+      }
     }
   }
 

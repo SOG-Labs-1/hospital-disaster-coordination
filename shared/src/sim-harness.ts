@@ -1,9 +1,10 @@
-import { decide, type CommandEnvelopeInput } from './commands';
+import { decide, reasonsForWarnings, type CommandEnvelopeInput } from './commands';
 import type { HospitalConfig } from './config';
 import type { DomainEvent } from './events';
 import type { Proposal } from './proposals';
 import type { Scenario } from './scenario';
 import { advance, reduceSim, resolveProposals, type SimEvent, type SimEventInput } from './simulator';
+import { pendingBoardWrites } from './sim-board';
 import { reduce } from './state';
 
 // テスト用：訓練の1回分を、時計を進めながら動かす
@@ -27,10 +28,26 @@ export class Run {
     this.wall += speed ? ms / speed : ms;
     const r = advance({ scenario: this.sc, config: this.config, simEvents: this.sim, boardEvents: this.board, now: new Date(this.wall) });
     this.add(r.events);
+    this.writeBoard();
     return r.dispatch;
   }
   propose(stimulusId: string, ...proposals: (Proposal | null)[]) {
     this.add(resolveProposals(this.sim, this.sc, this.config, stimulusId, proposals, new Date(this.wall)));
+    this.writeBoard();
+  }
+  /** 部署の端末からの記録（サーバーの進行役と同じ手順：コマンドの検証を通し、警告には理由を付ける） */
+  writeBoard() {
+    if (this.view().ended) return;
+    for (const w of pendingBoardWrites(this.view(), this.sc, this.config, reduce(this.board))) {
+      const send = (env: CommandEnvelopeInput) => decide(reduce(this.board), this.config, env, { mode: 'training', now: new Date(this.wall).toISOString(), newId: () => `B${this.board.length + 1}` });
+      let r = send(w.envelope);
+      if (r.status === 'warnings' && w.overrideReason) {
+        const codes = r.warnings.map((x) => x.code);
+        r = send({ ...w.envelope, override: { codes, reasonId: reasonsForWarnings(this.config, codes)[0]?.id, reason: w.overrideReason } });
+      }
+      if (r.status === 'accepted') this.board.push(...r.events);
+      this.add([{ type: 'BoardWritten', key: w.key, ok: r.status === 'accepted', ...(r.status === 'accepted' ? {} : { error: JSON.stringify(r).slice(0, 200) }), ...(w.timelineIndex !== undefined ? { timelineIndex: w.timelineIndex } : {}) }]);
+    }
   }
   view() {
     return reduceSim(this.sim, this.sc, this.config);

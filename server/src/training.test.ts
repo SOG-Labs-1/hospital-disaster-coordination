@@ -36,6 +36,20 @@ const post = async (path: string, body: unknown) => {
 const snapshot = async () => (await (await fetch(`${base}/training/sim`)).json()) as any;
 const meta = { enteredBy: 'hq-01', terminal: 'hq' };
 
+const boardEvents = async () => (((await (await fetch(`${base}/training/events`)).json()) as any).events as any[]);
+
+/** 患者が着き、本部が手術室へ搬送を依頼し、手術室が了承し、本部が搬送要員に無線で指示して、運び出されるまで */
+async function requestAndRadio() {
+  await post('/training/sim/control', { action: 'start', scenarioId: 'claude-red-to-or' });
+  await advanceBy(20_000);
+  await post('/training/commands', { command: { type: 'RequestTransport', payload: { patientId: 'P-001', toLocationId: 'or' } }, meta });
+  await advanceBy(15_000);
+  await app.training('claude')!.settle();
+  expect((await post('/training/sim/message', { to: 'transporter', text: 'T-001、救急外来から手術室へお願いします' })).code).toBe(200);
+  await advanceBy(15_000);
+  await app.training('claude')!.settle();
+}
+
 /** シナリオの時間を進める（1倍速） */
 async function advanceBy(ms: number) {
   clock += ms;
@@ -45,46 +59,51 @@ async function advanceBy(ms: number) {
 }
 
 describe('訓練の進行（mock の部署役）', () => {
-  it('シナリオを始めると、時間に沿って部署役から本部へ連絡が届く。ボードは自動で変わらない', async () => {
+  it('シナリオを始めると、運ばれてきた患者は救急外来の端末から登録され、本部のボードに入る（無線は使わない）', async () => {
     expect((await snapshot()).run).toBeNull();
     const r = await post('/training/sim/control', { action: 'start', scenarioId: 'claude-red-to-or' });
     expect(r.code).toBe(200);
     expect(r.body.run).toMatchObject({ scenarioId: 'claude-red-to-or', running: true, speed: 1 });
 
-    await advanceBy(20_000); // 00:20 に患者 p1 が到着
-    await advanceBy(15_000); // 返事の時間（15秒）の後に連絡が届く
-    const s = await snapshot();
-    expect(s.inbox).toHaveLength(1);
-    expect(s.inbox[0]).toMatchObject({ from: 'er', fromName: '救急外来（赤ゾーン）の看護師リーダー', heard: false });
-    expect(s.inbox[0].text).toContain('タッグ101');
-
-    // 部署役の報告はボードを更新しない（参加者が聞いて入力する）
-    const board = (await (await fetch(`${base}/training/events`)).json()) as any;
-    expect(board.events).toHaveLength(0);
+    await advanceBy(20_000); // 00:20 に患者 p1 が救急外来に着く
+    const board = await boardEvents();
+    const reg = board.find((e: any) => e.type === 'PatientRegistered');
+    expect(reg).toMatchObject({ terminal: 'er', enteredBy: 'er-01', payload: { tagNumber: '101', triage: 'red', locationId: 'er' } });
+    // 部署からの記録なので、無線の受信には何も届かない
+    expect((await snapshot()).inbox).toHaveLength(0);
   });
 
-  it('参加者がボードに記録した搬送の依頼に、手術室の部署役が返事をする', async () => {
+  it('本部の搬送の依頼に、手術室の部署役が判断し、手術室の端末から了承が記録される', async () => {
     await post('/training/sim/control', { action: 'start', scenarioId: 'claude-red-to-or' });
     await advanceBy(20_000);
-    await post('/training/commands', { command: { type: 'RegisterPatient', payload: { locationId: 'er', tagNumber: '101', triage: 'red', features: '紺の作業着' } }, meta });
-    await post('/training/commands', { command: { type: 'RequestTransport', payload: { patientId: 'P-001', toLocationId: 'or' } }, meta });
+    expect((await post('/training/commands', { command: { type: 'RequestTransport', payload: { patientId: 'P-001', toLocationId: 'or' } }, meta })).code).toBe(200);
     await advanceBy(15_000);
-    const s = await snapshot();
-    const fromOr = s.inbox.find((m: any) => m.from === 'or');
-    expect(fromOr.text).toContain('T-001、受け入れできます');
+    await app.training('claude')!.settle();
+    const accepted = (await boardEvents()).find((e: any) => e.type === 'TransportAccepted');
+    expect(accepted).toMatchObject({ terminal: 'or', subject: { id: 'T-001' } });
+    expect(accepted.payload.note).toContain('受け入れできます');
+    expect((await snapshot()).inbox).toHaveLength(0);
   });
 
-  it('本部からの連絡に部署役が返事をし、「聞いた」の印を付けられる', async () => {
-    await post('/training/sim/control', { action: 'start', scenarioId: 'claude-red-to-or' });
-    expect((await post('/training/sim/message', { to: 'ward-5w', text: 'x' })).code).toBe(400); // 部署役のいない場所
-    await post('/training/sim/message', { to: 'ward-3e', text: '状況を教えてください' });
-    await advanceBy(15_000);
-    const s = await snapshot();
-    expect(s.outbox).toMatchObject([{ to: 'ward-3e', text: '状況を教えてください' }]);
-    const reply = s.inbox.find((m: any) => m.from === 'ward-3e');
-    expect(reply.text).toContain('了解しました');
-    const heard = await post('/training/sim/heard', { messageId: reply.messageId });
-    expect(heard.body.inbox.find((m: any) => m.messageId === reply.messageId).heard).toBe(true);
+  it('無線は搬送要員とだけ：指示すると運び出して無線で伝え、到着は手術室の端末から記録される', async () => {
+    await requestAndRadio();
+    // 部署には無線で連絡できない
+    expect((await post('/training/sim/message', { to: 'ward-3e', text: '状況を教えてください' })).code).toBe(400);
+    let s = await snapshot();
+    const departed = s.inbox.find((m: any) => m.from === 'transporter');
+    expect(departed).toMatchObject({ fromName: '搬送要員（佐藤）' });
+    expect(departed.text).toContain('出発しました');
+    expect(s.outbox).toMatchObject([{ to: 'transporter', toName: '搬送要員（佐藤）' }]);
+    const heard = await post('/training/sim/heard', { messageId: departed.messageId });
+    expect(heard.body.inbox.find((m: any) => m.messageId === departed.messageId).heard).toBe(true);
+
+    await advanceBy(120_000); // 移動の時間（2分）
+    await advanceBy(15_000); // 搬送要員の無線の返事
+    await app.training('claude')!.settle();
+    const arrived = (await boardEvents()).find((e: any) => e.type === 'TransportArrived');
+    expect(arrived).toMatchObject({ terminal: 'or', subject: { id: 'T-001' } });
+    s = await snapshot();
+    expect(s.inbox.filter((m: any) => m.from === 'transporter').at(-1).text).toContain('着きました');
   });
 
   it('一時停止中は時間が進まず、2倍速で進む', async () => {
@@ -115,29 +134,28 @@ describe('訓練の進行（mock の部署役）', () => {
     expect(((await (await fetch(`${base}/live/events`)).json()) as any).events).toHaveLength(0);
   });
 
-  it('終わると振り返りを作る。照合はプログラムで、説明文の根拠は渡した番号だけ', async () => {
-    await post('/training/sim/control', { action: 'start', scenarioId: 'claude-red-to-or' });
-    await advanceBy(20_000);
-    await advanceBy(15_000);
+  it('終わると振り返りを作る。無線で聞いた出発を記録しなかったことが「記録がない」として出る', async () => {
+    await requestAndRadio();
     expect((await snapshot()).review).toBeNull(); // 訓練中は実際の状態を見せない
     await post('/training/sim/control', { action: 'end' });
     await app.training('claude')!.settle();
     const s = await snapshot();
     expect(s.run.ended.reason).toBe('manual');
-    const notRegistered = s.review.findings.find((f: any) => f.title.includes('タッグ101'));
-    expect(notRegistered).toMatchObject({ categoryLabel: '情報が確認・共有されなかった', kind: 'no-record' });
-    expect(notRegistered.explanation.text).toContain('ボードに登録されていない');
-    expect(notRegistered.explanation.evidence).toEqual(notRegistered.evidence);
+    const departure = s.review.findings.find((f: any) => f.title.includes('T-001 の出発'));
+    expect(departure).toMatchObject({ categoryLabel: '指示の受領や実行が確認できなかった', kind: 'no-record' });
+    expect(departure.evidence).toContain('R-001');
+    expect(departure.explanation.evidence).toEqual(departure.evidence);
     expect(s.review.explainedBy).toBe('mock');
-    expect(s.review.checks.find((c: any) => c.id === 'register-red').result).toBe('no-record');
+    expect(s.review.checks.find((c: any) => c.id === 'request-red').result).toBe('met');
+    expect(s.review.checks.find((c: any) => c.id === 'departure-recorded').result).toBe('no-record');
 
     // 参加者の補足（画面外での対応）を残して、説明を作り直せる
-    await post('/training/sim/note', { findingId: notRegistered.id, note: '口頭で救急外来に確認していた' });
+    await post('/training/sim/note', { findingId: departure.id, note: '口頭で確認していた' });
     await post('/training/sim/explain', {});
     await app.training('claude')!.settle();
-    const again = (await snapshot()).review.findings.find((f: any) => f.id === notRegistered.id);
-    expect(again.note).toBe('口頭で救急外来に確認していた');
-    expect(again.explanation.text).toContain('参加者の補足：口頭で救急外来に確認していた');
+    const again = (await snapshot()).review.findings.find((f: any) => f.id === departure.id);
+    expect(again.note).toBe('口頭で確認していた');
+    expect(again.explanation.text).toContain('参加者の補足：口頭で確認していた');
   });
 
   it('災害運用には訓練の進行の入口がない', async () => {
@@ -174,32 +192,33 @@ describe('AI が止まっても訓練は続く', () => {
     },
   };
 
-  it('部署役の返事に失敗したら決まった返事で補い、補った回数を画面に出す', async () => {
+  it('部署役の判断に失敗したら決まった返事で補い、補った回数を画面に出す', async () => {
     await restartWith(failing);
     await post('/training/sim/control', { action: 'start', scenarioId: 'claude-red-to-or' });
     await advanceBy(20_000);
+    await post('/training/commands', { command: { type: 'RequestTransport', payload: { patientId: 'P-001', toLocationId: 'or' } }, meta });
     await advanceBy(15_000);
-    const s = await snapshot();
-    expect(s.inbox).toHaveLength(1);
-    expect(s.inbox[0].text).toContain('タッグ101');
-    expect(s.providerFailures).toBe(1);
+    await app.training('claude')!.settle();
+    expect((await boardEvents()).some((e: any) => e.type === 'TransportAccepted')).toBe(true);
+    expect((await snapshot()).providerFailures).toBe(1);
   });
 
-  it('報告するべき場面で提案がすべて却下されたら、決まった返事で補う（本部に何も届かない、を防ぐ）', async () => {
-    await restartWith({ ...failing, proposeForRole: async () => [{ action: 'report_arrival', transportId: 'T-999', message: '救急外来です。到着しました' }] });
+  it('判断するべき場面で提案がすべて却下されたら、決まった返事で補う（部署の返事が届かない、を防ぐ）', async () => {
+    await restartWith({ ...failing, proposeForRole: async () => [{ action: 'report_arrival', transportId: 'T-999', message: '手術室です。到着しました' }] });
     await post('/training/sim/control', { action: 'start', scenarioId: 'claude-red-to-or' });
     await advanceBy(20_000);
+    await post('/training/commands', { command: { type: 'RequestTransport', payload: { patientId: 'P-001', toLocationId: 'or' } }, meta });
     await advanceBy(15_000);
-    const s = await snapshot();
-    expect(s.inbox).toHaveLength(1);
-    expect(s.inbox[0].text).toContain('タッグ101');
-    expect(s.providerFailures).toBe(1);
+    await app.training('claude')!.settle();
+    expect((await boardEvents()).some((e: any) => e.type === 'TransportAccepted')).toBe(true);
+    expect((await snapshot()).providerFailures).toBe(1);
   });
 
   it('返事が時間内に来なければ決まった返事で補う', async () => {
     await restartWith({ ...failing, proposeForRole: () => new Promise(() => {}) });
     await post('/training/sim/control', { action: 'start', scenarioId: 'claude-red-to-or' });
     await advanceBy(20_000);
+    await post('/training/commands', { command: { type: 'RequestTransport', payload: { patientId: 'P-001', toLocationId: 'or' } }, meta });
     await advanceBy(15_000);
     await new Promise((r) => setTimeout(r, 100));
     await app.training('claude')!.settle();
@@ -213,7 +232,7 @@ describe('AI が止まっても訓練は続く', () => {
     await post('/training/sim/control', { action: 'end' });
     await app.training('claude')!.settle();
     const s = await snapshot();
-    expect(s.review.findings.length).toBeGreaterThan(0);
+    expect(s.review.checks.length).toBeGreaterThan(0);
     expect(s.review.explainedBy).toBeNull();
   });
 
@@ -234,16 +253,15 @@ describe('AI が止まっても訓練は続く', () => {
 
   it('本部からの連絡は決まった長さまで', async () => {
     await post('/training/sim/control', { action: 'start', scenarioId: 'claude-red-to-or' });
-    const to = (await snapshot()).scenarios[0].roles[0].locationId;
+    const to = 'transporter';
     expect((await post('/training/sim/message', { to, text: 'あ'.repeat(301) })).code).toBe(400);
     expect((await post('/training/sim/message', { to, text: 'あ'.repeat(300) })).code).toBe(200);
   });
 
   it('補足は振り返りにある指摘にだけ、決まった長さまで付けられる。参加者には作る人向けの説明を見せない', async () => {
-    await post('/training/sim/control', { action: 'start', scenarioId: 'claude-red-to-or' });
+    await requestAndRadio();
     const s0 = await snapshot();
-    expect(s0.scenarios[0].description).not.toContain('2枚');
-    await advanceBy(40_000);
+    expect(s0.scenarios.find((x: any) => x.id === 'claude-red-to-or').description).not.toContain('2枚');
     await post('/training/sim/control', { action: 'end' });
     await app.training('claude')!.settle();
     expect((await post('/training/sim/note', { findingId: 'F-99', note: 'x' })).code).toBe(400);

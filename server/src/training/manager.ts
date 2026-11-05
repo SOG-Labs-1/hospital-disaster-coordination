@@ -1,6 +1,11 @@
 import {
   advance,
   buildReview,
+  pendingBoardWrites,
+  reasonsForWarnings,
+  reduce,
+  TRANSPORTER_ROLE,
+  type CommandEnvelopeInput,
   buildRoleContext,
   containsMedicalAdvice,
   reduceSim,
@@ -28,11 +33,15 @@ export const MAX_AUTO_EXPLAIN_ATTEMPTS = 2;
 
 // 訓練の進行。シミュレーター（shared）を時計で動かし、部署役（AiProvider）に刺激を渡し、
 // 返ってきた提案をシミュレーターで検証して記録する。
-// 参加者のボードは読むだけで、書き込まない（書き込めるのは参加者の操作によるコマンドだけ）。
+// 「このツールを使った訓練」なので、部署の端末からの記録（患者の登録・受け入れ状況・支援要請・受け入れの判断・
+// 到着・支援の受け取り）は、ふつうの端末と同じコマンドの検証（サーバーの decide）を通してボードに記録する。
+// AI が直接ボードを書き換えることはない（AI の判断は、シミュレーターの検証とコマンドの検証の両方を通る）。
 
-/** ボードへの読み取り専用の入口と、訓練の回ごとのボードの切り替え */
+/** ボードの読み取り、部署の端末からの記録（コマンドの検証を通す）、訓練の回ごとのボードの切り替え */
 export interface BoardAccess {
   events(): readonly DomainEvent[];
+  /** 部署の端末からの記録として、コマンドを検証して追記する。結果（受け付け・警告・却下）を返す */
+  submit(envelope: CommandEnvelopeInput): { status: string; errors?: string[]; warnings?: { code: string }[]; events?: { subject: { id: string } }[] };
   /** 新しい回を始めるとき、その回のボード（別ファイル）に切り替える */
   switchRun(runId: string | null): void;
 }
@@ -136,11 +145,30 @@ export class TrainingManager {
     const before = this.events.length;
     const r = advance({ scenario: sc, config: this.deps.config, simEvents: this.events, boardEvents: this.deps.board.events(), now: this.now() });
     this.append(r.events);
+    this.writeBoard(sc);
     // 再起動などで、渡したまま返事を受け取っていない刺激があれば渡し直す
     const view = reduceSim(this.events, sc, this.deps.config);
     for (const [id, st] of view.stimuli) if (st.dispatched && !st.resolved && !this.inflight.has(id)) this.ask(id);
     if (this.events.length !== before) this.deps.onChange?.();
     this.explainOnceAfterEnd();
+  }
+
+  /** 部署の端末からの記録を、ボードに入れる（同じものは二度入れない。結果はシミュレーターに残す） */
+  private writeBoard(sc: Scenario): void {
+    const view = reduceSim(this.events, sc, this.deps.config);
+    if (view.ended) return;
+    for (const w of pendingBoardWrites(view, sc, this.deps.config, reduce(this.deps.board.events()))) {
+      let r = this.deps.board.submit(w.envelope);
+      // 同じタッグ番号などの警告は、部署で確かめた扱いで理由を付けて記録する（ふつうの端末と同じ手順）
+      if (r.status === 'warnings' && w.overrideReason) {
+        const codes = (r.warnings ?? []).map((x) => x.code);
+        const reasonId = reasonsForWarnings(this.deps.config, codes as never)[0]?.id;
+        r = this.deps.board.submit({ ...w.envelope, override: { codes, reasonId, reason: w.overrideReason } });
+      }
+      const ok = r.status === 'accepted';
+      if (!ok) console.warn(`訓練：部署の端末からの記録（${w.key}）を入れられなかった`, r.errors ?? r.status);
+      this.append([{ type: 'BoardWritten', key: w.key, ok, ...(ok ? {} : { error: (r.errors ?? [r.status]).join('、').slice(0, 300) }), ...(w.timelineIndex !== undefined ? { timelineIndex: w.timelineIndex } : {}), ...(r.events?.length ? { boardIds: [...new Set(r.events.map((e) => e.subject.id))] } : {}) }]);
+    }
   }
 
   private ask(stimulusId: string): void {
@@ -163,13 +191,16 @@ export class TrainingManager {
         if (failed) this.append([{ type: 'ProviderFailed', stimulusId, error: failed }]);
         let resolved = resolveProposals(this.events, sc, this.deps.config, stimulusId, proposals, this.now());
         // 報告するべき場面で提案がすべて却下されたら、本部に何も届かなくなるので決まった返事で補う（補ったことは記録する）
-        const mustReport = ['patientArrived', 'statusChanged', 'needSupport', 'notice', 'patientArrivedByTransport', 'supportArrived'].includes(ctx.stimulus.kind);
+        // 受け入れの判断（部署）と、到着・知らせの無線（搬送要員）は、必ず何かを返す
+        const mustReport = ['notice', 'patientArrivedByTransport', 'transportRequest'].includes(ctx.stimulus.kind);
         if (!failed && mustReport && resolved.every((e) => e.type === 'ProposalResolved' && !e.accepted)) {
           const backup = await this.fallback.proposeForRole(ctx);
           this.append([{ type: 'ProviderFailed', stimulusId, error: '提案がすべて却下されたため、決まった返事で補った' }]);
           resolved = resolveProposals(this.events, sc, this.deps.config, stimulusId, [...proposals, ...backup], this.now());
         }
         this.append(resolved);
+        // 受け入れの判断は、到着先の端末から記録する
+        this.writeBoard(sc);
         this.deps.onChange?.();
       });
   }
@@ -288,7 +319,8 @@ export class TrainingManager {
     const sc = this.scenario();
     const view = this.view();
     if (!sc || !view || view.ended) return { ok: false, error: '進行中の訓練がない' };
-    if (!sc.roles.some((r) => r.locationId === to)) return { ok: false, error: 'その場所には部署役がいない' };
+    // 無線でやりとりするのは搬送要員だけ。部署とは、このツールの記録でやりとりする
+    if (to !== TRANSPORTER_ROLE || !sc.transporter) return { ok: false, error: '無線で連絡できるのは搬送要員だけです（部署とは、このツールの記録でやりとりします）' };
     if (!text.trim()) return { ok: false, error: '内容を書く' };
     if (text.trim().length > MAX_HQ_MESSAGE_LENGTH) return { ok: false, error: `連絡は${MAX_HQ_MESSAGE_LENGTH}字までにする` };
     // 部署役への連絡は1通ごとに AI を呼ぶので、回ごとの通数に上限を設ける（費用の枯渇を防ぐ）

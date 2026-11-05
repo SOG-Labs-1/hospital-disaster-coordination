@@ -1,4 +1,4 @@
-import { findingCategories, simMsAt, type CheckResult, type Finding, type HospitalConfig, type Review, type Scenario, type SimView } from '@hdc/shared';
+import { findingCategories, simMsAt, TRANSPORTER_ROLE, type CheckResult, type Finding, type HospitalConfig, type Review, type Scenario, type SimView } from '@hdc/shared';
 
 // 画面に渡す訓練の状態。実際の状態（truth）は訓練中には渡さない（参加者には見えない情報）。
 // 振り返り（終了後）でだけ、照合の結果として見せる。
@@ -6,7 +6,15 @@ import { findingCategories, simMsAt, type CheckResult, type Finding, type Hospit
 export interface TrainingSnapshot {
   serverTime: string;
   provider: string;
-  scenarios: { id: string; title: string; description: string; durationMinutes: number; roles: { locationId: string; name: string }[] }[];
+  scenarios: {
+    id: string;
+    title: string;
+    description: string;
+    durationMinutes: number;
+    roles: { locationId: string; name: string }[];
+    /** 無線でやりとりできる相手（搬送要員）。部署とは、このツールの記録でやりとりする */
+    radioRoles: { locationId: string; name: string }[];
+  }[];
   run: {
     runId: string;
     scenarioId: string;
@@ -36,7 +44,8 @@ export interface TrainingSnapshot {
 
 export function buildSnapshot(opts: { config: HospitalConfig; scenarios: Scenario[]; view: SimView | null; scenario: Scenario | undefined; provider: string; now: Date; review: Review | null }): TrainingSnapshot {
   const { config, scenarios, view, scenario, provider, now, review } = opts;
-  const roleName = (id: string) => scenario?.roles.find((r) => r.locationId === id)?.name ?? config.locations.find((l) => l.id === id)?.name ?? id;
+  const roleName = (id: string) =>
+    id === TRANSPORTER_ROLE ? (scenario?.transporter?.name ?? '搬送要員') : (scenario?.roles.find((r) => r.locationId === id)?.name ?? config.locations.find((l) => l.id === id)?.name ?? id);
   const last = view?.clock.at(-1);
   return {
     serverTime: now.toISOString(),
@@ -47,6 +56,7 @@ export function buildSnapshot(opts: { config: HospitalConfig; scenarios: Scenari
       description: s.briefing,
       durationMinutes: s.durationMinutes,
       roles: s.roles.map((r) => ({ locationId: r.locationId, name: r.name })),
+      radioRoles: s.transporter ? [{ locationId: TRANSPORTER_ROLE, name: s.transporter.name }] : [],
     })),
     run:
       view && scenario && view.runId

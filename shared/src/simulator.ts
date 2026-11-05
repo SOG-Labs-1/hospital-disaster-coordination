@@ -24,6 +24,9 @@ export type Stimulus =
   | { kind: 'supportArrived'; supportId: string; itemsText: string }
   | { kind: 'hqMessage'; text: string };
 
+/** 搬送要員の役（AI）。本部と無線でやりとりするのは、この役だけ */
+export const TRANSPORTER_ROLE = 'transporter';
+
 // ---- シミュレーターの記録 ----
 
 type SimBase = { id: string; at: string };
@@ -61,6 +64,8 @@ export type SimEvent = SimBase &
     | { type: 'ProviderFailed'; stimulusId: string; error: string }
     | { type: 'ReviewNoteAdded'; findingId: string; note: string }
     | { type: 'ReviewExplained'; provider: string; explanations: { findingId: string; text: string; evidence: string[] }[] }
+    /** 部署の端末から、参加者のボードに記録した（部署役の入力。ふつうの端末と同じ検証を通す） */
+    | { type: 'BoardWritten'; key: string; ok: boolean; error?: string; timelineIndex?: number; boardIds?: string[] }
   );
 export type SimEventInput = SimEvent extends infer E ? (E extends SimEvent ? Omit<E, 'id' | 'at'> : never) : never;
 
@@ -124,6 +129,8 @@ export interface SimView {
   notes: Record<string, string>;
   explanations: Extract<SimEvent, { type: 'ReviewExplained' }> | null;
   providerFailures: number;
+  /** 部署の端末から記録した（または記録を試みた）もの。同じものを二度記録しない */
+  boardWritten: Set<string>;
 }
 
 export function simMsAt(view: SimView, now: Date): number {
@@ -161,6 +168,7 @@ export function emptySimView(): SimView {
     notes: dict(),
     explanations: null,
     providerFailures: 0,
+    boardWritten: new Set(),
   };
 }
 
@@ -289,6 +297,15 @@ function applySim(v: SimView, e: SimEvent, scenario: Scenario): void {
     case 'ReviewExplained':
       v.explanations = e;
       return;
+    case 'BoardWritten': {
+      v.boardWritten.add(e.key);
+      const t = e.ok && e.timelineIndex !== undefined ? scenario.timeline[e.timelineIndex] : undefined;
+      if (t?.type === 'supportNeed') {
+        const need = v.needs.find((n) => n.locationId === t.locationId && !n.requested);
+        if (need) need.requested = true;
+      }
+      return;
+    }
   }
 }
 
@@ -330,19 +347,21 @@ export function describeStimulus(config: HospitalConfig, s: Stimulus): string {
     case 'notice':
       return `本部に知らせるべきことがある：${s.text}`;
     case 'transportRequest':
-      return `本部から搬送の受け入れ依頼が来た（${s.transportId}：${loc(s.fromLocationId)}から、${quoteParticipant(s.patientText)}）。受け入れられるか判断して返事をする。`;
+      return `本部から、この部署の端末に搬送の受け入れ依頼が来た（${s.transportId}：${loc(s.fromLocationId)}から、${quoteParticipant(s.patientText)}）。受け入れられるか判断する。判断は、この部署の端末から記録される。`;
     case 'transportOrdered':
       return `本部から搬送の指示が来た（${s.transportId}：${quoteParticipant(s.patientText)}を${loc(s.toLocationId)}へ）。患者を送り出したら出発を報告する。`;
     case 'patientArrivedByTransport':
-      return `搬送されてきた患者が到着した（${s.transportId}：${loc(s.fromLocationId)}から、${quoteParticipant(s.patientText)}）。本部へ到着を報告する。`;
+      return `運んでいた患者が到着先に着いた（${s.transportId}：${loc(s.fromLocationId)}から、${quoteParticipant(s.patientText)}）。本部へ無線で到着を伝える。`;
     case 'supportArrived':
       return `要請した支援が届いた（${s.supportId}：${s.itemsText}）。本部へ伝える。`;
     case 'hqMessage':
-      return `本部から連絡が来た：${quoteParticipant(s.text)}。返事をする。`;
+      return `本部から無線で連絡が来た：${quoteParticipant(s.text)}。返事をする。`;
   }
 }
 
 export interface RoleContext {
+  /** department：部署（端末で記録する）／ transporter：搬送要員（無線で本部とやりとりする） */
+  roleKind: 'department' | 'transporter';
   locationId: string;
   locationName: string;
   roleName: string;
@@ -371,6 +390,7 @@ export interface RoleContext {
 
 export function buildRoleContext(view: SimView, scenario: Scenario, config: HospitalConfig, stimulusId: string): RoleContext {
   const st = view.stimuli.get(stimulusId)!;
+  if (st.role === TRANSPORTER_ROLE) return transporterContext(view, scenario, config, stimulusId);
   const role = scenario.roles.find((r) => r.locationId === st.role)!;
   const loc = view.locations[role.locationId]!;
   const name = (id: string) => config.locations.find((l) => l.id === id)?.name ?? id;
@@ -383,6 +403,7 @@ export function buildRoleContext(view: SimView, scenario: Scenario, config: Hosp
     .slice(-10)
     .map(({ from, text }) => ({ from, text }));
   return {
+    roleKind: 'department',
     locationId: role.locationId,
     locationName: name(role.locationId),
     roleName: role.name,
@@ -413,8 +434,44 @@ export function buildRoleContext(view: SimView, scenario: Scenario, config: Hosp
     stimulusId,
     stimulus: st.stimulus,
     stimulusText: describeStimulus(config, st.stimulus),
-    allowedActions: allowedActions[st.stimulus.kind],
+    allowedActions: allowedActionsFor(st.role, st.stimulus),
     triageIds: config.triageCategories.map((t) => t.id),
+  };
+}
+
+/** 搬送要員の役に渡す情報：いま動いている搬送と、本部との無線のやりとり */
+function transporterContext(view: SimView, scenario: Scenario, config: HospitalConfig, stimulusId: string): RoleContext {
+  const st = view.stimuli.get(stimulusId)!;
+  const name = (id: string) => config.locations.find((l) => l.id === id)?.name ?? id;
+  const t = scenario.transporter!;
+  const conversation = [
+    ...view.inbox.filter((m) => m.from === TRANSPORTER_ROLE).map((m) => ({ from: 'me' as const, text: m.text, simMs: m.simMs })),
+    ...view.outbox.filter((m) => m.to === TRANSPORTER_ROLE).map((m) => ({ from: 'hq' as const, text: m.text, simMs: m.simMs })),
+  ]
+    .sort((a, b) => a.simMs - b.simMs)
+    .slice(-10)
+    .map(({ from, text }) => ({ from, text }));
+  return {
+    roleKind: 'transporter',
+    locationId: TRANSPORTER_ROLE,
+    locationName: '搬送要員',
+    roleName: t.name,
+    persona: t.persona,
+    ownStatus: { accepting: true, capacity: [], staff: [], patients: [] },
+    transports: Object.values(view.transports)
+      .filter((x) => !x.cancelled && x.arrivedSimMs === undefined)
+      .map((x) => ({
+        id: x.id,
+        direction: 'outgoing' as const,
+        otherLocation: `${name(x.fromLocationId)}から${name(x.toLocationId)}へ`,
+        status: x.departedSimMs !== undefined ? '運んでいる途中' : x.roleAccepted === true ? '受け入れ了承済み・出発前' : x.roleAccepted === false ? '受け入れを断られた' : '受け入れの返事待ち',
+      })),
+    conversation,
+    stimulusId,
+    stimulus: st.stimulus,
+    stimulusText: describeStimulus(config, st.stimulus),
+    allowedActions: allowedActionsFor(st.role, st.stimulus),
+    triageIds: config.triageCategories.map((x) => x.id),
   };
 }
 
@@ -458,7 +515,7 @@ export function advance(input: AdvanceInput): AdvanceResult {
   if (!view.runId || view.ended) return { events: out, dispatch };
 
   const sim = simMsAt(view, now);
-  const roles = new Set(scenario.roles.map((r) => r.locationId));
+  const roles = new Set([...scenario.roles.map((r) => r.locationId), ...(scenario.transporter ? [TRANSPORTER_ROLE] : [])]);
   let stimulusCount = view.stimuli.size;
   const push = (e: SimEventInput) => {
     out.push(e);
@@ -469,14 +526,12 @@ export function advance(input: AdvanceInput): AdvanceResult {
     push({ type: 'StimulusQueued', stimulusId: seqId('S', ++stimulusCount), role, stimulus, dueSimMs: sim + scenario.settings.responseDelaySeconds * 1000 });
   };
 
-  // 1. シナリオの出来事
+  // 1. シナリオの出来事。患者の登録・受け入れ状況・支援要請は、部署の端末から記録する（pendingBoardWrites）。
+  //    無線で伝えるのは、搬送要員からの知らせだけ
   scenario.timeline.forEach((t, index) => {
     if (view.fired.has(index) || t.at > sim) return;
     push({ type: 'ScenarioEventFired', index, simMs: t.at });
-    if (t.type === 'patientArrives') queue(t.locationId, { kind: 'patientArrived', patient: t.patient });
-    if (t.type === 'locationStatus') queue(t.locationId, { kind: 'statusChanged', accepting: t.accepting, capacity: t.capacity, note: t.note });
-    if (t.type === 'supportNeed') queue(t.locationId, { kind: 'needSupport', kindId: t.kindId, items: t.items, note: t.note });
-    if (t.type === 'notice') queue(t.reporter, { kind: 'notice', text: t.text });
+    if (t.type === 'notice' && t.reporter === TRANSPORTER_ROLE) queue(TRANSPORTER_ROLE, { kind: 'notice', text: t.text });
   });
 
   // 2. 参加者のボードの記録を見る（ボードは変えない）
@@ -502,10 +557,8 @@ export function advance(input: AdvanceInput): AdvanceResult {
       queue(e.payload.toLocationId, { kind: 'transportRequest', transportId: e.subject.id, patientText: text, fromLocationId: e.payload.fromLocationId });
     }
     const tt = view.transports[e.subject.id];
-    if (e.type === 'TransportOrdered' && tt && tt.departedSimMs === undefined) {
-      push({ type: 'TransportOrderedInSim', transportId: tt.id, simMs: sim });
-      queue(tt.fromLocationId, { kind: 'transportOrdered', transportId: tt.id, patientText: text, toLocationId: tt.toLocationId });
-    }
+    // 搬送の指示は、本部が無線で搬送要員に伝える（ボードの記録だけでは搬送要員は動かない）
+    if (e.type === 'TransportOrdered' && tt && tt.departedSimMs === undefined) push({ type: 'TransportOrderedInSim', transportId: tt.id, simMs: sim });
     if (e.type === 'TransportRedirected' && tt) {
       push({ type: 'TransportRedirectedInSim', transportId: tt.id, toLocationId: e.payload.toLocationId });
       if (tt.departedSimMs === undefined) queue(e.payload.toLocationId, { kind: 'transportRequest', transportId: tt.id, patientText: text, fromLocationId: tt.fromLocationId });
@@ -523,7 +576,8 @@ export function advance(input: AdvanceInput): AdvanceResult {
     if (due > sim) continue;
     push({ type: 'TransportArrivedInSim', transportId: t.id, simMs: due });
     const bt = board.transports[t.id];
-    queue(t.toLocationId, {
+    // 到着は到着先の端末から記録する（pendingBoardWrites）。搬送要員は無線で本部に到着を伝える
+    queue(TRANSPORTER_ROLE, {
       kind: 'patientArrivedByTransport',
       transportId: t.id,
       patientText: bt ? patientText(config, board.patients[bt.patientId] ?? { triage: null }) : '',
@@ -534,13 +588,8 @@ export function advance(input: AdvanceInput): AdvanceResult {
     if (s.dispatchedSimMs === undefined || s.deliveredSimMs !== undefined) continue;
     const due = s.dispatchedSimMs + scenario.settings.supportDeliveryMinutes * 60000;
     if (due > sim) continue;
+    // 受け取りは要請した部署の端末から記録する（pendingBoardWrites）
     push({ type: 'SupportDeliveredInSim', supportId: s.id, simMs: due });
-    const bs = board.supports[s.id];
-    queue(s.fromLocationId, {
-      kind: 'supportArrived',
-      supportId: s.id,
-      itemsText: bs ? describeItems(config, bs.items) : '',
-    });
   }
 
   // 4. 返事の時間が来た刺激を部署役に渡す
@@ -576,12 +625,19 @@ export const allowedActions: Record<Stimulus['kind'], Proposal['action'][]> = {
   statusChanged: ['report_status', 'reply_message'],
   needSupport: ['request_support', 'reply_message'],
   notice: ['reply_message'],
-  transportRequest: ['accept_transport', 'decline_transport', 'reply_message'],
+  // 部署の受け入れの判断は、了承か断りのどちらか（判断は部署の端末から記録する）
+  transportRequest: ['accept_transport', 'decline_transport'],
   transportOrdered: ['report_departure', 'reply_message'],
   patientArrivedByTransport: ['report_arrival', 'reply_message'],
   supportArrived: ['reply_message'],
-  hqMessage: ['reply_message', 'report_status', 'accept_transport', 'decline_transport'],
+  // 本部からの無線（搬送要員への指示など）
+  hqMessage: ['reply_message', 'report_departure'],
 };
+
+/** 役と場面ごとに、出してよい行動 */
+export function allowedActionsFor(role: string, stimulus: Stimulus): Proposal['action'][] {
+  return allowedActions[stimulus.kind];
+}
 
 /**
  * 医療的な判断（診断・トリアージ判定・治療の助言）を含む言葉。部署役の返事に含まれていたら却下する。
@@ -625,9 +681,10 @@ export function containsMedicalAdvice(text: string, config?: HospitalConfig): bo
 }
 
 export function validateProposal(view: SimView, config: HospitalConfig, role: string, p: Proposal, stimulus?: Stimulus): string | null {
+  if (stimulus && !allowedActionsFor(role, stimulus).includes(p.action)) return `この連絡への返事として「${p.action}」はできない`;
+  if (role === TRANSPORTER_ROLE) return validateTransporterProposal(view, config, p);
   const loc = view.locations[role];
   if (!loc) return '部署が見つからない';
-  if (stimulus && !allowedActions[stimulus.kind].includes(p.action)) return `この連絡への返事として「${p.action}」はできない`;
   if (containsMedicalAdvice(p.message, config)) return '医療的な判断を含む言葉がある';
   // 断りの理由など、返事以外の文も同じように確かめる
   if ('reason' in p && typeof p.reason === 'string' && containsMedicalAdvice(p.reason, config)) return '理由に医療的な判断を含む言葉がある';
@@ -690,6 +747,28 @@ export function validateProposal(view: SimView, config: HospitalConfig, role: st
   }
 }
 
+/** 搬送要員の役の提案：無線の返事、出発・到着の連絡 */
+function validateTransporterProposal(view: SimView, config: HospitalConfig, p: Proposal): string | null {
+  if (containsMedicalAdvice(p.message, config)) return '医療的な判断を含む言葉がある';
+  const t = 'transportId' in p ? view.transports[p.transportId] : undefined;
+  switch (p.action) {
+    case 'reply_message':
+      return null;
+    case 'report_departure':
+      if (!t || t.cancelled) return `搬送「${p.transportId}」が見つからない`;
+      if (t.departedSimMs !== undefined) return 'すでに出発している';
+      if (t.roleAccepted === false) return '到着先が受け入れを断っている';
+      if (t.patientKey && view.patients[t.patientKey]?.locationId !== t.fromLocationId) return 'その患者は出発元にいない';
+      return null;
+    case 'report_arrival':
+      if (!t) return `搬送「${p.transportId}」が見つからない`;
+      if (t.arrivedSimMs === undefined) return 'まだ到着していない';
+      return null;
+    default:
+      return `搬送要員は「${p.action}」はできない`;
+  }
+}
+
 /** 部署役の提案を検証して記録にする。形が正しくない提案（null）も却下として残す */
 export function resolveProposals(
   simEvents: readonly SimEvent[],
@@ -710,7 +789,8 @@ export function resolveProposals(
     const reason = p ? validateProposal(view, config, st.role, p, st.stimulus) : '提案の形が正しくない';
     const e: SimEventInput = reason
       ? { type: 'ProposalResolved', stimulusId, role: st.role, proposal: p, accepted: false, reason, simMs: sim }
-      : { type: 'ProposalResolved', stimulusId, role: st.role, proposal: p, accepted: true, messageId: seqId('R', ++messages), simMs: sim };
+      : // 無線で本部に届くのは搬送要員の言葉だけ。部署の判断は端末の記録として届く（pendingBoardWrites）
+        { type: 'ProposalResolved', stimulusId, role: st.role, proposal: p, accepted: true, ...(st.role === TRANSPORTER_ROLE ? { messageId: seqId('R', ++messages) } : {}), simMs: sim };
     out.push(e);
     applySim(view, { ...e, id: '', at: now.toISOString() } as SimEvent, scenario);
   }

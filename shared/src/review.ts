@@ -227,7 +227,7 @@ export function buildReview(input: { scenario: Scenario; config: HospitalConfig;
 /** 確認項目の場面が、訓練の時間内に起きたか（途中で終えた回で「満たしていない」と誤って示さないため） */
 function reached(rule: CheckRule, scenario: Scenario, view: SimView): boolean {
   if ('patientKey' in rule) return !!view.patients[rule.patientKey];
-  if (rule.type === 'supportAssigned' || rule.type === 'supportCompleted')
+  if (rule.type === 'supportAssigned' || rule.type === 'supportCompleted' || rule.type === 'supportDispatched')
     return scenario.timeline.some((t, i) => t.type === 'supportNeed' && t.locationId === rule.fromLocationId && view.fired.has(i));
   if (rule.type === 'locationStatusRecorded')
     return scenario.timeline.some((t, i) => t.type === 'locationStatus' && t.locationId === rule.locationId && view.fired.has(i));
@@ -277,10 +277,42 @@ function evaluate(rule: CheckRule, view: SimView, board: AppState, matches: Reco
       const ok = board.locations[rule.locationId]?.lastObservedAt;
       return ok ? { result: 'met', evidence: [] } : { result: 'not-met', evidence: [] };
     }
+    case 'transportRequested': {
+      const ts = transportsOf(rule.patientKey).filter((t) => !rule.toLocationId || t.toLocationId === rule.toLocationId);
+      const arrived = view.patients[rule.patientKey]?.arrivedSimMs ?? 0;
+      const runStart = view.clock[0]?.at ?? 0;
+      // 依頼までの時間は、患者が着いた時刻（シナリオの時間）から、依頼を記録した時刻（シナリオの時間に直す）まで
+      const ok = ts.find((t) => !rule.withinMinutes || simMsOfWall(view, Date.parse(t.steps.requested.recordedAt ?? t.steps.requested.observedAt), runStart) - arrived <= rule.withinMinutes * 60000);
+      return ok ? { result: 'met', evidence: [ok.id] } : { result: 'not-met', evidence: ts.map((t) => t.id) };
+    }
+    case 'departureRecorded': {
+      const ts = transportsOf(rule.patientKey);
+      const ok = ts.find((t) => t.steps.departed);
+      if (ok) return { result: 'met', evidence: [ok.id] };
+      const departed = Object.values(view.transports).some((t) => t.patientKey === rule.patientKey && t.departedSimMs !== undefined);
+      return { result: departed ? 'no-record' : 'not-met', evidence: ts.map((t) => t.id) };
+    }
+    case 'supportDispatched': {
+      const ss = Object.values(board.supports).filter((s) => !s.retracted && s.fromLocationId === rule.fromLocationId);
+      const ok = ss.find((s) => s.steps.dispatched && (!rule.withinMinutes || Date.parse(s.steps.dispatched.observedAt) - Date.parse(s.steps.requested.observedAt) <= rule.withinMinutes * 60000));
+      return ok ? { result: 'met', evidence: [ok.id] } : { result: 'not-met', evidence: ss.map((s) => s.id) };
+    }
     case 'duplicateTagHandled': {
       const tag = normalizeIdentifier(rule.tagNumber);
       const ps = activePatients(board).filter((p) => normalizeIdentifier(p.tagNumber) === tag);
       return ps.length >= 2 ? { result: 'met', evidence: ps.map((p) => p.id) } : { result: 'not-met', evidence: ps.map((p) => p.id) };
     }
   }
+}
+
+/** 壁時計の時刻を、訓練の経過時間（シナリオの時間、ms）に直す。一時停止と倍速を考える */
+function simMsOfWall(view: SimView, wall: number, runStart: number): number {
+  let total = 0;
+  for (let i = 0; i < view.clock.length; i++) {
+    const seg = view.clock[i]!;
+    if (seg.at >= wall) break;
+    const next = Math.min(view.clock[i + 1]?.at ?? wall, wall);
+    if (seg.running) total += (next - seg.at) * seg.speed;
+  }
+  return runStart ? total : 0;
 }
