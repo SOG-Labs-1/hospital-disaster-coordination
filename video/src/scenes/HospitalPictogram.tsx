@@ -140,7 +140,7 @@ export const HospitalPictogram = ({ phase }: { phase: 'overview' | 'terminals' }
 };
 
 /** 通しの場面の上に出す小さな地図：救急外来・本部・手術室と、患者の位置。step で進み具合を変える */
-export const FlowMap = ({ step, progress = 0 }: { step: 'register' | 'request' | 'move'; progress?: number }) => {
+export const FlowMap = ({ step, progress = 0 }: { step: 'er' | 'register' | 'request' | 'accept' | 'hq' | 'move'; progress?: number }) => {
   const frame = useCurrentFrame();
   const p = interpolate(frame, [0, 14], [0, 1], { ...clamp, easing: ease });
   const boxes = [
@@ -148,7 +148,8 @@ export const FlowMap = ({ step, progress = 0 }: { step: 'register' | 'request' |
     { id: 'er', name: '救急外来', x: 330 },
     { id: 'or', name: '手術室', x: 660 },
   ];
-  const lit = { register: ['er', 'hq'], request: ['hq', 'or'], move: ['er', 'or', 'hq'] }[step];
+  // いま応答している場所を光らせる（er：救急外来で登録中、register：救急外来→本部に反映、request/hq：本部の操作、accept：手術室の了承、move：搬送中）
+  const lit = { er: ['er'], register: ['er', 'hq'], request: ['hq'], accept: ['or'], hq: ['hq'], move: ['er', 'or', 'hq'] }[step];
   // 患者の位置：搬送中は救急外来から手術室へ動く
   const px = step === 'move' ? interpolate(progress, [0, 1], [480, 810], clamp) : 480;
   return (
@@ -162,12 +163,12 @@ export const FlowMap = ({ step, progress = 0 }: { step: 'register' | 'request' |
           </g>
         );
       })}
-      {step !== 'register' && (
-        <path d="M 490 128 Q 650 146 800 128" fill="none" stroke={c.warn} strokeWidth={3} strokeDasharray={step === 'request' ? '10 8' : undefined} />
+      {step !== 'register' && step !== 'er' && (
+        <path d="M 490 128 Q 650 146 800 128" fill="none" stroke={c.warn} strokeWidth={3} strokeDasharray={step === 'move' ? undefined : '10 8'} />
       )}
-      <Patient x={px} y={96} s={0.85} tri="red" tag={step === 'register' ? 'タッグ110' : undefined} />
+      <Patient x={px} y={96} s={0.85} tri="red" tag={step === 'register' || step === 'er' ? 'タッグ110' : undefined} />
       {step === 'move' && <Staff x={px + 60} y={112} s={0.7} />}
-      {step === 'register' && <Staff x={580} y={112} s={0.7} />}
+      {(step === 'register' || step === 'er') && <Staff x={580} y={112} s={0.7} />}
       <Staff x={150} y={112} s={0.7} />
     </svg>
   );

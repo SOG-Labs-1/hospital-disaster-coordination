@@ -115,6 +115,8 @@ const ONE: CSSProperties = { left: 385, top: 150, width: 1150 };
 // 録画の上に添える札の位置（録画の左上の外）
 const CAP: CSSProperties = { left: 385, top: 90 };
 const ONE_L: CSSProperties = { left: 64, top: 150, width: 1100 };
+// 操作の場面：左上に小さな地図を置くので、録画は少し下・少し小さく
+const FLOW_ONE: CSSProperties = { left: 64, top: 262, width: 900 };
 const TWO_L: CSSProperties = { left: 80, top: 250, width: 860 };
 const TWO_R: CSSProperties = { left: 980, top: 250, width: 860 };
 const THREE = (i: number): CSSProperties => ({ left: 60 + i * 610, top: 300, width: 580 });
@@ -522,12 +524,14 @@ const buildShots = (stock: boolean): Shot[] => [
   ) },
   { from: cut(10), to: cut(11), name: '救急外来で登録', node: (d) => (
     <>
-      <ZoomClip file="g1-flow-er.webm" from={G.start} rate={Math.min(1.3, Math.max(0.8, (G.register - G.start) / d))} zoom={1.2} label="救急外来の端末" style={ONE_L} />
+      <FlowMap step="er" />
+      <ZoomClip file="g1-flow-er.webm" from={G.start} rate={Math.min(1.3, Math.max(0.8, (G.register - G.start) / d))} zoom={1.2} label="救急外来の端末" style={FLOW_ONE} />
       <StepLog active={0} />
     </>
   ) },
   { from: cut(11), to: cut(12), name: '本部に、すぐに出る', node: (d) => (
     <>
+      <FlowMap step="register" />
       <Clip file="g1-flow-er.webm" from={G.register - 0.4} to={G.register + 3.2} dur={d} label="救急外来の端末" style={TWO_L} />
       <Clip file="g2-flow-hq.webm" from={G.register - 0.4} to={G.register + 3.2} dur={d} label="本部の端末：再読み込みなしで一覧に出る" style={TWO_R} />
     </>
@@ -543,13 +547,15 @@ const buildShots = (stock: boolean): Shot[] => [
     name: `操作：${STEPS[step]}`,
     node: (d: number) => (
       <>
-        <ZoomClip file={file} from={a} rate={Math.min(1.3, Math.max(0.8, (b - a) / d))} zoom={1.2} label={label} style={ONE_L} />
+        <FlowMap step={(['er', 'request', 'accept', 'hq', 'hq'] as const)[step]} />
+        <ZoomClip file={file} from={a} rate={Math.min(1.3, Math.max(0.8, (b - a) / d))} zoom={1.2} label={label} style={FLOW_ONE} />
         <StepLog active={step} />
       </>
     ),
   }) as Shot),
   { from: cut(16), to: cut(17), name: '出発・到着が3台に同時に', node: (d) => (
     <>
+      <MovingMap dur={d} />
       <Clip file="g2-flow-hq.webm" from={G.depart - 0.6} to={G.end} dur={d} label="本部" style={THREE(0)} />
       <Clip file="g3-flow-or.webm" from={G.depart - 0.6} to={G.end} dur={d} label="手術室" style={THREE(1)} />
       <Clip file="g4-flow-board.webm" from={G.depart - 0.6} to={G.end} dur={d} label="本部の大型モニター" style={THREE(2)} />
