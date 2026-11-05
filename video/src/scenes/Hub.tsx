@@ -1,0 +1,124 @@
+// 「本部と部署を結ぶ図」。課題（無線とホワイトボード → 線が途切れる）と、解決（タシカメで全部の端末がつながる）を同じ図で見せる。
+// variant='mini' は操作の場面の小さな地図。いま応答している部署を光らせ、情報が線を伝わる様子と患者の位置を出す。
+import { interpolate, useCurrentFrame } from 'remotion';
+import { clamp, ease } from '../common';
+import { c, fontFamily } from '../theme';
+
+export type NodeId = 'hq' | 'er' | 'or' | 'ward' | 'hall';
+const NAMES: Record<NodeId, string> = { hq: '本部', er: '救急外来', or: '手術室', ward: '病棟', hall: '外来ホール' };
+const DEPTS: NodeId[] = ['er', 'or', 'ward', 'hall'];
+
+const FULL = { hq: { x: 960, y: 440 }, er: { x: 420, y: 250 }, or: { x: 1500, y: 250 }, ward: { x: 420, y: 630 }, hall: { x: 1500, y: 630 } };
+const MINI = { hq: { x: 320, y: 105 }, er: { x: 85, y: 40 }, or: { x: 555, y: 40 }, ward: { x: 85, y: 170 }, hall: { x: 555, y: 170 } };
+
+/** 端末（パソコン）の小さな印 */
+const Pc = ({ x, y, s = 1, on = 1 }: { x: number; y: number; s?: number; on?: number }) => (
+  <g transform={`translate(${x} ${y}) scale(${s})`} opacity={on}>
+    <rect x={-20} y={-14} width={40} height={26} rx={3} fill={c.accentSoft} stroke={c.accent} strokeWidth={3} />
+    <rect x={-5} y={12} width={10} height={4} fill={c.accent} />
+  </g>
+);
+
+/** 患者の印（赤の札） */
+const PatientMark = ({ x, y, s = 1 }: { x: number; y: number; s?: number }) => (
+  <g transform={`translate(${x} ${y}) scale(${s})`}>
+    <rect x={-14} y={-12} width={28} height={24} fill={c.red} stroke="#000" strokeWidth={1} />
+    <text x={0} y={6} fill="#fff" fontFamily={fontFamily} fontSize={16} fontWeight={700} textAnchor="middle">◆</text>
+  </g>
+);
+
+/**
+ * 全画面の図。
+ * - radio：無線（破線）で本部と部署をつなぎ、本部はホワイトボードで集める（いまのやり方）
+ * - broken：線が途切れて、患者・人・物が「？」（課題）
+ * - connected：タシカメで全部の端末がつながり、本部に同じ記録が集まる（解決）
+ */
+export const Hub = ({ state }: { state: 'radio' | 'broken' | 'connected' }) => {
+  const frame = useCurrentFrame();
+  const P = FULL;
+  const { x: cx, y: cy } = P.hq;
+  const connected = state === 'connected';
+  return (
+    <svg width={1920} height={1080} style={{ position: 'absolute', inset: 0 }}>
+      {DEPTS.map((id, i) => {
+        const d = P[id];
+        const p = interpolate(frame, [4 + i * 5, 16 + i * 5], [0, 1], { ...clamp, easing: ease });
+        const br = state === 'broken' ? interpolate(frame, [26 + i * 6, 36 + i * 6], [0, 1], clamp) : 0;
+        const mx = (cx + d.x) / 2, my = (cy + d.y) / 2;
+        // つながったとき：線の上を情報の点が行き来する
+        const k = ((frame / 30) * 0.7 + i * 0.25) % 1;
+        const toHq = i % 2 === 0;
+        const dot = toHq ? { x: d.x + (cx - d.x) * k, y: d.y + (cy - d.y) * k } : { x: cx + (d.x - cx) * k, y: cy + (d.y - cy) * k };
+        const stroke = connected ? c.accent : c.line;
+        const dash = state === 'radio' ? '14 10' : undefined;
+        return (
+          <g key={id} opacity={p}>
+            <line x1={cx} y1={cy} x2={mx - (mx - cx) * 0.12 * br} y2={my - (my - cy) * 0.12 * br} stroke={stroke} strokeWidth={connected ? 5 : 3} strokeDasharray={dash} />
+            <line x1={mx + (d.x - mx) * 0.12 * br} y1={my + (d.y - my) * 0.12 * br} x2={d.x} y2={d.y} stroke={stroke} strokeWidth={connected ? 5 : 3} strokeDasharray={dash} />
+            {state === 'broken' && <text x={mx} y={my + 14} fill={c.red} fontFamily={fontFamily} fontSize={44} fontWeight={700} textAnchor="middle" opacity={br}>✕</text>}
+            {state === 'radio' && <text x={mx} y={my - 14} fill={c.sub} fontFamily={fontFamily} fontSize={22} textAnchor="middle">無線</text>}
+            {connected && <circle cx={dot.x} cy={dot.y} r={9} fill={c.accent} opacity={interpolate(frame, [20, 30], [0, 1], clamp)} />}
+            <rect x={d.x - 150} y={d.y - 50} width={300} height={100} fill="rgba(7,13,24,0.92)" stroke={connected ? c.accent : c.line} strokeWidth={connected ? 3 : 2} />
+            <text x={d.x - (connected ? 30 : 0)} y={d.y + 10} fill={c.text} fontFamily={fontFamily} fontSize={30} fontWeight={700} textAnchor="middle">{NAMES[id]}</text>
+            {connected && <Pc x={d.x + 100} y={d.y} on={interpolate(frame, [12 + i * 4, 22 + i * 4], [0, 1], clamp)} />}
+          </g>
+        );
+      })}
+      {/* 本部 */}
+      <rect x={cx - 150} y={cy - 60} width={300} height={120} fill={c.bg2} stroke={c.accent} strokeWidth={connected ? 5 : 3} />
+      <text x={cx} y={cy + 12} fill={c.text} fontFamily={fontFamily} fontSize={34} fontWeight={700} textAnchor="middle">本部</text>
+      {connected && (
+        <g opacity={interpolate(frame, [24, 36], [0, 1], clamp)}>
+          <text x={cx} y={cy - 80} fill={c.accent} fontFamily={fontFamily} fontSize={30} fontWeight={700} textAnchor="middle" letterSpacing={6}>タシカメ</text>
+        </g>
+      )}
+      {state === 'radio' && (
+        <g>
+          {/* ホワイトボード */}
+          <rect x={cx - 110} y={cy + 80} width={220} height={90} fill="#e9eef4" stroke={c.line} strokeWidth={2} />
+          {[0, 1, 2].map((r) => <line key={r} x1={cx - 90} y1={cy + 104 + r * 22} x2={cx + 40 + (r % 2) * 40} y2={cy + 104 + r * 22} stroke="#4a5568" strokeWidth={3} />)}
+          <text x={cx} y={cy + 196} fill={c.sub} fontFamily={fontFamily} fontSize={22} textAnchor="middle">ホワイトボードに手書き</text>
+        </g>
+      )}
+      {state === 'broken' && (
+        <g opacity={interpolate(frame, [46, 58], [0, 1], clamp)}>
+          <text x={960} y={770} fill={c.text} fontFamily={fontFamily} fontSize={36} textAnchor="middle">
+            <tspan fill={c.red}>◆</tspan> 患者 ？　○ 人 ？　<tspan fill={c.accent}>▭</tspan> 物 ？　<tspan fill={c.sub}>── どこに、どれだけ？</tspan>
+          </text>
+        </g>
+      )}
+    </svg>
+  );
+};
+
+/** 小さな地図（操作の場面）。active：いま応答している所、flow：情報が伝わる向き、patient：患者のいる所（move なら救急外来→手術室へ動く） */
+export const HubMini = ({ active, flow, patient = 'er', move = 0, left, top }: { active: NodeId[]; flow?: [NodeId, NodeId][]; patient?: NodeId | 'move'; move?: number; left: number; top: number }) => {
+  const frame = useCurrentFrame();
+  const P = MINI;
+  const p = interpolate(frame, [0, 12], [0, 1], { ...clamp, easing: ease });
+  const k = ((frame / 30) * 1.1) % 1;
+  const pp = patient === 'move' ? { x: P.er.x + (P.or.x - P.er.x) * move, y: P.er.y - 2 } : { x: P[patient].x + 48, y: P[patient].y - 2 };
+  return (
+    <svg width={640} height={215} style={{ position: 'absolute', left, top, opacity: p, overflow: 'visible' }}>
+      {DEPTS.map((id) => {
+        const lit = flow?.some(([a, b]) => (a === id && b === 'hq') || (a === 'hq' && b === id));
+        return <line key={id} x1={P.hq.x} y1={P.hq.y} x2={P[id].x} y2={P[id].y} stroke={lit ? c.warn : c.line} strokeWidth={lit ? 4 : 2} />;
+      })}
+      {patient === 'move' && <line x1={P.er.x} y1={P.er.y} x2={P.or.x} y2={P.or.y} stroke={c.warn} strokeWidth={3} strokeDasharray="8 6" />}
+      {flow?.map(([a, b], i) => (
+        <circle key={i} cx={P[a].x + (P[b].x - P[a].x) * k} cy={P[a].y + (P[b].y - P[a].y) * k} r={7} fill={c.warn} />
+      ))}
+      {(['hq', ...DEPTS] as NodeId[]).map((id) => {
+        const on = active.includes(id);
+        const w = id === 'hq' ? 150 : 140;
+        return (
+          <g key={id}>
+            <rect x={P[id].x - w / 2} y={P[id].y - 22} width={w} height={44} fill={on ? 'rgba(255,181,71,0.18)' : 'rgba(7,13,24,0.92)'} stroke={on ? c.warn : id === 'hq' ? c.accent : c.line} strokeWidth={on ? 4 : 2} />
+            <text x={P[id].x} y={P[id].y + 8} fill={on ? c.text : c.sub} fontFamily={fontFamily} fontSize={id === 'hq' ? 24 : 21} fontWeight={700} textAnchor="middle">{NAMES[id]}</text>
+          </g>
+        );
+      })}
+      <PatientMark x={pp.x} y={pp.y - 24} s={0.85} />
+    </svg>
+  );
+};

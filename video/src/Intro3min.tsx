@@ -6,8 +6,8 @@ import { AbsoluteFill, Sequence, getStaticFiles, interpolate, staticFile, useCur
 import narration from '../public/narration-3min.json';
 import { Background, clamp, ease, SceneFade, Subtitles } from './common';
 import { Disasters } from './scenes/Disasters';
-import { FlowMap, HospitalPictogram, TriageRoute } from './scenes/HospitalPictogram';
-import { FloorPlan } from './scenes/FloorPlan';
+import { HospitalPictogram, TriageRoute } from './scenes/HospitalPictogram';
+import { Hub, HubMini, type NodeId } from './scenes/Hub';
 import { Schedule } from './scenes/Schedule';
 import { TwoFunctions } from './scenes/TwoFunctions';
 import { c, fontFamily, TimingContext } from './theme';
@@ -117,9 +117,9 @@ const CAP: CSSProperties = { left: 385, top: 90 };
 const ONE_L: CSSProperties = { left: 64, top: 150, width: 1100 };
 // 操作の場面：左上に小さな地図を置くので、録画は少し下・少し小さく
 const FLOW_ONE: CSSProperties = { left: 64, top: 262, width: 900 };
-const TWO_L: CSSProperties = { left: 80, top: 250, width: 860 };
-const TWO_R: CSSProperties = { left: 980, top: 250, width: 860 };
-const THREE = (i: number): CSSProperties => ({ left: 60 + i * 610, top: 300, width: 580 });
+const TWO_L: CSSProperties = { left: 80, top: 300, width: 860 };
+const TWO_R: CSSProperties = { left: 980, top: 300, width: 860 };
+const THREE = (i: number): CSSProperties => ({ left: 60 + i * 610, top: 320, width: 580 });
 
 // ---------------- 場面 ----------------
 
@@ -168,7 +168,7 @@ const STEPS = ['救急外来：患者を登録', '本部：手術室へ搬送を
 const StepLog = ({ active }: { active: number }) => {
   const frame = useCurrentFrame();
   return (
-    <div style={{ position: 'absolute', left: 1210, top: 190, width: 650, fontFamily, display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <div style={{ position: 'absolute', left: 1210, top: 380, width: 650, fontFamily, display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div style={{ fontSize: 24, color: c.sub, letterSpacing: 3, marginBottom: 4 }}>やったこと（記録される）</div>
       {STEPS.slice(0, active + 1).map((st, i) => {
         const now = i === active;
@@ -189,14 +189,13 @@ const Overview = () => {
   const frame = useCurrentFrame();
   const tabs = ['患者の所在と状態', '搬送', '支援要請（人・物）', '院内の状況（人数）', '対応記録'];
   return (
-    <AbsoluteFill style={{ top: 680, alignItems: 'center', fontFamily }}>
+    <AbsoluteFill style={{ top: 718, alignItems: 'center', fontFamily }}>
       <div style={{ display: 'flex', gap: 18 }}>
         {tabs.map((t, i) => {
           const p = interpolate(frame, [i * 5, i * 5 + 10], [0, 1], { ...clamp, easing: ease });
           return <div key={t} style={{ opacity: p, translate: `0px ${(1 - p) * 14}px`, fontSize: 30, color: c.text, border: `2px solid ${c.accent}`, padding: '6px 18px', backgroundColor: 'rgba(7,13,24,0.85)' }}>{t}</div>;
         })}
       </div>
-      <div style={{ marginTop: 18, fontSize: 26, color: c.sub, letterSpacing: 4, opacity: interpolate(frame, [30, 42], [0, 1], clamp) }}>院内のすべての端末で、同じ記録を共有</div>
     </AbsoluteFill>
   );
 };
@@ -226,46 +225,6 @@ const ModeBadge = ({ mode }: { mode: 'live' | 'training' }) => {
     <div style={{ position: 'absolute', right: 64, top: 90, fontFamily, fontSize: 26, fontWeight: 700, color: col, border: `3px ${live ? 'solid' : 'dashed'} ${col}`, padding: '4px 16px', backgroundColor: 'rgba(7,13,24,0.85)', opacity: interpolate(frame, [40, 52], [0, 1], clamp) }}>
       {live ? '■ 災害運用モード' : '◇ 訓練モード'}
     </div>
-  );
-};
-
-/** 部署どうしの情報がつながらない：本部と部署を結ぶ線が途切れ、患者・人・物に「？」 */
-const BrokenLinks = () => {
-  const frame = useCurrentFrame();
-  const depts = [
-    { n: '救急外来', x: 420, y: 250 },
-    { n: '手術室', x: 1500, y: 250 },
-    { n: '病棟', x: 420, y: 630 },
-    { n: '外来ホール', x: 1500, y: 630 },
-  ];
-  const cx = 960, cy = 440;
-  return (
-    <AbsoluteFill>
-      <svg width={1920} height={1080}>
-        {depts.map((d, i) => {
-          const p = interpolate(frame, [4 + i * 5, 16 + i * 5], [0, 1], { ...clamp, easing: ease });
-          const br = interpolate(frame, [30 + i * 6, 40 + i * 6], [0, 1], clamp);
-          const mx = (cx + d.x) / 2, my = (cy + d.y) / 2;
-          return (
-            <g key={d.n} opacity={p}>
-              <line x1={cx} y1={cy} x2={mx - (mx - cx) * 0.12 * br} y2={my - (my - cy) * 0.12 * br} stroke={c.line} strokeWidth={3} />
-              <line x1={mx + (d.x - mx) * 0.12 * br} y1={my + (d.y - my) * 0.12 * br} x2={d.x} y2={d.y} stroke={c.line} strokeWidth={3} />
-              <text x={mx} y={my + 14} fill={c.red} fontFamily={fontFamily} fontSize={44} fontWeight={700} textAnchor="middle" opacity={br}>✕</text>
-              <rect x={d.x - 150} y={d.y - 50} width={300} height={100} fill="rgba(7,13,24,0.9)" stroke={c.line} strokeWidth={2} />
-              <text x={d.x} y={d.y + 10} fill={c.text} fontFamily={fontFamily} fontSize={30} fontWeight={700} textAnchor="middle">{d.n}</text>
-            </g>
-          );
-        })}
-        <rect x={cx - 140} y={cy - 55} width={280} height={110} fill={c.bg2} stroke={c.accent} strokeWidth={3} />
-        <text x={cx} y={cy + 10} fill={c.text} fontFamily={fontFamily} fontSize={34} fontWeight={700} textAnchor="middle">本部</text>
-      </svg>
-      <div style={{ position: 'absolute', left: 0, right: 0, top: 740, display: 'flex', justifyContent: 'center', gap: 70, fontFamily, fontSize: 36, color: c.text, opacity: interpolate(frame, [50, 62], [0, 1], clamp) }}>
-        <span><span style={{ color: c.red }}>◆</span> 患者 ？</span>
-        <span>○ 人 ？</span>
-        <span><span style={{ color: c.accent }}>▭</span> 物 ？</span>
-        <span style={{ color: c.sub }}>── どこに、どれだけ？</span>
-      </div>
-    </AbsoluteFill>
   );
 };
 
@@ -301,7 +260,6 @@ const BuiltWith = () => {
       </div>
       <Terminal title="自動テスト" lines={['$ npx vitest run', ...DEV.vitest, '', '$ npx playwright test --list', ` ${DEV.playwright}`]} style={{ left: 64, top: 170, width: 880 }} />
       <Terminal title="CLAUDE.md（先に書いた、守るべき決まり）" lines={DEV.rules} start={10} style={{ left: 976, top: 170, width: 880 }} />
-      <Terminal title="git log（点検と修正を重ねた記録）" lines={['$ git log --oneline', ...DEV.gitLog.map((l) => (l.length > 44 ? `${l.slice(0, 44)}…` : l))]} start={22} style={{ left: 976, top: 520, width: 880 }} />
     </AbsoluteFill>
   );
 };
@@ -361,9 +319,6 @@ const Guard = () => {
           );
         })}
       </div>
-      <div style={{ position: 'absolute', left: 0, right: 0, top: 560, textAlign: 'center', fontFamily, fontSize: 26, color: c.sub, opacity: interpolate(frame, [50, 64], [0, 1], clamp) }}>
-        strict tool use（JSON Schema で出力の形を固定）／ 部署ごとに、その部署が知り得る情報だけを渡す
-      </div>
     </AbsoluteFill>
   );
 };
@@ -414,7 +369,7 @@ const cut = (n: number) => (n === 0 ? 0 : L(n) - Math.min(0.8, L(n) - E(n - 1) -
 /** 搬送中の小さな地図：場面の長さに合わせて患者が救急外来から手術室へ動く */
 const MovingMap = ({ dur }: { dur: number }) => {
   const frame = useCurrentFrame();
-  return <FlowMap step="move" progress={interpolate(frame, [15, dur * 30 * 0.8], [0, 1], clamp)} />;
+  return <HubMini active={['er', 'or', 'hq']} flow={[['hq', 'er'], ['hq', 'or']]} patient="move" move={interpolate(frame, [15, dur * 30 * 0.8], [0, 1], clamp)} left={640} top={70} />;
 };
 
 // 実写あり版の冒頭：Pexels の素材（docs/video/stock-sources.md。public/stock/、git 管理外）を暗く青い色調にそろえてつなぐ
@@ -483,15 +438,14 @@ const buildShots = (stock: boolean): Shot[] => [
     <Sequence from={Math.round((L(3) - cut(2)) * 30)}><Problem /></Sequence>
   ) },
   // 2. 経緯（約35秒に詰めた。図だけの場面）
-  { from: cut(4), to: cut(5), name: '経緯：見取り図', node: (_d, s) => (
+  { from: cut(4), to: cut(5), name: '経緯：無線とホワイトボード', node: () => (
     <>
-      <Remap map={{ 2: 4, 3: 4 }}><FloorPlan start={s} /></Remap>
-      <Tag>制作者：災害対応に深く関わる病院の看護師</Tag>
+      <Hub state="radio" />
     </>
   ) },
   { from: cut(5), to: cut(6), name: '部署どうしの情報がつながらない', node: () => (
     <>
-      <BrokenLinks />
+      <Hub state="broken" />
       <Fact source="千代ほか、日本臨床救急医学会雑誌 15巻3号（2012）">訓練の参加者アンケートでも「連携と情報伝達が不十分」の回答が多い（154人）</Fact>
     </>
   ) },
@@ -502,13 +456,16 @@ const buildShots = (stock: boolean): Shot[] => [
     </>
   ) },
   // 3. 2つのモード（本物の画面。上部の「■ 災害運用」「◇ 訓練」を枠で示す）
-  { from: cut(7), to: cut(9), name: '2つのモード', node: (_d, s) => (
+  { from: cut(7), to: cut(8), name: 'タシカメでつながる（解決）', node: () => (
     <>
-      <Remap map={{ 5: 7, 6: 8 }}><TwoFunctions start={s} heading="― 2つのモード ―" liveLabel="災害運用モード" trainingLabel="訓練モード" note={false} /></Remap>
-      <Sequence from={Math.round((L(7) - s + 1.2) * 30)} durationInFrames={Math.round((L(8) - L(7) - 1.4) * 30)}>
-        <Overview />
-      </Sequence>
-      <Sequence from={Math.round((L(8) - s) * 30)}>
+      <Hub state="connected" />
+      <Sequence from={40}><Overview /></Sequence>
+    </>
+  ) },
+  { from: cut(8), to: cut(9), name: '2つのモード', node: (_d, s) => (
+    <>
+      <Remap map={{ 5: 8, 6: 8 }}><TwoFunctions start={s} heading="― 2つのモード ―" liveLabel="災害運用モード" trainingLabel="訓練モード" note={false} /></Remap>
+      <Sequence from={30}>
         <TopBarHighlight left={96} color={c.accent} />
         <TopBarHighlight left={986} color={c.warn} dashed />
       </Sequence>
@@ -518,20 +475,20 @@ const buildShots = (stock: boolean): Shot[] => [
   { from: cut(9), to: cut(10), name: '病院の様子とトリアージ', node: () => (
     <>
       <HospitalPictogram phase="terminals" />
-      <Tag>例：ある地震の日（架空の病院）／ 場所ごとのパソコンで開く・ログイン不要</Tag>
+      <Tag>例：ある地震の日（架空の病院）</Tag>
       <Sequence from={20}><TriageRoute /></Sequence>
     </>
   ) },
   { from: cut(10), to: cut(11), name: '救急外来で登録', node: (d) => (
     <>
-      <FlowMap step="er" />
-      <ZoomClip file="g1-flow-er.webm" from={G.start} rate={Math.min(1.3, Math.max(0.8, (G.register - G.start) / d))} zoom={1.2} label="救急外来の端末" style={FLOW_ONE} />
+      <HubMini active={['er']} left={1215} top={140} />
+      <ZoomClip file="g1-flow-er.webm" from={G.start} rate={Math.min(1.3, Math.max(0.8, (G.register - G.start) / d))} zoom={1.2} label="救急外来の端末" style={ONE_L} />
       <StepLog active={0} />
     </>
   ) },
   { from: cut(11), to: cut(12), name: '本部に、すぐに出る', node: (d) => (
     <>
-      <FlowMap step="register" />
+      <HubMini active={['er', 'hq']} flow={[['er', 'hq']]} left={640} top={70} />
       <Clip file="g1-flow-er.webm" from={G.register - 0.4} to={G.register + 3.2} dur={d} label="救急外来の端末" style={TWO_L} />
       <Clip file="g2-flow-hq.webm" from={G.register - 0.4} to={G.register + 3.2} dur={d} label="本部の端末：再読み込みなしで一覧に出る" style={TWO_R} />
     </>
@@ -557,8 +514,13 @@ const buildShots = (stock: boolean): Shot[] => [
         name: `操作：${STEPS[step]}`,
         node: () => (
           <>
-            <FlowMap step={(['er', 'request', 'accept', 'hq', 'hq'] as const)[step]} />
-            <ZoomClip file={file} from={a} rate={rate} zoom={1.2} label={label} style={FLOW_ONE} />
+            <HubMini
+              active={(([['er'], ['hq'], ['or'], ['hq'], ['hq']] as const)[step] as unknown as NodeId[])}
+              flow={(([[], [['hq', 'or']], [['or', 'hq']], [], []] as const)[step] as unknown as [NodeId, NodeId][])}
+              left={1215}
+              top={140}
+            />
+            <ZoomClip file={file} from={a} rate={rate} zoom={1.2} label={label} style={ONE_L} />
             <StepLog active={step} />
           </>
         ),
@@ -575,15 +537,14 @@ const buildShots = (stock: boolean): Shot[] => [
   ) },
   { from: cut(17), to: cut(18), name: '人や物の応援の要請・院内の状況', node: (d) => (
     <>
-      <Tag>人や物が足りない部署からの要請（支援要請）と、場所ごとの人数（院内の状況）</Tag>
-      <Clip file="s-support.webm" from={0.6} to={Math.min(9.2, 0.6 + d * 1.3)} dur={d} label="支援要請：3階東病棟から 人員（看護師2人）" style={TWO_L} />
-      <Clip file="d-hospital-status.webm" from={4} to={Math.min(10.5, 4 + d * 1.3)} dur={d} label="院内の状況：報告のない所は「未確認」（ゼロと区別）" style={TWO_R} />
+      <Clip file="s-support.webm" from={0.6} to={Math.min(9.2, 0.6 + d * 1.3)} dur={d} label="応援の要請（人・物）" style={TWO_L} />
+      <Clip file="d-hospital-status.webm" from={4} to={Math.min(10.5, 4 + d * 1.3)} dur={d} label="場所ごとの人数" style={TWO_R} />
     </>
   ) },
   { from: cut(18), to: cut(19), name: '誰でも使える画面', node: (d) => (
     <>
-      <Clip file="h-duplicate-warning.webm" from={4} to={Math.min(13, 4 + d * 1.3)} dur={d} label="同じタッグ番号は警告。理由を残して先へ" style={{ left: 64, top: 200, width: 1060 }} />
-      <Points items={['BIZ UDゴシック', '本文18px以上・ボタン48px以上', '色＋記号＋文字（◆赤 ▲黄 ●緑）', '白黒で読める印刷']} style={{ left: 1180, top: 260, gap: 30 }} />
+      <Clip file="h-duplicate-warning.webm" from={4} to={Math.min(13, 4 + d * 1.3)} dur={d} label="同じタッグ番号は、止めずに警告" style={{ left: 64, top: 200, width: 1060 }} />
+      <Points items={['大きな文字とボタン', '色＋記号＋文字（◆赤 ▲黄 ●緑）']} style={{ left: 1180, top: 300, gap: 34 }} />
     </>
   ) },
   // 5. 訓練モード
@@ -596,13 +557,12 @@ const buildShots = (stock: boolean): Shot[] => [
   { from: cut(20), to: cut(21), name: '聞いて、自分で記録する', node: (d) => (
     <>
       <ZoomClip file="i4-training-input.webm" from={I4.memo} rate={Math.min(1.3, Math.max(0.8, (I4.saved - I4.memo) / d))} zoom={1.2} style={ONE} />
-      <Tag color={c.warn} dashed style={CAP}>一人でも、他の部署を相手に本部の訓練ができる</Tag>
     </>
   ) },
   { from: cut(21), to: cut(22), name: '振り返り', node: (d) => (
     <>
       <Clip file="i3-training-review.webm" from={1} to={Math.min(15, 1 + d * 1.3)} dur={d} style={ONE} />
-      <Tag color={c.warn} dashed style={CAP}>照合と根拠の番号：プログラム ／ 説明文：Claude</Tag>
+      <Tag color={c.warn} dashed style={CAP}>説明文：Claude</Tag>
     </>
   ) },
   // 6. 安全のしくみ
@@ -628,7 +588,7 @@ const buildShots = (stock: boolean): Shot[] => [
   { from: cut(25), to: cut(26), name: 'どの病院でも', node: (d) => (
     <>
       <Clip file="j-hospitals.webm" from={0} to={Math.min(15.6, d * 1.3)} dur={d} style={ONE} />
-      <Tag color={c.text} style={CAP}>病院ごとの設定で導入（総合病院・中規模病院の2つの架空の病院）</Tag>
+      <Tag color={c.text} style={CAP}>病院ごとの設定（架空の2病院）</Tag>
     </>
   ) },
   // 8. Claude Code での作り方（実際の開発の出力）
@@ -639,7 +599,7 @@ const buildShots = (stock: boolean): Shot[] => [
 const SHOTS = { plain: buildShots(false), stock: buildShots(true) };
 
 // 話題の切れ目になる行（ここで場面をいったん暗くする）
-const SECTION_STARTS = [2, 4, 7, 9, 19, 22, 25, 26, 27];
+const SECTION_STARTS = [2, 4, 7, 8, 9, 19, 22, 25, 26, 27];
 const XF = 10; // クロスフェードのコマ数
 
 export const Intro3min = ({ stock = false }: { stock?: boolean }) => {
@@ -677,7 +637,8 @@ export const Intro3min = ({ stock = false }: { stock?: boolean }) => {
       <Sequence from={Math.round((L(1) + 0.8) * fps)} durationInFrames={Math.round((L(3) - L(1) - 0.8) * fps)} name="BCPの説明">
         <Term word="BCP（事業継続計画）">災害のときも、病院の機能を続けるための計画</Term>
       </Sequence>
-      <Subtitles lines={lines} delay={DELAY3} variant="cinema" />
+      {/* 英語の字幕は利用者の判断でいったん出さない（english={false}）。日本語は少し小さめ */}
+      <Subtitles lines={lines} delay={DELAY3} variant="cinema" english={false} />
       {/* 低音の効果音（自作。scripts/sfx.mjs）：場面ごとに違う音。ナレーションより大きくならないよう音量を測って決めた（2026-11-05） */}
       {([
         ['sfx/boom-tail.wav', L(3) - 0.05, 0.35, '効果音：情報の伝達'],

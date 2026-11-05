@@ -110,7 +110,7 @@ function splitAt(text: string, marks: string[], minPart: number): string {
 
 /** cinema：背景の箱なし。細い文字を字間を空けて置き、影で読みやすくする（映画の字幕のような雰囲気。3分版） */
 const SHADOW = '0 0 10px rgba(0,0,0,0.85), 0 1px 3px rgba(0,0,0,0.95), 0 0 2px rgba(0,0,0,0.9)';
-export const Subtitles = ({ lines = lines30 as SubLine[], delay = AUDIO_DELAY, variant = 'box' }: { lines?: SubLine[]; delay?: number; variant?: 'box' | 'cinema' }) => {
+export const Subtitles = ({ lines = lines30 as SubLine[], delay = AUDIO_DELAY, variant = 'box', english = true }: { lines?: SubLine[]; delay?: number; variant?: 'box' | 'cinema'; english?: boolean }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const t = frame / fps;
@@ -122,11 +122,11 @@ export const Subtitles = ({ lines = lines30 as SubLine[], delay = AUDIO_DELAY, v
   const left = endAt(i) + 0.4 - t;
   if (variant === 'cinema') {
     const op = Math.min(interpolate(local, [0, 0.25], [0, 1], clamp), interpolate(left, [0, 0.25], [0, 1], clamp));
-    const [ja, en] = cinemaLines(lines[i]!.text, lines[i]!.en ?? '');
+    const [ja, en] = english ? cinemaLines(lines[i]!.text, lines[i]!.en ?? '') : [cinemaLines(lines[i]!.text, '')[0], ''];
     return (
       <AbsoluteFill style={{ justifyContent: 'flex-end', alignItems: 'center', paddingBottom: 52 }}>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, opacity: op }}>
-          <div style={{ fontFamily, fontSize: 36, fontWeight: 400, color: '#f3f6fa', letterSpacing: 5, textAlign: 'center', lineHeight: 1.55, whiteSpace: 'pre', textShadow: SHADOW }}>
+          <div style={{ fontFamily, fontSize: english ? 36 : 32, fontWeight: 400, color: '#f3f6fa', letterSpacing: english ? 5 : 4, textAlign: 'center', lineHeight: 1.55, whiteSpace: 'pre', textShadow: SHADOW }}>
             {ja}
           </div>
           {en && (
