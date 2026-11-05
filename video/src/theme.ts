@@ -5,6 +5,12 @@ import narration from '../public/narration.json';
 // BIZ UDゴシック（SIL OFL）。アプリ本体と同じ書体
 export const { fontFamily } = loadFont('normal', { weights: ['400', '700'] });
 
+// 製品名（病院リンクBCP）のロゴの書体：BIZ UDPゴシック 太字に固定（利用者が候補10種から選んだ。2026-11-06）
+import { loadFont as loadLogoFont } from '@remotion/google-fonts/BIZUDPGothic';
+export const { fontFamily: logoFont } = loadLogoFont('normal', { weights: ['700'] });
+/** ロゴ：名前と英名。size は名前の文字の大きさ */
+export const LOGO = { ja: '病院リンクBCP', en: 'Hospital Link BCP' } as const;
+
 export const FPS = 30;
 /** ナレーションを映像の何秒後から始めるか */
 export const AUDIO_DELAY = 0.5;

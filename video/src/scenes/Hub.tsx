@@ -2,7 +2,7 @@
 // variant='mini' は操作の場面の小さな地図。いま応答している部署を光らせ、情報が線を伝わる様子と患者の位置を出す。
 import { interpolate, useCurrentFrame } from 'remotion';
 import { clamp, ease } from '../common';
-import { c, fontFamily } from '../theme';
+import { c, fontFamily, LOGO, logoFont } from '../theme';
 import { Patient, Staff } from './HospitalPictogram';
 
 export type NodeId = 'hq' | 'er' | 'or' | 'ward' | 'hall';
@@ -77,7 +77,8 @@ export const Hub = ({ state }: { state: 'radio' | 'broken' | 'connected' | 'tria
       {training && <text x={cx} y={cy + 100} fill={c.accent} fontFamily={fontFamily} fontSize={30} fontWeight={700} textAnchor="middle">あなたが操作</text>}
       {state === 'connected' && (
         <g opacity={interpolate(frame, [24, 36], [0, 1], clamp)}>
-          <text x={cx} y={cy - 80} fill={c.accent} fontFamily={fontFamily} fontSize={30} fontWeight={700} textAnchor="middle" letterSpacing={3}>病院リンクBCP</text>
+          <rect x={cx - 150} y={cy - 116} width={300} height={48} fill={c.bg} />
+          <text x={cx} y={cy - 80} fill={c.accent} fontFamily={logoFont} fontSize={32} fontWeight={700} textAnchor="middle" letterSpacing={2}>{LOGO.ja}</text>
         </g>
       )}
       {state === 'triage' && (
@@ -130,12 +131,47 @@ export const HubMini = ({ active, flow, done = [], patient = 'er', move = 0, lef
         const w = id === 'hq' ? 150 : 140;
         return (
           <g key={id}>
-            <rect x={P[id].x - w / 2} y={P[id].y - 22} width={w} height={44} fill={on ? 'rgba(255,181,71,0.18)' : 'rgba(7,13,24,0.92)'} stroke={on ? c.warn : id === 'hq' ? c.accent : ai ? c.warn : c.line} strokeWidth={on ? 4 : 2} strokeDasharray={ai && id !== 'hq' ? '8 5' : undefined} />
+            <rect x={P[id].x - w / 2} y={P[id].y - 22} width={w} height={44} fill={on ? '#2a2414' : '#0b1322'} stroke={on ? c.warn : id === 'hq' ? c.accent : ai ? c.warn : c.line} strokeWidth={on ? 4 : 2} strokeDasharray={ai && id !== 'hq' ? '8 5' : undefined} />
             <text x={P[id].x} y={P[id].y + 8} fill={on ? c.text : c.sub} fontFamily={fontFamily} fontSize={id === 'hq' ? 24 : 21} fontWeight={700} textAnchor="middle">{NAMES[id]}</text>
           </g>
         );
       })}
       {patient !== null && <PatientMark x={pp.x} y={pp.y - 24} s={0.85} />}
+    </svg>
+  );
+};
+
+/** 病院の大小を同じ図で比べる：左は部署の多い総合病院、右は部署の少ない中規模病院。どちらにも同じ画面（パソコン）が入る */
+export const HubCompare = () => {
+  const frame = useCurrentFrame();
+  const p = (k: number) => interpolate(frame, [k, k + 16], [0, 1], { ...clamp, easing: ease });
+  const panel = (cx: number, cy: number, r: number, names: string[], title: string, k: number) => (
+    <g opacity={p(k)}>
+      <text x={cx} y={cy - r - 70} fill={c.text} fontFamily={fontFamily} fontSize={44} fontWeight={700} textAnchor="middle">{title}</text>
+      {names.map((n, i) => {
+        const a = -Math.PI / 2 + (i * 2 * Math.PI) / names.length;
+        const x = cx + Math.cos(a) * r, y = cy + Math.sin(a) * r * 0.8;
+        return <line key={`l${n}`} x1={cx} y1={cy} x2={x} y2={y} stroke={c.accent} strokeWidth={3} />;
+      })}
+      {names.map((n, i) => {
+        const a = -Math.PI / 2 + (i * 2 * Math.PI) / names.length;
+        const x = cx + Math.cos(a) * r, y = cy + Math.sin(a) * r * 0.8;
+        return (
+          <g key={n}>
+            <rect x={x - 100} y={y - 26} width={200} height={52} fill="#0b1322" stroke={c.accent} strokeWidth={2} />
+            <text x={x - 18} y={y + 8} fill={c.text} fontFamily={fontFamily} fontSize={22} fontWeight={700} textAnchor="middle">{n}</text>
+            <Pc x={x + 72} y={y} s={0.7} />
+          </g>
+        );
+      })}
+      <rect x={cx - 80} y={cy - 32} width={160} height={64} fill={c.bg2} stroke={c.accent} strokeWidth={4} />
+      <text x={cx} y={cy + 10} fill={c.text} fontFamily={fontFamily} fontSize={28} fontWeight={700} textAnchor="middle">本部</text>
+    </g>
+  );
+  return (
+    <svg width={1920} height={1080} style={{ position: 'absolute', inset: 0 }}>
+      {panel(500, 470, 290, ['救急外来', '手術室', '外来ホール', '病棟A', '病棟B', '講堂', 'ICU', '検査室'], '総合病院', 0)}
+      {panel(1420, 470, 230, ['外来処置室', '病棟', '外来待合'], '中規模病院', 30)}
     </svg>
   );
 };

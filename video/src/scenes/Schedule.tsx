@@ -4,8 +4,9 @@ import { c, fontFamily, useTiming } from '../theme';
 
 const days = ['月', '火', '水', '木', '金', '土', '日'];
 const rows = 5;
-const duties = ['日勤', '夜勤', '外来', '手術', '病棟', '会議', '当直'];
-const TRAINING = { r: 2, d: 4 };
+// 日本の病棟看護師の2交代勤務に近い並び（日勤・夜勤入り・夜勤明け・休み）。行ごとに少しずらす
+const PATTERN = ['日勤', '日勤', '夜勤入り', '夜勤明け', '休み', '日勤', '休み'];
+const TRAINING = { r: 2, d: 5 };
 
 /** 場面3：日々の業務に追われ、訓練もままならない。 */
 export const Schedule = ({ start, caption = true }: { start: number; caption?: boolean }) => {
@@ -17,7 +18,8 @@ export const Schedule = ({ start, caption = true }: { start: number; caption?: b
   const W = 150;
   const H = 74;
   const x0 = (1920 - W * 7) / 2;
-  const y0 = 230;
+  // 表を画面の真ん中に（字幕の帯の上で、上下の真ん中）
+  const y0 = Math.round((1080 - H * rows) / 2);
 
   return (
     <AbsoluteFill style={{ fontFamily }}>
@@ -45,11 +47,11 @@ export const Schedule = ({ start, caption = true }: { start: number; caption?: b
                 </g>
               );
             }
-            const duty = duties[Math.floor(random(`u${r}${d}`) * duties.length)]!;
+            const duty = PATTERN[(d + r * 2) % PATTERN.length]!;
             return (
               <g key={`${r}-${d}`}>
                 <rect x={x + 4} y={y + 4} width={W - 8} height={H - 8} fill={`rgba(88,196,255,${0.04 + p * 0.16})`} stroke={c.line} strokeWidth={1.5} />
-                <text x={x + W / 2} y={y + H / 2 + 9} fill={c.text} fontSize={24} textAnchor="middle" fontFamily={fontFamily} opacity={p}>
+                <text x={x + W / 2} y={y + H / 2 + 9} fill={duty === '休み' ? c.sub : c.text} fontSize={24} textAnchor="middle" fontFamily={fontFamily} opacity={p}>
                   {duty}
                 </text>
               </g>

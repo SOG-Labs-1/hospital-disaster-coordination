@@ -8,189 +8,189 @@
       "en": "Japan is a land of disasters. We have come through many earthquakes.",
       "section": 0,
       "start": 0,
-      "end": 5.76
+      "end": 5.47
     },
     {
       "text": "大規模災害に備え、地域を支える病院は、｜災害のときも診療を続けるための事業継続計画（BCP）をつくり、訓練を重ねています。",
       "en": "To prepare for major disasters, the hospitals that support each community｜write a plan to keep caring for patients in a disaster, a BCP, and hold drills.",
       "section": 0,
-      "start": 6.66,
-      "end": 16.42
+      "start": 6.27,
+      "end": 15.38
     },
     {
-      "text": "それでも、訓練のたびに残る課題があります。",
-      "en": "Yet one problem remains after every drill.",
+      "text": "それでも、訓練のたびに残る課題が、情報の伝達です。",
+      "en": "Yet one problem remains after every drill: communication.",
       "section": 0,
-      "start": 17.32,
-      "end": 20.64
-    },
-    {
-      "text": "それは、情報の伝達です。",
-      "en": "Communication.",
-      "section": 0,
-      "start": 21.54,
-      "end": 24.027
+      "start": 16.18,
+      "end": 20.436
     },
     {
       "text": "制作者の私は、災害対応に深く関わる病院で、看護師として働いています。",
       "en": "I, the creator, work as a nurse at a hospital deeply involved in disaster response.",
       "section": 1,
-      "start": 24.777,
-      "end": 30.577
+      "start": 21.086,
+      "end": 27.066
     },
     {
-      "text": "部署どうしの情報がつながらず、患者と、人と、物の関係がつかめません。",
-      "en": "Departments can't connect their information, so no one can see how patients, staff and supplies relate.",
+      "text": "院内の災害訓練では、部署どうしの情報が伝わらず、｜患者や人、物の状況が、その時その時でつかめないことが課題です。",
+      "en": "In hospital disaster drills, information doesn't flow between departments,｜so no one can see patients, staff and supplies in real time.",
       "section": 1,
-      "start": 31.477,
-      "end": 36.717
+      "start": 27.846,
+      "end": 36.976
     },
     {
       "text": "日々の業務の中で、大規模な訓練は、年に何度もできません。",
       "en": "And amid daily work, large-scale drills can't be held many times a year.",
       "section": 1,
-      "start": 37.617,
-      "end": 41.725
+      "start": 37.716,
+      "end": 42
     },
     {
-      "text": "病院リンクBCPは、患者の居場所や依頼、人数を、院内のすべての端末で共有するツールです。",
-      "en": "Hospital Link BCP shares patients' locations, requests and staffing across every terminal in the hospital.",
+      "text": "そこで私が作成したのは、病院リンクBCPというツールです。",
+      "en": "So I built a tool called Hospital Link BCP.",
       "section": 2,
-      "start": 42.475,
-      "end": 50.805
+      "start": 42.65,
+      "end": 47.99
+    },
+    {
+      "text": "患者の居場所や依頼、人数を、院内のすべての端末で共有します。",
+      "en": "It shares patients' locations, requests and staffing across every terminal in the hospital.",
+      "section": 2,
+      "start": 48.79,
+      "end": 53.41
     },
     {
       "text": "モードは二つ。災害のときの「災害運用モード」と、ふだんの「訓練モード」。｜どちらも、同じ画面です。",
       "en": "It has two modes: Disaster Mode for real emergencies, and Training Mode for everyday practice.｜Both use the same screens.",
       "section": 2,
-      "start": 51.705,
-      "end": 59.848
+      "start": 54.21,
+      "end": 62.41
     },
     {
       "text": "災害のときは、けがや病気の重さで患者を分け、重い人から、治療できる場所へ運びます。",
       "en": "In a disaster, triage tags color-code urgency, and the most severe patients are moved first to where they can be treated.",
       "section": 3,
-      "start": 60.598,
-      "end": 67.568
+      "start": 63.06,
+      "end": 70.03
     },
     {
       "text": "操作の例です。救急外来に、最も治療を必要とする「赤」の患者が運ばれてきました。",
       "en": "Here is an example. A \"red\" patient, the one most in need of treatment, arrives at the ER.",
       "section": 3,
-      "start": 68.458,
-      "end": 75.028
+      "start": 70.83,
+      "end": 77.3
     },
     {
       "text": "救急外来で登録すると、本部の画面にも、すぐに出ます。",
       "en": "Register the patient in the ER, and it appears on the HQ screen instantly.",
       "section": 3,
-      "start": 75.928,
-      "end": 79.658
+      "start": 78.1,
+      "end": 81.83
     },
     {
       "text": "本部は、手術室へ運ぶよう依頼します。行き先と、運び方を選びます。",
       "en": "HQ requests a transfer to the OR, choosing the destination and how to move the patient.",
       "section": 3,
-      "start": 80.558,
-      "end": 86.038
+      "start": 82.63,
+      "end": 88.01
     },
     {
       "text": "手術室が、受け入れられると返事をします。",
       "en": "The OR accepts.",
       "section": 3,
-      "start": 86.938,
-      "end": 89.538
+      "start": 88.81,
+      "end": 91.41
     },
     {
       "text": "本部が、患者を運ぶ職員を決めて、指示を出します。",
       "en": "HQ assigns transport staff and gives the order.",
       "section": 3,
-      "start": 90.438,
-      "end": 93.918
+      "start": 92.21,
+      "end": 95.69
     },
     {
       "text": "頼んだことと、実際に起きたことは、分けて記録されます。",
       "en": "What was requested and what actually happened are recorded separately.",
       "section": 3,
-      "start": 94.818,
-      "end": 98.178
+      "start": 96.49,
+      "end": 99.85
     },
     {
       "text": "出発も到着も、本部の画面と大型モニターに、すぐに出ます。",
       "en": "Departure and arrival show up at once at HQ and on the big wall monitor.",
       "section": 3,
-      "start": 99.078,
-      "end": 103.408
+      "start": 100.65,
+      "end": 104.98
     },
     {
       "text": "人や物が足りない部署からの応援の依頼も、本部でまとめて確かめられます。",
       "en": "Requests for extra staff or supplies from short-handed departments can be tracked together at HQ.",
       "section": 3,
-      "start": 104.308,
-      "end": 108.698
+      "start": 105.78,
+      "end": 110.17
     },
     {
       "text": "慣れない職員でも迷わないように、文字は大きく、状態は文字と記号でも示します。",
       "en": "So even unfamiliar staff won't get lost: large text, and status shown with words and symbols.",
       "section": 3,
-      "start": 109.598,
-      "end": 115.263
+      "start": 110.97,
+      "end": 116.635
     },
     {
       "text": "ここからは、訓練モードです。あなたが本部を操作し、｜ほかの部署はClaudeが演じて、さまざまな状況を無線で伝えてきます。",
       "en": "Next, Training Mode. You run headquarters,｜and Claude plays the other departments, radioing in all kinds of situations.",
       "section": 4,
-      "start": 116.013,
-      "end": 125.143
+      "start": 117.285,
+      "end": 126.415
     },
     {
       "text": "あなたは、それを聞いて記録し、調整します。",
       "en": "You listen, record it, and coordinate.",
       "section": 4,
-      "start": 126.043,
-      "end": 128.763
+      "start": 127.215,
+      "end": 129.935
     },
     {
       "text": "終わると、記録のずれを、Claudeが根拠つきで説明します。",
       "en": "Afterward, Claude explains where your records drifted, with evidence.",
       "section": 4,
-      "start": 129.663,
-      "end": 133.532
+      "start": 130.735,
+      "end": 134.604
     },
     {
       "text": "訓練中に治療の相談をしても、Claudeは医療の判断や助言はせず、｜判断は医療者に任せます。",
       "en": "Even if you ask about treatment during a drill, Claude gives no medical judgment or advice,｜and leaves decisions to medical staff.",
       "section": 5,
-      "start": 134.282,
-      "end": 140.572
+      "start": 135.254,
+      "end": 141.544
     },
     {
       "text": "災害運用モードでは、AIを使いません。｜AIのサービスが止まっても動き続け、患者の情報を外のAIに送ることもありません。",
       "en": "Disaster Mode uses no AI.｜It keeps working even if AI services go down, and never sends patient data to an outside AI.",
       "section": 5,
-      "start": 140.802,
-      "end": 152.366
+      "start": 141.774,
+      "end": 153.139
     },
     {
       "text": "病院ごとの設定で、総合病院から中規模病院まで、｜場所や規模に合わせて導入できます。",
       "en": "With per-hospital settings, it can be adopted from general to mid-sized hospitals,｜fitting each layout and size.",
       "section": 6,
-      "start": 153.116,
-      "end": 160.373
+      "start": 153.789,
+      "end": 161.045
     },
     {
       "text": "プログラミングの経験がない看護師の私が、Claude Code を使用し、作成しました。｜守るべき決まりを先に書き、Claude 自身が点検を重ねています。",
       "en": "I'm a nurse with no programming experience, and I built this with Claude Code.｜We wrote the rules first, and Claude keeps checking its own work.",
       "section": 7,
-      "start": 161.123,
-      "end": 172.262
+      "start": 161.695,
+      "end": 172.734
     },
     {
       "text": "訓練で確かめたことを、本番でも。",
       "en": "What you confirm in drills, you carry into the real thing.",
       "section": 8,
-      "start": 173.012,
-      "end": 175.578
+      "start": 173.384,
+      "end": 175.951
     }
   ]
 }

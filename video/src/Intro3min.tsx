@@ -6,10 +6,10 @@ import { AbsoluteFill, Sequence, getStaticFiles, interpolate, staticFile, useCur
 import narration from '../public/narration-3min.json';
 import { Background, clamp, ease, SceneFade, Subtitles } from './common';
 import { Disasters } from './scenes/Disasters';
-import { Hub, HubMini, type NodeId } from './scenes/Hub';
+import { Hub, HubCompare, HubMini, type NodeId } from './scenes/Hub';
 import { Schedule } from './scenes/Schedule';
 import { TwoFunctions } from './scenes/TwoFunctions';
-import { c, fontFamily, TimingContext } from './theme';
+import { c, fontFamily, LOGO, logoFont, TimingContext } from './theme';
 import { ZoomClip } from './zoom';
 import { DEV } from './devOutputs';
 
@@ -125,7 +125,7 @@ const THREE = (i: number): CSSProperties => ({ left: 40 + i * 620, top: 340, wid
 // ---------------- 場面 ----------------
 
 /** 「情報の伝達」：BCP の説明のあと、大きな文字で課題を出す */
-const Problem = () => <Big sub="Communication">情報の伝達</Big>;
+const Problem = () => <Big>情報の伝達</Big>;
 
 /** 本物の画面を背景に暗く敷く（図や文字の場面でも、実際に動いている画面が見えるように） */
 const Backdrop = ({ file, from = 0, dim = 0.3 }: { file: string; from?: number; dim?: number }) => {
@@ -360,23 +360,51 @@ const NoAi = () => (
   </AbsoluteFill>
 );
 
-/** 締め */
-const Final = () => {
+/** ロゴ：名前（BIZ UDPゴシック 太字）と英名 */
+const Logo = ({ size = 130 }: { size?: number }) => {
   const frame = useCurrentFrame();
   const p = interpolate(frame, [0, 22], [0, 1], { ...clamp, easing: ease });
   return (
-    <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'center', fontFamily, paddingBottom: 120 }}>
-      <div style={{ fontSize: 130, fontWeight: 700, color: c.text, letterSpacing: 10, opacity: p, filter: `blur(${(1 - p) * 10}px)` }}>病院リンクBCP</div>
-      <div style={{ marginTop: 4, fontSize: 36, color: c.sub, letterSpacing: 4, opacity: p }}>Hospital Link BCP</div>
-      <div style={{ marginTop: 22, width: interpolate(p, [0, 1], [0, 560]), height: 3, backgroundColor: c.accent }} />
-      <div style={{ marginTop: 26, fontSize: 32, color: c.sub, letterSpacing: 6, opacity: p }}>院内災害対応の調整ツール ／ AI訓練モード</div>
-      <div style={{ marginTop: 44, fontSize: 24, color: c.sub, letterSpacing: 1, opacity: p, textAlign: 'center', lineHeight: 1.7 }}>
-        Claude Code で開発 ／ Built with Claude: Japan 2026
-        <br />
-        github.com/SOG-Labs-1/hospital-disaster-coordination
-        <br />
-        データはすべて架空です ／ All data is fictional ／ 音声：Google Gemini（Vertex AI）／ 効果音：自作
-      </div>
+    <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'center', paddingBottom: 120 }}>
+      <div style={{ fontFamily: logoFont, fontSize: size, fontWeight: 700, color: c.text, letterSpacing: 4, opacity: p, filter: `blur(${(1 - p) * 10}px)` }}>{LOGO.ja}</div>
+      <div style={{ marginTop: size * 0.3, width: interpolate(p, [0, 1], [0, size * 4.4]), height: 3, backgroundColor: c.accent }} />
+      <div style={{ marginTop: size * 0.22, fontFamily: logoFont, fontWeight: 700, fontSize: size * 0.28, color: c.sub, letterSpacing: 3, opacity: p }}>{LOGO.en}</div>
+    </AbsoluteFill>
+  );
+};
+
+/** 締め：名前と英名だけ（大会名・リポジトリ・架空の表記・音声は YouTube の説明欄へ。利用者の判断） */
+const Final = () => <Logo size={140} />;
+
+/** 制作者の紹介：看護師を表す人の絵と、病院の建物（架空。顔・実在の病院は描かない） */
+const NurseIntro = () => {
+  const frame = useCurrentFrame();
+  const p = (k: number) => interpolate(frame, [k, k + 16], [0, 1], { ...clamp, easing: ease });
+  const bx = 1000, by = 230, bw = 520, bh = 420;
+  return (
+    <AbsoluteFill>
+      <svg width={1920} height={1080}>
+        {/* 病院の建物 */}
+        <g opacity={p(0)}>
+          <rect x={bx} y={by} width={bw} height={bh} fill="rgba(88,196,255,0.06)" stroke={c.text} strokeWidth={4} />
+          <rect x={bx + bw / 2 - 70} y={by - 70} width={140} height={70} fill="rgba(88,196,255,0.06)" stroke={c.text} strokeWidth={4} />
+          <text x={bx + bw / 2} y={by - 20} fill={c.text} fontFamily={fontFamily} fontSize={46} fontWeight={700} textAnchor="middle">H</text>
+          {Array.from({ length: 4 }, (_, r) => Array.from({ length: 5 }, (_, k) => (
+            <rect key={`${r}-${k}`} x={bx + 40 + k * 92} y={by + 36 + r * 80} width={60} height={44} fill="none" stroke={c.line} strokeWidth={3} />
+          )))}
+          <rect x={bx + bw / 2 - 50} y={by + bh - 90} width={100} height={90} fill="none" stroke={c.text} strokeWidth={4} />
+        </g>
+        {/* 看護師（人の形。名札とバインダー） */}
+        <g transform="translate(640 420) scale(4.2)" opacity={p(10)}>
+          <circle cx={0} cy={-38} r={9} fill="none" stroke={c.text} strokeWidth={2.2} />
+          <path d="M -13 -24 Q 0 -30 13 -24 L 11 4 L -11 4 Z" fill="rgba(88,196,255,0.25)" stroke={c.text} strokeWidth={2.2} strokeLinejoin="round" />
+          <line x1={-6} y1={4} x2={-7} y2={22} stroke={c.text} strokeWidth={2.2} />
+          <line x1={6} y1={4} x2={7} y2={22} stroke={c.text} strokeWidth={2.2} />
+          <rect x={3} y={-20} width={7} height={5} fill={c.accent} />
+          <rect x={13} y={-18} width={9} height={13} rx={1} fill="none" stroke={c.warn} strokeWidth={1.6} />
+        </g>
+      </svg>
+      <div style={{ position: 'absolute', left: 380, top: 650, width: 520, textAlign: 'center', fontFamily, fontSize: 40, fontWeight: 700, color: c.text, opacity: p(24) }}>制作者：看護師</div>
     </AbsoluteFill>
   );
 };
@@ -456,27 +484,23 @@ const buildShots = (stock: boolean): Shot[] => [
           </>
         ) } as Shot,
       ]),
-  { from: cut(2), to: cut(3), name: '訓練のたびに残る課題', node: () => <Big size={84}>訓練のたびに、残る課題</Big> },
-  { from: cut(3), to: cut(4), name: '情報の伝達', node: () => <Problem /> },
-  // 2. 経緯（約35秒に詰めた。図だけの場面）
-  { from: cut(4), to: cut(5), name: '経緯：無線とホワイトボード', node: () => (
-    <>
-      <Hub state="radio" />
-    </>
-  ) },
-  { from: cut(5), to: cut(6), name: '部署どうしの情報がつながらない', node: () => (
+  { from: cut(2), to: cut(3), name: '情報の伝達', node: () => <Problem /> },
+  // 2. 経緯
+  { from: cut(3), to: cut(4), name: '制作者：看護師', node: () => <NurseIntro /> },
+  { from: cut(4), to: cut(5), name: '部署どうしの情報が伝わらない', node: () => (
     <>
       <Hub state="broken" />
       <Fact source="千代ほか、日本臨床救急医学会雑誌 15巻3号（2012）">訓練の参加者アンケートでも「連携と情報伝達が不十分」の回答が多い（154人）</Fact>
     </>
   ) },
-  { from: cut(6), to: cut(7), name: '訓練の時間がない', node: (_d, s) => (
+  { from: cut(5), to: cut(6), name: '訓練の時間がない', node: (_d, s) => (
     <>
-      <Remap map={{ 4: 6 }}><Schedule start={s} caption={false} /></Remap>
+      <Remap map={{ 4: 5 }}><Schedule start={s} caption={false} /></Remap>
       <Fact source="日本看護管理学会「病院における防災訓練に関する実態調査報告書」（2024、300病院）">訓練の日も、87.3%の病院は通常どおり業務</Fact>
     </>
   ) },
-  // 3. 2つのモード（本物の画面。上部の「■ 災害運用」「◇ 訓練」を枠で示す）
+  // 3. 名前と、つながる図
+  { from: cut(6), to: cut(7), name: '名前', node: () => <Logo /> },
   { from: cut(7), to: cut(8), name: '病院リンクBCPでつながる（解決）', node: () => (
     <>
       <Hub state="connected" />
@@ -611,12 +635,7 @@ const buildShots = (stock: boolean): Shot[] => [
     </>
   ) },
   // 7. どの病院でも
-  { from: cut(24), to: cut(25), name: 'どの病院でも', node: (d) => (
-    <>
-      <Clip file="j-hospitals.webm" from={0} to={Math.min(15.6, d * 1.3)} dur={d} style={ONE} />
-      <Tag color={c.text} style={CAP}>病院ごとの設定（架空の2病院）</Tag>
-    </>
-  ) },
+  { from: cut(24), to: cut(25), name: 'どの病院でも', node: () => <HubCompare /> },
   // 8. Claude Code での作り方（実際の開発の出力）
   { from: cut(25), to: cut(26), name: 'Claude Code での作り方', node: () => <BuiltWith /> },
   { from: cut(26), to: TOTAL3, name: '締め', node: () => <Final />, fade: 1 },
@@ -625,7 +644,7 @@ const buildShots = (stock: boolean): Shot[] => [
 const SHOTS = { plain: buildShots(false), stock: buildShots(true) };
 
 // 話題の切れ目になる行（ここで場面をいったん暗くする）
-const SECTION_STARTS = [2, 3, 4, 7, 8, 9, 19, 22, 24, 25, 26];
+const SECTION_STARTS = [2, 3, 6, 7, 8, 9, 19, 22, 24, 25, 26];
 const XF = 10; // クロスフェードのコマ数
 
 export const Intro3min = ({ stock = false }: { stock?: boolean }) => {
@@ -667,8 +686,8 @@ export const Intro3min = ({ stock = false }: { stock?: boolean }) => {
       <Subtitles lines={lines} delay={DELAY3} variant="cinema" english={false} />
       {/* 低音の効果音（自作。scripts/sfx.mjs）：場面ごとに違う音。ナレーションより大きくならないよう音量を測って決めた（2026-11-05） */}
       {([
-        ['sfx/boom-tail.wav', L(3) - 0.05, 0.35, '効果音：情報の伝達'],
-        ['sfx/reveal.wav', L(7) - 1.5, 0.22, '効果音：名前'],
+        ['sfx/boom-tail.wav', L(2) - 0.05, 0.35, '効果音：情報の伝達'],
+        ['sfx/reveal.wav', L(6) - 1.5, 0.22, '効果音：名前'],
         ['sfx/radio.wav', cut(19) + 0.1, 0.25, '効果音：訓練モード'],
         ['sfx/outro.wav', cut(26) + 0.1, 0.3, '効果音：締め'],
       ] as const).map(([src, t, volume, name]) => (

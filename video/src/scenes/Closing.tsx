@@ -1,6 +1,6 @@
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from 'remotion';
 import { clamp, ease } from '../common';
-import { c, fontFamily, useTiming } from '../theme';
+import { c, fontFamily, LOGO, logoFont, useTiming } from '../theme';
 
 // 大きさの違う病院の輪郭（架空）。どれにも同じ画面が入る
 const buildings = [
@@ -44,8 +44,8 @@ export const Closing = ({ start }: { start: number }) => {
       </AbsoluteFill>
 
       <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'center', opacity: final }}>
-        <div style={{ fontSize: 120, fontWeight: 700, color: c.text, letterSpacing: 10, filter: `blur(${(1 - final) * 10}px)` }}>病院リンクBCP</div>
-        <div style={{ marginTop: 4, fontSize: 32, color: c.sub, letterSpacing: 4 }}>Hospital Link BCP</div>
+        <div style={{ fontFamily: logoFont, fontSize: 120, fontWeight: 700, color: c.text, letterSpacing: 4, filter: `blur(${(1 - final) * 10}px)` }}>{LOGO.ja}</div>
+        <div style={{ marginTop: 14, fontFamily: logoFont, fontWeight: 700, fontSize: 34, color: c.sub, letterSpacing: 3 }}>{LOGO.en}</div>
         <div style={{ marginTop: 22, width: interpolate(final, [0, 1], [0, 520]), height: 3, backgroundColor: c.accent }} />
         <div style={{ marginTop: 26, fontSize: 30, color: c.sub, letterSpacing: 6 }}>院内災害対応の調整ツール ／ AI訓練モード</div>
       </AbsoluteFill>
