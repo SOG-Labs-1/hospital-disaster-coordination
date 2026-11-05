@@ -40,7 +40,7 @@
 | ある地震の日を例に、見てみましょう。 | Let's walk through one example: the day of an earthquake. | 病院の断面図（架空）。場所ごとのパソコンが灯る。画面の文字「場所ごとのパソコンで開く／ログイン不要」 | 本部＝院内の災害対策本部 |
 | 災害のときは、患者にトリアージタッグを付けて、治療の急ぎ具合を色で分け、重い患者から、治療できる場所へ運びます。 | In a disaster, patients get triage tags that sort them by urgency with colors, and the most urgent are moved first to where they can be treated. | 札の付いた患者が、救急外来から手術室へ運ばれる矢印 | トリアージタッグ＝治療の急ぎ具合を色で示す札（赤→黄→緑） |
 | 救急外来に、最も治療を必要とする「赤」の患者が運ばれてきました。 | A "red" patient, the one most in need of treatment, arrives at the ER. | 救急外来の端末 | タッグ＝トリアージタッグ。治療の急ぎ具合を色で示す札。赤は最優先。区分を決めるのは医師・看護師で、タシカメは記録するだけ |
-| 救急外来で登録すると、本部の画面にも、すぐに出ます。 | Register it in the ER, and it appears on the HQ screen instantly. | 2台の端末を左右に並べる。救急外来で登録→本部の一覧の先頭に出る | |
+| 救急外来で登録すると、本部の画面にも、すぐに出ます。 | Register the patient in the ER, and it appears on the HQ screen instantly. | 2台の端末を左右に並べる。救急外来で登録→本部の一覧の先頭に出る | |
 | 本部は、手術室への搬送を依頼。手術室が受け入れを了承すると、本部が搬送要員に指示します。 | HQ requests a transfer to the OR. Once the OR accepts, HQ dispatches transport staff. | 本部の搬送のカード。「次にすること」が了承→要員の割り当て→指示と進む | 搬送要員＝患者を運ぶ担当の職員 |
 | 出発、そして到着。記録されるたびに、本部の画面にも、大型モニターにも、同時に反映されます。 | Departure, then arrival. Each record shows up at once on the HQ screen and the big wall monitor. | 3画面（救急外来・本部・掲示用画面）を並べ、同じ瞬間に変わる | 掲示用画面＝本部の大型モニター用。操作なしで自動更新 |
 | 頼んだことと、実際に起きたことは、分けて残ります。まだ記録のない段階も、ひと目で分かります。 | What was requested and what actually happened are kept separate. Missing steps are easy to spot. | 搬送のカード。「調整（依頼したこと）」「事実（起きたこと）」、記録済みは ✓ と実線、未記録は – と破線 | |

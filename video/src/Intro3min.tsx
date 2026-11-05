@@ -4,7 +4,7 @@ import type { CSSProperties, ReactNode } from 'react';
 import { Audio, Video } from '@remotion/media';
 import { AbsoluteFill, Sequence, getStaticFiles, interpolate, staticFile, useCurrentFrame, useVideoConfig } from 'remotion';
 import narration from '../public/narration-3min.json';
-import { Background, clamp, ease, Hud, SceneFade, Subtitles } from './common';
+import { Background, clamp, ease, SceneFade, Subtitles } from './common';
 import { Disasters } from './scenes/Disasters';
 import { FlowMap, HospitalPictogram, TriageRoute } from './scenes/HospitalPictogram';
 import { FloorPlan } from './scenes/FloorPlan';
@@ -16,8 +16,8 @@ const lines = narration.lines;
 export const DELAY3 = 0.3;
 const L = (n: number) => lines[n]!.start + DELAY3;
 const E = (n: number) => lines[n]!.end + DELAY3;
-// ハッカソンの規定に合わせて、ちょうど3分0秒（5400コマ）。最後の行のあとは題名を見せる
-export const TOTAL3 = 180;
+// ハッカソンの規定（3分以内）に合わせて 2分59秒9（5397コマ）。最後の行のあとは題名を見せる
+export const TOTAL3 = 179.9; // 「3分以内」に確実に収める
 
 // 通しの場面（g1〜g4）の目印（録画の秒）。video/public/captures/manifest.json の g1 の note から写す
 const G = { register: 6.8, request: 14.5, accept: 18.6, assign: 24.4, order: 28.4, depart: 29.7, arrive: 36.3, end: 39.0 };
@@ -205,7 +205,7 @@ const Final = () => {
       <div style={{ marginTop: 22, width: interpolate(p, [0, 1], [0, 560]), height: 3, backgroundColor: c.accent }} />
       <div style={{ marginTop: 26, fontSize: 32, color: c.sub, letterSpacing: 6, opacity: p }}>院内災害対応の調整ツール ／ AI訓練モード</div>
       <div style={{ marginTop: 44, fontSize: 24, color: c.sub, letterSpacing: 1, opacity: p, textAlign: 'center', lineHeight: 1.7 }}>
-        Claude Code で開発 ／ Claude Code Hackathon 2026
+        Claude Code で開発（自作 Skill・点検用サブエージェント・設定の自動検証フック・自動テスト）／ Claude Code Hackathon 2026
         <br />
         github.com/SOG-Labs-1/hospital-disaster-coordination
         <br />
@@ -418,24 +418,23 @@ export const Intro3min = ({ stock = false }: { stock?: boolean }) => {
       <Sequence from={Math.round((L(1) + 0.8) * fps)} durationInFrames={Math.round((L(3) - L(1) - 0.8) * fps)} name="BCPの説明">
         <Term word="BCP（事業継続計画）">災害のときも、病院の機能を続けるための計画</Term>
       </Sequence>
-      <Hud />
       <Subtitles lines={lines} delay={DELAY3} />
-      {/* 低音の効果音（自作。scripts/sfx.mjs）：場面ごとに違う音 */}
+      {/* 低音の効果音（自作。scripts/sfx.mjs）：場面ごとに違う音。ナレーションより大きくならないよう音量を測って決めた（2026-11-05） */}
       {([
-        ['sfx/boom-tail.wav', L(3) - 0.05, 0.6, '効果音：情報の伝達'],
-        ['sfx/reveal.wav', L(8) - 1.5, 0.5, '効果音：タシカメ'],
-        ['sfx/radio.wav', cut(20) + 0.1, 0.45, '効果音：訓練モード'],
-        ['sfx/outro.wav', cut(29) + 0.1, 0.55, '効果音：締め'],
+        ['sfx/boom-tail.wav', L(3) - 0.05, 0.35, '効果音：情報の伝達'],
+        ['sfx/reveal.wav', L(8) - 1.5, 0.22, '効果音：タシカメ'],
+        ['sfx/radio.wav', cut(20) + 0.1, 0.25, '効果音：訓練モード'],
+        ['sfx/outro.wav', cut(29) + 0.1, 0.3, '効果音：締め'],
       ] as const).map(([src, t, volume, name]) => (
         <Sequence key={name} from={Math.round(t * fps)} name={name}>
           <Audio src={staticFile(src)} volume={volume} />
         </Sequence>
       ))}
       <Sequence from={0} durationInFrames={Math.round(4.5 * fps)} name="地鳴り">
-        <Audio src={staticFile('sfx/rumble.wav')} volume={0.85} />
+        <Audio src={staticFile('sfx/rumble.wav')} volume={0.6} />
       </Sequence>
       <Sequence from={Math.round(DELAY3 * fps)} name="ナレーション">
-        <Audio src={staticFile('narration-3min.wav')} />
+        <Audio src={staticFile('narration-3min.wav')} volume={0.85} />
       </Sequence>
     </AbsoluteFill>
   );
