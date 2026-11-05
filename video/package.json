@@ -8,7 +8,7 @@
     "render": "remotion render Intro30 out/intro-30s.mp4",
     "narration": "OUT_DIR=public node scripts/narration.mjs Enceladus 1.08",
     "typecheck": "tsc --noEmit",
-    "narration:3min": "OUT_DIR=public OUT_NAME=narration-3min SCRIPT_MD=../docs/video/3min-script.md PARAGRAPH=1 PAUSE_SECTION=1.0 node scripts/narration.mjs Enceladus 1.08",
+    "narration:3min": "OUT_DIR=public OUT_NAME=narration-3min SCRIPT_MD=../docs/video/3min-script.md PARAGRAPH=1 PAUSE_SECTION=0.9 node scripts/narration.mjs Enceladus 1.09",
     "render:3min": "remotion render Intro3min out/intro-3min.mp4",
     "sfx": "node scripts/rumble.mjs && node scripts/sfx.mjs",
     "render:3min-stock": "remotion render Intro3minStock out/intro-3min-stock.mp4"

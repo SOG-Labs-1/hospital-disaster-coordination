@@ -679,6 +679,25 @@ async function clipI4() {
   await page.request.post(`${WEB}/api/h/claude/training/sim/control`, { data: { action: 'pause' } }).catch(() => {});
 }
 
+/** s. 支援要請：3階東病棟から看護師2人の応援を要請（人員）。外来ホールからの車いす2台（物品）と並んで一覧に出る */
+async function clipS() {
+  const page = await openTerminal('ward-3e', '中島 綾');
+  await tab(page, /支援要請/);
+  const form = page.getByRole('form', { name: '支援を要請する' });
+  const rec = new Recorder(page);
+  await rec.start();
+  await sleep(800);
+  await slowClick(page, form.locator('label.chip', { hasText: '人員' }));
+  await slowType(page, form.getByLabel('看護師の数', { exact: true }), '2');
+  await slowClick(page, form.getByRole('button', { name: '支援を要請する' }), 0);
+  await page.getByTestId('notice').filter({ hasText: '支援要請を記録しました' }).waitFor();
+  await sleep(600);
+  const list = page.getByTestId('support-list');
+  if (await list.isVisible().catch(() => false)) await moveCursor(page, list);
+  await sleep(2600);
+  await finish(rec, { id: 's', file: 's-support.webm', title: '支援要請（人員・物品）', note: '3階東病棟の端末で「人員：看護師2人」を要請。一覧には、外来ホールからの「物品：車いす2台」（デモ用データ）と並んで出る' });
+}
+
 /** j. どの病院でも：病院を選ぶ画面（2つの架空の病院）→ 中規模の Hackathon中央病院(仮) を災害運用で開き、本部の端末で院内の状況を見る */
 async function clipJ() {
   const page = await openPage('/?hospital=', { noSync: true });
@@ -724,7 +743,7 @@ async function apiSend(command: Record<string, unknown>, transportId?: string, m
   return body;
 }
 
-const all: Record<string, () => Promise<void>> = { a: clipA, b: clipB, c: clipC, d: clipD, e: clipE, f: clipF, g: clipG, h: clipH, i: clipI, i4: clipI4, j: clipJ, k: clipK };
+const all: Record<string, () => Promise<void>> = { a: clipA, b: clipB, c: clipC, d: clipD, e: clipE, f: clipF, g: clipG, h: clipH, i: clipI, i4: clipI4, j: clipJ, k: clipK, s: clipS };
 
 // ---------------- 実行 ----------------
 

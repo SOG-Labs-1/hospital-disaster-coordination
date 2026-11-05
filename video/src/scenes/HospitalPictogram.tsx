@@ -189,7 +189,7 @@ export const TriageRoute = () => {
         <Patient x={x} y={y} s={1.1} tri="red" />
         <rect x={860} y={700} width={940} height={96} fill="rgba(7,13,24,0.95)" stroke={c.warn} strokeWidth={2} />
         <text x={1330} y={738} fill={c.warn} fontFamily={fontFamily} fontSize={22} fontWeight={700} textAnchor="middle">トリアージタッグ＝治療の急ぎ具合を色で示す札（区分は医師・看護師が決める）</text>
-        <text x={1330} y={776} fill={c.text} fontFamily={fontFamily} fontSize={26} textAnchor="middle">◆赤 ＞ ▲黄 ＞ ●緑　重い患者から、治療できる場所へ</text>
+        <text x={1330} y={776} fill={c.text} fontFamily={fontFamily} fontSize={26} textAnchor="middle">◆赤 ＞ ▲黄 ＞ ●緑　重症の患者から、治療できる場所へ</text>
       </g>
     </svg>
   );
