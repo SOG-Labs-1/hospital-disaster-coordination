@@ -7,7 +7,7 @@ import { c, fontFamily, useTiming } from '../theme';
 // 画面の録画（video/public/captures/）があれば使い、なければ画面を模した図で代える
 const capture = (name: string) => getStaticFiles().find((f) => f.name === `captures/${name}`);
 
-/** 場面4：タシカメ。災害時の院内調整と、AIと行う、平常時の訓練。 */
+/** 場面4：病院リンクBCP。災害時の院内調整と、AIと行う、平常時の訓練。 */
 export const TwoFunctions = ({ start, heading = '― 2つの機能 ―', liveLabel = '災害運用', trainingLabel = '訓練', note = true }: { start: number; heading?: string; liveLabel?: string; trainingLabel?: string; note?: boolean }) => {
   const { at } = useTiming();
   const frame = useCurrentFrame();
@@ -25,7 +25,8 @@ export const TwoFunctions = ({ start, heading = '― 2つの機能 ―', liveLab
   return (
     <AbsoluteFill style={{ fontFamily }}>
       <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'center', translate: `0px ${-up * 410}px`, scale: String(1 - up * 0.6) }}>
-        <div style={{ opacity: nameIn, letterSpacing: interpolate(nameIn, [0, 1], [60, 24]), fontSize: 150, fontWeight: 700, color: c.text, filter: `blur(${(1 - nameIn) * 12}px)` }}>タシカメ</div>
+        <div style={{ opacity: nameIn, letterSpacing: interpolate(nameIn, [0, 1], [40, 10]), fontSize: 130, fontWeight: 700, color: c.text, filter: `blur(${(1 - nameIn) * 12}px)` }}>病院リンクBCP</div>
+        <div style={{ opacity: nameIn * (1 - up), marginTop: 6, fontSize: 34, color: c.sub, letterSpacing: 4 }}>Hospital Link BCP</div>
         <div style={{ opacity: nameIn * (1 - up), marginTop: 18, fontSize: 30, color: c.sub, letterSpacing: 6 }}>院内災害対応の調整ツール</div>
       </AbsoluteFill>
 

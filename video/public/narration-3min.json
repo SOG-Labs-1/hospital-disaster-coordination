@@ -53,144 +53,144 @@
       "end": 41.725
     },
     {
-      "text": "タシカメは、患者の居場所や、運ぶ依頼、応援の依頼、人数を、院内のすべての端末で共有するツールです。",
-      "en": "Tashikame shares patients, transfers, support requests and staffing across every terminal in the hospital.",
+      "text": "病院リンクBCPは、患者の居場所や依頼、人数を、院内のすべての端末で共有するツールです。",
+      "en": "Hospital Link BCP shares patients' locations, requests and staffing across every terminal in the hospital.",
       "section": 2,
       "start": 42.475,
-      "end": 51.435
+      "end": 50.805
     },
     {
       "text": "モードは二つ。災害のときの「災害運用モード」と、ふだんの「訓練モード」。｜どちらも、同じ画面です。",
       "en": "It has two modes: Disaster Mode for real emergencies, and Training Mode for everyday practice.｜Both use the same screens.",
       "section": 2,
-      "start": 52.335,
-      "end": 60.618
+      "start": 51.705,
+      "end": 59.848
     },
     {
       "text": "災害のときは、けがや病気の重さで患者を分け、重い人から、治療できる場所へ運びます。",
       "en": "In a disaster, triage tags color-code urgency, and the most severe patients are moved first to where they can be treated.",
       "section": 3,
-      "start": 61.368,
-      "end": 68.338
+      "start": 60.598,
+      "end": 67.568
     },
     {
       "text": "操作の例です。救急外来に、最も治療を必要とする「赤」の患者が運ばれてきました。",
       "en": "Here is an example. A \"red\" patient, the one most in need of treatment, arrives at the ER.",
       "section": 3,
-      "start": 69.228,
-      "end": 75.798
+      "start": 68.458,
+      "end": 75.028
     },
     {
       "text": "救急外来で登録すると、本部の画面にも、すぐに出ます。",
       "en": "Register the patient in the ER, and it appears on the HQ screen instantly.",
       "section": 3,
-      "start": 76.698,
-      "end": 80.428
+      "start": 75.928,
+      "end": 79.658
     },
     {
       "text": "本部は、手術室へ運ぶよう依頼します。行き先と、運び方を選びます。",
       "en": "HQ requests a transfer to the OR, choosing the destination and how to move the patient.",
       "section": 3,
-      "start": 81.328,
-      "end": 86.808
+      "start": 80.558,
+      "end": 86.038
     },
     {
       "text": "手術室が、受け入れられると返事をします。",
       "en": "The OR accepts.",
       "section": 3,
-      "start": 87.708,
-      "end": 90.308
+      "start": 86.938,
+      "end": 89.538
     },
     {
       "text": "本部が、患者を運ぶ職員を決めて、指示を出します。",
       "en": "HQ assigns transport staff and gives the order.",
       "section": 3,
-      "start": 91.208,
-      "end": 94.688
+      "start": 90.438,
+      "end": 93.918
     },
     {
       "text": "頼んだことと、実際に起きたことは、分けて記録されます。",
       "en": "What was requested and what actually happened are recorded separately.",
       "section": 3,
-      "start": 95.588,
-      "end": 98.948
+      "start": 94.818,
+      "end": 98.178
     },
     {
       "text": "出発も到着も、本部の画面と大型モニターに、すぐに出ます。",
       "en": "Departure and arrival show up at once at HQ and on the big wall monitor.",
       "section": 3,
-      "start": 99.848,
-      "end": 104.178
+      "start": 99.078,
+      "end": 103.408
     },
     {
       "text": "人や物が足りない部署からの応援の依頼も、本部でまとめて確かめられます。",
       "en": "Requests for extra staff or supplies from short-handed departments can be tracked together at HQ.",
       "section": 3,
-      "start": 105.078,
-      "end": 109.468
+      "start": 104.308,
+      "end": 108.698
     },
     {
       "text": "慣れない職員でも迷わないように、文字は大きく、状態は文字と記号でも示します。",
       "en": "So even unfamiliar staff won't get lost: large text, and status shown with words and symbols.",
       "section": 3,
-      "start": 110.368,
-      "end": 116.033
+      "start": 109.598,
+      "end": 115.263
     },
     {
       "text": "ここからは、訓練モードです。あなたが本部を操作し、｜ほかの部署はClaudeが演じて、さまざまな状況を無線で伝えてきます。",
       "en": "Next, Training Mode. You run headquarters,｜and Claude plays the other departments, radioing in all kinds of situations.",
       "section": 4,
-      "start": 116.783,
-      "end": 125.913
+      "start": 116.013,
+      "end": 125.143
     },
     {
       "text": "あなたは、それを聞いて記録し、調整します。",
       "en": "You listen, record it, and coordinate.",
       "section": 4,
-      "start": 126.813,
-      "end": 129.533
+      "start": 126.043,
+      "end": 128.763
     },
     {
       "text": "終わると、記録のずれを、Claudeが根拠つきで説明します。",
       "en": "Afterward, Claude explains where your records drifted, with evidence.",
       "section": 4,
-      "start": 130.433,
-      "end": 134.303
+      "start": 129.663,
+      "end": 133.532
     },
     {
       "text": "訓練中に治療の相談をしても、Claudeは医療の判断や助言はせず、｜判断は医療者に任せます。",
       "en": "Even if you ask about treatment during a drill, Claude gives no medical judgment or advice,｜and leaves decisions to medical staff.",
       "section": 5,
-      "start": 135.053,
-      "end": 141.343
+      "start": 134.282,
+      "end": 140.572
     },
     {
       "text": "災害運用モードでは、AIを使いません。｜AIのサービスが止まっても動き続け、患者の情報を外のAIに送ることもありません。",
       "en": "Disaster Mode uses no AI.｜It keeps working even if AI services go down, and never sends patient data to an outside AI.",
       "section": 5,
-      "start": 141.572,
-      "end": 153.137
+      "start": 140.802,
+      "end": 152.366
     },
     {
-      "text": "タシカメは、病院ごとの設定で、総合病院から中規模病院まで、｜場所や規模に合わせて導入できます。",
-      "en": "With per-hospital settings, Tashikame can be adopted to fit any layout and size,｜from general to mid-sized hospitals.",
+      "text": "病院ごとの設定で、総合病院から中規模病院まで、｜場所や規模に合わせて導入できます。",
+      "en": "With per-hospital settings, it can be adopted from general to mid-sized hospitals,｜fitting each layout and size.",
       "section": 6,
-      "start": 153.887,
-      "end": 161.871
+      "start": 153.116,
+      "end": 160.373
     },
     {
       "text": "プログラミングの経験がない看護師の私が、Claude Code を使用し、作成しました。｜守るべき決まりを先に書き、Claude 自身が点検を重ねています。",
       "en": "I'm a nurse with no programming experience, and I built this with Claude Code.｜We wrote the rules first, and Claude keeps checking its own work.",
       "section": 7,
-      "start": 162.621,
-      "end": 173.76
+      "start": 161.123,
+      "end": 172.262
     },
     {
       "text": "訓練で確かめたことを、本番でも。",
       "en": "What you confirm in drills, you carry into the real thing.",
       "section": 8,
-      "start": 174.51,
-      "end": 177.076
+      "start": 173.012,
+      "end": 175.578
     }
   ]
 }

@@ -32,7 +32,7 @@ export const Closing = ({ start }: { start: number }) => {
             return (
               <g key={i} opacity={p} transform={`translate(0 ${(1 - p) * 40})`}>
                 <rect x={bx} y={by} width={b.w} height={b.h} fill="none" stroke={c.text} strokeWidth={3} />
-                {/* 同じ画面（タシカメ）が入る */}
+                {/* 同じ画面（病院リンクBCP）が入る */}
                 <rect x={bx + b.w * 0.3} y={by + b.h * 0.25} width={b.w * 0.4} height={b.h * 0.3} fill={c.accentSoft} stroke={c.accent} strokeWidth={2} opacity={glow} />
                 <text x={bx + b.w / 2} y={760} fill={c.sub} fontFamily={fontFamily} fontSize={28} textAnchor="middle">
                   {b.label}
@@ -44,7 +44,8 @@ export const Closing = ({ start }: { start: number }) => {
       </AbsoluteFill>
 
       <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'center', opacity: final }}>
-        <div style={{ fontSize: 140, fontWeight: 700, color: c.text, letterSpacing: 24, filter: `blur(${(1 - final) * 10}px)` }}>タシカメ</div>
+        <div style={{ fontSize: 120, fontWeight: 700, color: c.text, letterSpacing: 10, filter: `blur(${(1 - final) * 10}px)` }}>病院リンクBCP</div>
+        <div style={{ marginTop: 4, fontSize: 32, color: c.sub, letterSpacing: 4 }}>Hospital Link BCP</div>
         <div style={{ marginTop: 22, width: interpolate(final, [0, 1], [0, 520]), height: 3, backgroundColor: c.accent }} />
         <div style={{ marginTop: 26, fontSize: 30, color: c.sub, letterSpacing: 6 }}>院内災害対応の調整ツール ／ AI訓練モード</div>
       </AbsoluteFill>

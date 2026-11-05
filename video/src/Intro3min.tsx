@@ -185,7 +185,7 @@ const StepLog = ({ active }: { active: number }) => {
   );
 };
 
-/** タシカメの概要：実際の画面のタブ（患者・搬送・支援要請・院内の状況・対応記録）を、名前の下に並べる */
+/** 病院リンクBCPの概要：実際の画面のタブ（患者・搬送・支援要請・院内の状況・対応記録）を、名前の下に並べる */
 const Overview = () => {
   const frame = useCurrentFrame();
   const tabs = ['患者の居場所', '運ぶ依頼', '応援の依頼', '場所ごとの人数', '記録'];
@@ -366,7 +366,8 @@ const Final = () => {
   const p = interpolate(frame, [0, 22], [0, 1], { ...clamp, easing: ease });
   return (
     <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'center', fontFamily, paddingBottom: 120 }}>
-      <div style={{ fontSize: 150, fontWeight: 700, color: c.text, letterSpacing: 24, opacity: p, filter: `blur(${(1 - p) * 10}px)` }}>タシカメ</div>
+      <div style={{ fontSize: 130, fontWeight: 700, color: c.text, letterSpacing: 10, opacity: p, filter: `blur(${(1 - p) * 10}px)` }}>病院リンクBCP</div>
+      <div style={{ marginTop: 4, fontSize: 36, color: c.sub, letterSpacing: 4, opacity: p }}>Hospital Link BCP</div>
       <div style={{ marginTop: 22, width: interpolate(p, [0, 1], [0, 560]), height: 3, backgroundColor: c.accent }} />
       <div style={{ marginTop: 26, fontSize: 32, color: c.sub, letterSpacing: 6, opacity: p }}>院内災害対応の調整ツール ／ AI訓練モード</div>
       <div style={{ marginTop: 44, fontSize: 24, color: c.sub, letterSpacing: 1, opacity: p, textAlign: 'center', lineHeight: 1.7 }}>
@@ -476,7 +477,7 @@ const buildShots = (stock: boolean): Shot[] => [
     </>
   ) },
   // 3. 2つのモード（本物の画面。上部の「■ 災害運用」「◇ 訓練」を枠で示す）
-  { from: cut(7), to: cut(8), name: 'タシカメでつながる（解決）', node: () => (
+  { from: cut(7), to: cut(8), name: '病院リンクBCPでつながる（解決）', node: () => (
     <>
       <Hub state="connected" />
       <Sequence from={40}><Overview /></Sequence>
@@ -667,7 +668,7 @@ export const Intro3min = ({ stock = false }: { stock?: boolean }) => {
       {/* 低音の効果音（自作。scripts/sfx.mjs）：場面ごとに違う音。ナレーションより大きくならないよう音量を測って決めた（2026-11-05） */}
       {([
         ['sfx/boom-tail.wav', L(3) - 0.05, 0.35, '効果音：情報の伝達'],
-        ['sfx/reveal.wav', L(7) - 1.5, 0.22, '効果音：タシカメ'],
+        ['sfx/reveal.wav', L(7) - 1.5, 0.22, '効果音：名前'],
         ['sfx/radio.wav', cut(19) + 0.1, 0.25, '効果音：訓練モード'],
         ['sfx/outro.wav', cut(26) + 0.1, 0.3, '効果音：締め'],
       ] as const).map(([src, t, volume, name]) => (

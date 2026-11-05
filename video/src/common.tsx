@@ -50,7 +50,7 @@ export const Hud = () => {
     <AbsoluteFill style={{ fontFamily, color: c.sub, fontSize: 22, letterSpacing: 2, padding: '40px 64px', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', opacity: interpolate(frame, [0, 20], [0, 1], clamp) }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
         <div style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: c.accent, opacity: 0.5 + 0.5 * Math.abs(Math.sin(frame / 12)) }} />
-        TASHIKAME ／ DEMO
+        HOSPITAL LINK BCP ／ DEMO
       </div>
       <div style={{ fontVariantNumeric: 'tabular-nums' }}>
         確認時刻 {hh}:{mm}:{ss}

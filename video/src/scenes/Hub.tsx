@@ -1,4 +1,4 @@
-// 「本部と部署を結ぶ図」。課題（無線とホワイトボード → 線が途切れる）と、解決（タシカメで全部の端末がつながる）を同じ図で見せる。
+// 「本部と部署を結ぶ図」。課題（無線とホワイトボード → 線が途切れる）と、解決（病院リンクBCPで全部の端末がつながる）を同じ図で見せる。
 // variant='mini' は操作の場面の小さな地図。いま応答している部署を光らせ、情報が線を伝わる様子と患者の位置を出す。
 import { interpolate, useCurrentFrame } from 'remotion';
 import { clamp, ease } from '../common';
@@ -32,7 +32,7 @@ const PatientMark = ({ x, y, s = 1 }: { x: number; y: number; s?: number }) => (
  * 全画面の図。
  * - radio：無線（破線）で本部と部署をつなぎ、本部はホワイトボードで集める（いまのやり方）
  * - broken：線が途切れて、患者・人・物が「？」（課題）
- * - connected：タシカメで全部の端末がつながり、本部に同じ記録が集まる（解決）
+ * - connected：病院リンクBCPで全部の端末がつながり、本部に同じ記録が集まる（解決）
  */
 export const Hub = ({ state }: { state: 'radio' | 'broken' | 'connected' | 'triage' | 'training' }) => {
   const frame = useCurrentFrame();
@@ -77,7 +77,7 @@ export const Hub = ({ state }: { state: 'radio' | 'broken' | 'connected' | 'tria
       {training && <text x={cx} y={cy + 100} fill={c.accent} fontFamily={fontFamily} fontSize={30} fontWeight={700} textAnchor="middle">あなたが操作</text>}
       {state === 'connected' && (
         <g opacity={interpolate(frame, [24, 36], [0, 1], clamp)}>
-          <text x={cx} y={cy - 80} fill={c.accent} fontFamily={fontFamily} fontSize={30} fontWeight={700} textAnchor="middle" letterSpacing={6}>タシカメ</text>
+          <text x={cx} y={cy - 80} fill={c.accent} fontFamily={fontFamily} fontSize={30} fontWeight={700} textAnchor="middle" letterSpacing={3}>病院リンクBCP</text>
         </g>
       )}
       {state === 'triage' && (

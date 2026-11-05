@@ -1,7 +1,7 @@
 // 3分版の効果音と BGM を自作する（外部の素材なし。権利の心配がない）
 // 使い方: node scripts/sfx.mjs
 //   public/sfx/boom-tail.wav  「情報の伝達」：重いドンと、長く残る低い響き
-//   public/sfx/reveal.wav     タシカメの名前：低い音がふくらみ、明るい和音に開く
+//   public/sfx/reveal.wav     製品名（病院リンクBCP）：低い音がふくらみ、明るい和音に開く
 //   public/sfx/radio.wav      訓練モードへ：無線の「ザッ」と、低く脈打つ音
 //   public/sfx/outro.wav      締め：長く伸びる低い余韻
 //   public/sfx/bgm.wav        BGM の試作（約3分）。利用者の判断で映像には使っていない。git には入れない
@@ -79,7 +79,7 @@ const note = (midi) => 440 * 2 ** ((midi - 69) / 12);
   });
 }
 
-// タシカメの名前：1.5秒ふくらむ低い音 → 明るい和音（Cメジャー）が開いて消える（4秒）
+// 製品名：1.5秒ふくらむ低い音 → 明るい和音（Cメジャー）が開いて消える（4秒）
 {
   const chord = [36, 48, 52, 55, 60, 64].map(note);
   const ph = chord.map(() => 0);

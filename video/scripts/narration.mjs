@@ -30,7 +30,7 @@ const lines = [
   ['患者は、人は、物は、いまどこにあるのか。', 'Patients, staff, supplies: where are they right now?', 0.45],
   ['混乱の中で、院内の状況はつかみきれません。', 'In the chaos, no one has the full picture.', 0.8],
   ['日々の業務に追われ、訓練も十分にはできません。', 'Busy with daily work, staff rarely get to train.', 1.0],
-  ['タシカメは、二つの機能で備えます。', 'Tashikame prepares hospitals in two ways.', 0.5],
+  ['病院リンクBCPは、二つの機能で備えます。', 'Hospital Link BCP prepares hospitals in two ways.', 0.5],
   ['災害時の院内調整ツールと、エーアイを相手にした、平常時の訓練です。', 'A coordination tool for disasters, and everyday drills with AI.', 0.8],
   ['総合病院から、中規模病院まで。', 'From general hospitals to mid-sized hospitals.', 0.4],
   ['安全で効率的な災害対応を、支えます。', 'Supporting safe, efficient disaster response.', 0.6],
@@ -165,7 +165,7 @@ const timings = [];
 let pos = 0;
 // SCRIPT_MD=原稿の md を渡すと、その表から読み上げを作る（3分版。原稿を1か所で直せば声と字幕が変わる）
 // 表の1列目が読み上げ（字幕の日本語）、2列目が英語の字幕。「## 」の見出しごとに場面（section）を分け、場面の切れ目は長めの間にする
-const READ = [['事業継続計画（BCP）', '事業継続計画'], ['BCP', 'ビーシーピー'], ['Claude Code', 'クロードコード'], ['Claude', 'クロード'], ['AI', 'エーアイ'], ['ID', 'アイディー'], ['「0人」', 'ゼロにん'], ['年に何度も', 'ねんに何度も'], ['私は', 'わたしは'], ['私が', 'わたしが']];
+const READ = [['事業継続計画（BCP）', '事業継続計画'], ['病院リンクBCP', 'びょういんリンク、ビーシーピー'], ['BCP', 'ビーシーピー'], ['Claude Code', 'クロードコード'], ['Claude', 'クロード'], ['AI', 'エーアイ'], ['ID', 'アイディー'], ['「0人」', 'ゼロにん'], ['年に何度も', 'ねんに何度も'], ['私は', 'わたしは'], ['私が', 'わたしが']];
 const gapAfter = new Map();
 const spoken = (t) => READ.reduce((x, [a, b]) => x.replaceAll(a, b), t.replaceAll('｜', '')); // 「｜」は字幕の改行の位置（読まない）
 let script = lines.map(([t, en, pause]) => ({ say: t, text: t.replace('エーアイ', 'AI'), en, pause, section: 0 }));
