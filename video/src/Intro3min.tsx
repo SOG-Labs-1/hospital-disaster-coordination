@@ -256,7 +256,7 @@ const Fact = ({ children, source }: { children: ReactNode; source: string }) => 
   return (
     <div style={{ position: 'absolute', left: 64, right: 64, top: 90, fontFamily, opacity: p, translate: `0px ${(1 - p) * -16}px`, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 4 }}>
       <div style={{ fontSize: 32, fontWeight: 700, color: c.text, backgroundColor: 'rgba(7,13,24,0.9)', borderLeft: `6px solid ${c.warn}`, padding: '8px 18px' }}>{children}</div>
-      <div style={{ fontSize: 20, color: c.sub, paddingLeft: 24 }}>出典：{source}</div>
+      {/* 出典は映像には出さない（利用者の判断。README と YouTube の説明欄に書く）。source はコードに残す */}
     </div>
   );
 };
