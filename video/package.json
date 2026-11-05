@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "narration:3min": "OUT_DIR=public OUT_NAME=narration-3min SCRIPT_MD=../docs/video/3min-script.md PARAGRAPH=1 PAUSE_SECTION=1.2 node scripts/narration.mjs Enceladus 1.07",
     "render:3min": "remotion render Intro3min out/intro-3min.mp4",
-    "sfx": "node scripts/rumble.mjs && node scripts/sfx.mjs"
+    "sfx": "node scripts/rumble.mjs && node scripts/sfx.mjs",
+    "render:3min-stock": "remotion render Intro3minStock out/intro-3min-stock.mp4"
   },
   "dependencies": {
     "@remotion/cli": "4.0.537",

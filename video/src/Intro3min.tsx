@@ -228,13 +228,68 @@ const MovingMap = ({ dur }: { dur: number }) => {
   return <FlowMap step="move" progress={interpolate(frame, [15, dur * 30 * 0.8], [0, 1], clamp)} />;
 };
 
-const shots: Shot[] = [
+// 実写あり版の冒頭：Pexels の素材（docs/video/stock-sources.md。public/stock/、git 管理外）を暗く青い色調にそろえてつなぐ
+const STOCK_END = 9.2;
+const STOCK: { file: string; from: number; to: number; at: number; until: number; portrait?: boolean; bright?: number }[] = [
+  { file: 'storm-clouds.mp4', from: 0.5, to: 2.7, at: 0, until: 2.2 },
+  { file: 'lightning-night.mp4', from: 5.9, to: 8.9, at: 2.2, until: 4.8, bright: 1.1 },
+  { file: 'rain-pavement.mp4', from: 10, to: 12, at: 4.8, until: 6.6 },
+  { file: 'hospital-corridor.mp4', from: 0.8, to: 3.4, at: 6.6, until: STOCK_END, portrait: true },
+];
+
+const StockShot = ({ file, from, to, dur, portrait, bright = 0.62 }: { file: string; from: number; to: number; dur: number; portrait?: boolean; bright?: number }) => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const zoom = 1.04 + (frame / (dur * fps)) * 0.06;
+  const fade = interpolate(frame, [0, 8, dur * fps - 8, dur * fps], [0, 1, 1, 0], clamp);
+  const has = getStaticFiles().some((f) => f.name === `stock/${file}`);
+  return (
+    <AbsoluteFill style={{ opacity: fade, overflow: 'hidden', backgroundColor: c.bg }}>
+      {has && (
+        <Video
+          src={staticFile(`stock/${file}`)}
+          muted
+          trimBefore={Math.round(from * fps)}
+          playbackRate={Math.min(2, Math.max(0.5, (to - from) / dur))}
+          style={portrait
+            // 縦長の素材は横幅いっぱいに広げ、中央より少し上を見せる（object-fit が効かないため大きさを直接決める）
+            ? { position: 'absolute', left: 0, width: 1920, height: (1920 * 16) / 9, top: -1180, scale: String(zoom), filter: `brightness(${bright}) contrast(1.12) saturate(0.45)` }
+            : { position: 'absolute', inset: 0, width: '100%', height: '100%', scale: String(zoom), filter: `brightness(${bright}) contrast(1.12) saturate(0.45)` }}
+        />
+      )}
+      {/* 青く暗い色調と周辺の減光、細い格子（ほかの場面となじませる） */}
+      <AbsoluteFill style={{ background: 'linear-gradient(rgba(8,24,60,0.38), rgba(4,10,24,0.5))', mixBlendMode: 'multiply' }} />
+      <AbsoluteFill style={{ background: 'radial-gradient(ellipse at 50% 45%, transparent 40%, rgba(0,0,0,0.7) 100%)' }} />
+      <AbsoluteFill style={{ backgroundImage: `linear-gradient(${c.grid} 1px, transparent 1px), linear-gradient(90deg, ${c.grid} 1px, transparent 1px)`, backgroundSize: '64px 64px' }} />
+    </AbsoluteFill>
+  );
+};
+
+const buildShots = (stock: boolean): Shot[] => [
   // 1. 冒頭
-  { from: 0, to: cut(2), name: '冒頭：災害の多い日本', node: (_d, s) => (
-    <>
-      <Remap map={{ 0: 0, 1: 1 }}><Disasters start={s} /></Remap>
-    </>
-  ) },
+  ...(stock
+    ? [
+        { from: 0, to: STOCK_END, name: '冒頭：実写', node: () => (
+          <>
+            {STOCK.map((k) => (
+              <Sequence key={k.file} from={Math.round(k.at * 30)} durationInFrames={Math.round((k.until - k.at) * 30) + 8}>
+                <StockShot file={k.file} from={k.from} to={k.to} dur={k.until - k.at + 0.27} portrait={k.portrait} bright={k.bright} />
+              </Sequence>
+            ))}
+          </>
+        ) } as Shot,
+        // 実写のあとは、病院の輪郭に患者が流れ込む図から（地図はすぐに消える）
+        { from: STOCK_END, to: cut(2), name: '冒頭：病院に患者が', node: (_d, s) => (
+          <TimingContext.Provider value={{ at: (n) => (n === 0 ? -10 : s + 0.1), endAt: (n) => (n === 0 ? -9 : s + 3) }}><Disasters start={s} /></TimingContext.Provider>
+        ) } as Shot,
+      ]
+    : [
+        { from: 0, to: cut(2), name: '冒頭：災害の多い日本', node: (_d, s) => (
+          <>
+            <Remap map={{ 0: 0, 1: 1 }}><Disasters start={s} /></Remap>
+          </>
+        ) } as Shot,
+      ]),
   { from: cut(2), to: cut(4), name: '情報の伝達', node: () => (
     <Sequence from={Math.round((L(3) - cut(2)) * 30)}><Problem /></Sequence>
   ) },
@@ -331,12 +386,15 @@ const shots: Shot[] = [
   { from: cut(29), to: TOTAL3, name: '締め', node: () => <Final />, fade: 1 },
 ];
 
+const SHOTS = { plain: buildShots(false), stock: buildShots(true) };
+
 // 話題の切れ目になる行（ここで場面をいったん暗くする）
 const SECTION_STARTS = [2, 4, 8, 10, 20, 25, 28, 29];
 const XF = 10; // クロスフェードのコマ数
 
-export const Intro3min = () => {
+export const Intro3min = ({ stock = false }: { stock?: boolean }) => {
   const { fps } = useVideoConfig();
+  const shots = stock ? SHOTS.stock : SHOTS.plain;
   return (
     <AbsoluteFill style={{ fontFamily }}>
       <Background />
