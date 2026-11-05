@@ -121,7 +121,8 @@ test('訓練：審査用5分シナリオを始めると、患者は救急外来�
   await tf.getByRole('button', { name: '搬送を依頼する' }).click();
   await hq.getByRole('tab', { name: /搬送/ }).click();
   const card = hq.getByTestId('transport-T-001');
-  await expect(card).toContainText(/了承済み|断り/, { timeout: 90_000 });
+  // 「断りを記録」ボタンの文字に当たらないよう、カードの状態（了承済み・断られた）で確かめる
+  await expect(card).toHaveClass(/transport-(accepted|declined)/, { timeout: 90_000 });
 
   // 搬送要員（Claude）に無線で指示すると、無線で返事が届く
   await hq.getByRole('tab', { name: /訓練/ }).click();
