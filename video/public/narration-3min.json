@@ -137,67 +137,60 @@
       "end": 116.033
     },
     {
-      "text": "ここからは、訓練モードです。｜Claudeが部署の役になり、無線で報告してきます。",
-      "en": "Next, Training Mode.｜Claude plays the departments, reporting in over the radio.",
+      "text": "ここからは、訓練モードです。あなたが本部を操作し、｜ほかの部署はClaudeが演じて、さまざまな状況を無線で伝えてきます。",
+      "en": "Next, Training Mode. You run headquarters,｜and Claude plays the other departments, radioing in all kinds of situations.",
       "section": 4,
       "start": 116.783,
-      "end": 123.343
+      "end": 125.913
     },
     {
-      "text": "参加者は、それを聞いて、自分で記録し、調整します。",
-      "en": "You listen, record it yourself, and coordinate.",
+      "text": "あなたは、それを聞いて記録し、調整します。",
+      "en": "You listen, record it, and coordinate.",
       "section": 4,
-      "start": 124.243,
-      "end": 128.323
+      "start": 126.813,
+      "end": 129.533
     },
     {
       "text": "終わると、記録のずれを、Claudeが根拠つきで説明します。",
       "en": "Afterward, Claude explains where your records drifted, with evidence.",
       "section": 4,
-      "start": 129.223,
-      "end": 133.427
+      "start": 130.433,
+      "end": 134.303
     },
     {
-      "text": "Claudeの提案は、反映する前に、必ずプログラムが確かめます。",
-      "en": "Claude's proposals are always checked by the system before they are applied.",
+      "text": "訓練中に治療の相談をしても、Claudeは医療の判断や助言はせず、｜判断は医療者に任せます。",
+      "en": "Even if you ask about treatment during a drill, Claude gives no medical judgment or advice,｜and leaves decisions to medical staff.",
       "section": 5,
-      "start": 134.177,
-      "end": 138.667
+      "start": 135.053,
+      "end": 141.343
     },
     {
-      "text": "患者の重さの判断や治療について聞いても、Claudeは医療の判断や助言をせず、｜「担当の医療者が判断します」と答えます。",
-      "en": "Ask about triage or treatment, and Claude gives no medical judgment or advice: it replies that the medical staff will decide.",
+      "text": "災害運用モードでは、AIを使いません。｜AIのサービスが止まっても動き続け、患者の情報を外のAIに送ることもありません。",
+      "en": "Disaster Mode uses no AI.｜It keeps working even if AI services go down, and never sends patient data to an outside AI.",
       "section": 5,
-      "start": 139.567,
-      "end": 148.927
-    },
-    {
-      "text": "災害運用モードでは、AIを使いません。",
-      "en": "Disaster Mode uses no AI at all.",
-      "section": 5,
-      "start": 149.827,
-      "end": 152.685
+      "start": 141.572,
+      "end": 153.137
     },
     {
       "text": "タシカメは、病院ごとの設定で、総合病院から中規模病院まで、｜場所や規模に合わせて導入できます。",
       "en": "With per-hospital settings, Tashikame can be adopted to fit any layout and size,｜from general to mid-sized hospitals.",
       "section": 6,
-      "start": 153.435,
-      "end": 161.419
+      "start": 153.887,
+      "end": 161.871
     },
     {
       "text": "プログラミングの経験がない看護師の私が、Claude Code を使用し、作成しました。｜守るべき決まりを先に書き、Claude 自身が点検を重ねています。",
       "en": "I'm a nurse with no programming experience, and I built this with Claude Code.｜We wrote the rules first, and Claude keeps checking its own work.",
       "section": 7,
-      "start": 162.169,
-      "end": 173.308
+      "start": 162.621,
+      "end": 173.76
     },
     {
       "text": "訓練で確かめたことを、本番でも。",
       "en": "What you confirm in drills, you carry into the real thing.",
       "section": 8,
-      "start": 174.058,
-      "end": 176.624
+      "start": 174.51,
+      "end": 177.076
     }
   ]
 }

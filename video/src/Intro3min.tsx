@@ -204,6 +204,23 @@ const Overview = () => {
 /** 全画面の録画の上で字幕が読めるよう、下に暗い帯を敷く */
 const SubShade = () => <AbsoluteFill style={{ background: 'linear-gradient(transparent 70%, rgba(4,8,16,0.88) 88%)' }} />;
 
+/** 災害運用モードは AI を使わない：つながった図の上に、利点を大きく2つ */
+const NoAiPoints = () => {
+  const frame = useCurrentFrame();
+  const item = (k: number) => interpolate(frame, [k, k + 14], [0, 1], { ...clamp, easing: ease });
+  return (
+    <AbsoluteFill style={{ fontFamily }}>
+      <AbsoluteFill style={{ backgroundColor: 'rgba(7,13,24,0.82)' }} />
+      <div style={{ position: 'absolute', left: 0, right: 0, top: 120, textAlign: 'center', fontSize: 64, fontWeight: 700, color: c.accent, opacity: item(4) }}>■ 災害運用モードは、AI を使わない</div>
+      <div style={{ position: 'absolute', left: 0, right: 0, top: 300, display: 'flex', justifyContent: 'center', gap: 60 }}>
+        {['AI が止まっても、動き続ける', '患者の情報を、外の AI に送らない'].map((t, i) => (
+          <div key={t} style={{ opacity: item(40 + i * 40), translate: `0px ${(1 - item(40 + i * 40)) * 20}px`, width: 760, flexShrink: 0, boxSizing: 'border-box', border: `4px solid ${c.accent}`, backgroundColor: 'rgba(7,13,24,0.92)', padding: '40px 24px', fontSize: 40, whiteSpace: 'nowrap', fontWeight: 700, color: c.text, textAlign: 'center', lineHeight: 1.5 }}>{t}</div>
+        ))}
+      </div>
+    </AbsoluteFill>
+  );
+};
+
 /** モードの区切り：場面の頭に大きく出して、すぐ消える（災害運用＝実線の青、訓練＝破線のだいだい） */
 const ModeChapter = ({ mode }: { mode: 'live' | 'training' }) => {
   const frame = useCurrentFrame();
@@ -454,7 +471,7 @@ const buildShots = (stock: boolean): Shot[] => [
   ) },
   { from: cut(6), to: cut(7), name: '訓練の時間がない', node: (_d, s) => (
     <>
-      <Remap map={{ 4: 6 }}><Schedule start={s} /></Remap>
+      <Remap map={{ 4: 6 }}><Schedule start={s} caption={false} /></Remap>
       <Fact source="日本看護管理学会「病院における防災訓練に関する実態調査報告書」（2024、300病院）">訓練の日も、87.3%の病院は通常どおり業務</Fact>
     </>
   ) },
@@ -548,58 +565,66 @@ const buildShots = (stock: boolean): Shot[] => [
     </>
   ) },
   // 5. 訓練モード
-  { from: cut(19), to: cut(20), name: '訓練：部署役の報告', node: (d) => (
-    <>
-      <Clip file="i1-training-report.webm" from={0} to={Math.min(8.8, d * 1.2)} dur={d} style={ONE} />
-      <Tag color={c.warn} dashed style={CAP}>部署の役：Claude API</Tag>
-    </>
-  ) },
+  // 5. 訓練モード：同じ図で「本部はあなた、部署は Claude」を見せてから、災害運用モードと同じ全画面＋右上の図で操作を見せる
+  { from: cut(19), to: cut(20), name: '訓練：本部はあなた、部署は Claude', node: (d) => {
+    const fig = Math.min(5, d * 0.55);
+    return (
+      <>
+        <Sequence durationInFrames={Math.round(fig * 30) + 8}>
+          <SceneFade durationInFrames={Math.round(fig * 30) + 8} fadeIn={1} fadeOut={8}><Hub state="training" /></SceneFade>
+        </Sequence>
+        <Sequence from={Math.round(fig * 30)}>
+          <ZoomClip file="i1-training-report.webm" from={0} rate={Math.min(1.3, Math.max(0.8, 8.8 / (d - fig)))} zoom={1} style={FULL} bare />
+          <SubShade />
+          <HubMini ai active={['er']} flow={[['er', 'hq']]} patient={null} />
+        </Sequence>
+      </>
+    );
+  } },
   { from: cut(20), to: cut(21), name: '聞いて、自分で記録する', node: (d) => (
     <>
-      <ZoomClip file="i4-training-input.webm" from={I4.memo} rate={Math.min(1.3, Math.max(0.8, (I4.saved - I4.memo) / d))} zoom={1.2} style={ONE} />
+      <ZoomClip file="i4-training-input.webm" from={I4.memo} rate={Math.min(1.3, Math.max(0.8, (I4.saved - I4.memo) / d))} zoom={1} style={FULL} bare />
+      <SubShade />
+      <HubMini ai active={['hq']} patient={null} />
     </>
   ) },
   { from: cut(21), to: cut(22), name: '振り返り', node: (d) => (
     <>
-      <Clip file="i3-training-review.webm" from={1} to={Math.min(15, 1 + d * 1.3)} dur={d} style={ONE} />
-      <Tag color={c.warn} dashed style={CAP}>説明文：Claude</Tag>
+      <ZoomClip file="i3-training-review.webm" from={1} rate={Math.min(1.3, Math.max(0.8, 14 / d))} zoom={1} style={FULL} bare />
+      <SubShade />
+      <HubMini ai active={['hq']} patient={null} />
     </>
   ) },
   // 6. 安全のしくみ
-  { from: cut(22), to: cut(23), name: '提案→検証→反映', node: () => (
+  { from: cut(22), to: cut(23), name: '医療の判断はしない', node: (d) => (
     <>
-      <Backdrop file="i1-training-report.webm" from={1} dim={0.22} />
-      <Guard />
+      <ZoomClip file="i2-training-refusal.webm" from={15} rate={Math.min(1.3, Math.max(0.8, 8 / d))} zoom={1} style={FULL} bare />
+      <SubShade />
+      <HubMini ai active={['er']} flow={[['hq', 'er']]} patient={null} />
     </>
   ) },
-  { from: cut(23), to: cut(24), name: '医療の判断はしない', node: (d) => (
+  { from: cut(23), to: cut(24), name: 'AIを使わない', node: () => (
     <>
-      <Clip file="i2-training-refusal.webm" from={15} to={Math.min(23, 15 + d * 1.2)} dur={d} style={ONE} />
-      <Tag color={c.warn} dashed style={CAP}>Claude API の実際の返事</Tag>
-    </>
-  ) },
-  { from: cut(24), to: cut(25), name: 'AIを使わない', node: () => (
-    <>
-      <Backdrop file="d-hospital-status.webm" from={2} dim={0.28} />
-      <NoAi />
+      <Hub state="connected" />
+      <NoAiPoints />
     </>
   ) },
   // 7. どの病院でも
-  { from: cut(25), to: cut(26), name: 'どの病院でも', node: (d) => (
+  { from: cut(24), to: cut(25), name: 'どの病院でも', node: (d) => (
     <>
       <Clip file="j-hospitals.webm" from={0} to={Math.min(15.6, d * 1.3)} dur={d} style={ONE} />
       <Tag color={c.text} style={CAP}>病院ごとの設定（架空の2病院）</Tag>
     </>
   ) },
   // 8. Claude Code での作り方（実際の開発の出力）
-  { from: cut(26), to: cut(27), name: 'Claude Code での作り方', node: () => <BuiltWith /> },
-  { from: cut(27), to: TOTAL3, name: '締め', node: () => <Final />, fade: 1 },
+  { from: cut(25), to: cut(26), name: 'Claude Code での作り方', node: () => <BuiltWith /> },
+  { from: cut(26), to: TOTAL3, name: '締め', node: () => <Final />, fade: 1 },
 ];
 
 const SHOTS = { plain: buildShots(false), stock: buildShots(true) };
 
 // 話題の切れ目になる行（ここで場面をいったん暗くする）
-const SECTION_STARTS = [2, 3, 4, 7, 8, 9, 19, 22, 25, 26, 27];
+const SECTION_STARTS = [2, 3, 4, 7, 8, 9, 19, 22, 24, 25, 26];
 const XF = 10; // クロスフェードのコマ数
 
 export const Intro3min = ({ stock = false }: { stock?: boolean }) => {
@@ -636,7 +661,6 @@ export const Intro3min = ({ stock = false }: { stock?: boolean }) => {
       ))}
       <Sequence from={Math.round(cut(19) * fps)} durationInFrames={Math.round((cut(22) - cut(19)) * fps)} name="訓練モードの区切り">
         <ModeChapter mode="training" />
-        <ModeBadge mode="training" />
       </Sequence>
       {/* 英語の字幕は利用者の判断でいったん出さない（english={false}）。日本語は少し小さめ */}
       <Subtitles lines={lines} delay={DELAY3} variant="cinema" english={false} />
@@ -645,7 +669,7 @@ export const Intro3min = ({ stock = false }: { stock?: boolean }) => {
         ['sfx/boom-tail.wav', L(3) - 0.05, 0.35, '効果音：情報の伝達'],
         ['sfx/reveal.wav', L(7) - 1.5, 0.22, '効果音：タシカメ'],
         ['sfx/radio.wav', cut(19) + 0.1, 0.25, '効果音：訓練モード'],
-        ['sfx/outro.wav', cut(27) + 0.1, 0.3, '効果音：締め'],
+        ['sfx/outro.wav', cut(26) + 0.1, 0.3, '効果音：締め'],
       ] as const).map(([src, t, volume, name]) => (
         <Sequence key={name} from={Math.round(t * fps)} name={name}>
           <Audio src={staticFile(src)} volume={volume} />

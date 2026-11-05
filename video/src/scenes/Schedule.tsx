@@ -8,7 +8,7 @@ const duties = ['日勤', '夜勤', '外来', '手術', '病棟', '会議', '当
 const TRAINING = { r: 2, d: 4 };
 
 /** 場面3：日々の業務に追われ、訓練もままならない。 */
-export const Schedule = ({ start }: { start: number }) => {
+export const Schedule = ({ start, caption = true }: { start: number; caption?: boolean }) => {
   const { at } = useTiming();
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
@@ -57,11 +57,11 @@ export const Schedule = ({ start }: { start: number }) => {
           }),
         )}
       </svg>
-      <AbsoluteFill style={{ top: 680, alignItems: 'center' }}>
+      {caption && <AbsoluteFill style={{ top: 680, alignItems: 'center' }}>
         <Kicker from={at(4) + 0.9 - start} style={{ fontSize: 30, color: c.sub, letterSpacing: 3 }}>
           看護師として、院内BCP訓練で見た課題から。
         </Kicker>
-      </AbsoluteFill>
+      </AbsoluteFill>}
     </AbsoluteFill>
   );
 };
