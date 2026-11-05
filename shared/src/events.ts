@@ -11,6 +11,12 @@ export const modeLabels: Record<Mode, string> = { live: '災害運用', training
 const isoDateTime = z.iso.datetime({ offset: true });
 
 /** 報告元（無線・電話で報告してきた人）。分かる項目だけ入れる */
+/**
+ * 患者・搬送・要請・記録・場所・職員などの番号。英数字で始まり、英数字・ハイフン・下線だけ（64文字まで）。
+ * "__proto__" のような名前を番号として受け付けない（細工した1件で集計が壊れないように）
+ */
+export const RefIdSchema = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/, '番号の形が正しくない');
+
 export const ReporterSchema = z.object({
   positionId: z.string().optional(),
   locationId: z.string().optional(),
@@ -108,7 +114,7 @@ export const PatientDetailsCorrectedPayload = z.object({
 
 /** 同じ人だと分かった2件の記録を1つにまとめる。subject がまとめ先、sourceId がまとめられる側 */
 export const PatientsMergedPayload = z.object({
-  sourceId: z.string().min(1),
+  sourceId: RefIdSchema,
   reason: z.string().trim().min(1),
 });
 
@@ -138,7 +144,7 @@ export type Decider = z.infer<typeof DeciderSchema>;
 export const EscortSchema = z.object({ professionId: z.string(), count: z.number().int().min(1) });
 
 export const TransportRequestedPayload = z.object({
-  patientId: z.string().min(1),
+  patientId: RefIdSchema,
   fromLocationId: z.string().min(1),
   toLocationId: z.string().min(1),
   methodId: z.string().optional(),
@@ -148,7 +154,7 @@ export const TransportRequestedPayload = z.object({
 export const TransportAcceptedPayload = z.object({ decidedBy: DeciderSchema, note: optionalText });
 export const TransportDeclinedPayload = z.object({ decidedBy: DeciderSchema, reason: z.string().trim().min(1) });
 export const TransportStaffAssignedPayload = z.object({
-  transporterIds: z.array(z.string()).min(1),
+  transporterIds: z.array(RefIdSchema).min(1),
   teamId: z.string().optional(),
 });
 export const TransportOrderedPayload = z.object({ orderedBy: DeciderSchema, note: optionalText });
@@ -216,7 +222,7 @@ export const MessageLoggedPayload = z.object({
   toLocationId: z.string().optional(),
   text: z.string().trim().min(1),
   /** 関係する患者・搬送・要請（例：P-001、T-002） */
-  relatedIds: z.array(z.string()).default([]),
+  relatedIds: z.array(RefIdSchema).default([]),
 });
 
 // ---- 入力者（職員）の追加 ----

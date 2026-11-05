@@ -113,7 +113,7 @@ describe('コマンドAPI', () => {
 
   it('形の誤りは 400', async () => {
     expect((await post('live', { command: { type: 'DeleteEverything' }, meta })).code).toBe(400);
-    const res = await fetch(`${base}/api/h/test/live/commands`, { method: 'POST', body: '{' });
+    const res = await fetch(`${base}/api/h/test/live/commands`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{' });
     expect(res.status).toBe(400);
   });
 
@@ -162,7 +162,7 @@ describe('複数の病院', () => {
     expect(((await (await fetch(`${base}/api/h/other/config`)).json()) as any).name).toBe('別の病院(架空)');
     expect((await fetch(`${base}/api/h/nowhere/config`)).status).toBe(404);
 
-    await fetch(`${base}/api/h/other/live/commands`, { method: 'POST', body: JSON.stringify(registerCmd('1')) });
+    await fetch(`${base}/api/h/other/live/commands`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(registerCmd('1')) });
     const t = (await (await fetch(`${base}/api/h/test/live/events`)).json()) as any;
     const o = (await (await fetch(`${base}/api/h/other/live/events`)).json()) as any;
     expect(t.events).toHaveLength(0);
@@ -195,24 +195,65 @@ describe('画面から病院を作る', () => {
       positions: { hqChief: true, hqTransport: true, locationLeads: true },
       staff: [{ name: '架空 太郎', locationIndex: 0, professionId: 'clerk' }],
     };
-    const bad = await fetch(`${base}/api/hospitals`, { method: 'POST', body: JSON.stringify({ draft: { ...draft, fictional: false } }) });
+    const bad = await fetch(`${base}/api/hospitals`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ draft: { ...draft, fictional: false } }) });
     expect(bad.status).toBe(400);
-    const res = await fetch(`${base}/api/hospitals`, { method: 'POST', body: JSON.stringify({ draft }) });
+    const res = await fetch(`${base}/api/hospitals`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ draft }) });
     const body = (await res.json()) as any;
     expect(res.status).toBe(200);
     const id = body.hospital.id;
     expect(id).toMatch(/^h-[0-9a-z]+$/);
     // 同じ名前はもう作れない
-    expect((await fetch(`${base}/api/hospitals`, { method: 'POST', body: JSON.stringify({ draft }) })).status).toBe(400);
+    expect((await fetch(`${base}/api/hospitals`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ draft }) })).status).toBe(400);
+    // 全角・半角の違いや見えない文字（ゼロ幅スペース）だけ違う、そっくりな名前も作れない
+    for (const name of ['作成テスト病院（仮）', '作成テスト病院(仮)\u200b', '作成 テスト病院(仮)']) {
+      expect((await fetch(`${base}/api/hospitals`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ draft: { ...draft, name } }) })).status).toBe(400);
+    }
 
     const list = (await (await fetch(`${base}/api/hospitals`)).json()) as any;
     expect(list.hospitals.map((h: any) => h.name)).toContain('作成テスト病院(仮)');
     expect(list.defaultHospitalId).toBeNull(); // 病院が2つになったので選ぶ画面を出す
     const rec = await fetch(`${base}/api/h/${id}/live/commands`, {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ command: { type: 'RegisterPatient', payload: { locationId: 'loc-2', triage: 'red' } }, meta: { enteredBy: 'st-1', terminal: 'hq' } }),
     });
     expect(rec.status).toBe(200);
     expect(loadCreatedHospitals(dir).map((h) => h.id)).toEqual([id]);
   });
 });
+
+describe('ほかのサイトからの依頼を断る（CSRF・DNS リバインディング）', () => {
+  const command = { command: { type: 'RegisterPatient', payload: { locationId: 'loc-a' } }, meta: { enteredBy: 's1', terminal: 'hq' } };
+  const send = (headers: Record<string, string>) => fetch(`${base}/api/h/test/live/commands`, { method: 'POST', headers, body: JSON.stringify(command) });
+
+  it('JSON でない本文（事前確認なしにブラウザが送れる形）は記録しない', async () => {
+    expect((await send({ 'Content-Type': 'text/plain' })).status).toBe(415);
+    expect((await send({})).status).toBe(415);
+    expect(new EventStore(storePath(join(dataDir, 'test'), 'live'), 'live').all()).toHaveLength(0);
+  });
+
+  it('ほかのサイトの Origin からは記録しない。同じサーバーの画面からは記録する', async () => {
+    expect((await send({ 'Content-Type': 'application/json', Origin: 'http://evil.example' })).status).toBe(403);
+    const host = new URL(base).host;
+    expect((await send({ 'Content-Type': 'application/json', Origin: `http://${host}` })).status).toBe(200);
+  });
+
+  it('知らないホスト名（攻撃者のドメインを院内の IP に向けた場合）では、読むことも書くこともできない', async () => {
+    const { request } = await import('node:http');
+    const port = new URL(base).port;
+    const status = await new Promise<number>((resolve) => {
+      request({ host: '127.0.0.1', port, path: '/api/h/test/live/events', headers: { Host: 'attacker.example' } }, (res) => {
+        res.resume();
+        resolve(res.statusCode!);
+      }).end();
+    });
+    expect(status).toBe(421);
+  });
+
+  it('応答に、枠の中への表示と中身の推測を禁じるヘッダーを付ける', async () => {
+    const res = await fetch(`${base}/api/health`);
+    expect(res.headers.get('x-frame-options')).toBe('DENY');
+    expect(res.headers.get('x-content-type-options')).toBe('nosniff');
+  });
+});
+

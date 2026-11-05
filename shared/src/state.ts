@@ -192,26 +192,34 @@ export interface AppState {
   lastRecordedAt: string | null;
 }
 
+/**
+ * 番号をキーにする辞書。プロトタイプを持たないので、"toString"・"__proto__" などの番号を送られても、
+ * Object.prototype の値を「ある」と読み違えたり、書き換えたりしない（細工した1件で集計が壊れないように）
+ */
+export function dict<T>(): Record<string, T> {
+  return Object.create(null) as Record<string, T>;
+}
+
 export function emptyState(): AppState {
   return {
-    patients: {},
-    transports: {},
+    patients: dict(),
+    transports: dict(),
     transportOrder: [],
     requestedTransportCount: 0,
-    transporters: {},
-    locations: {},
-    supports: {},
+    transporters: dict(),
+    locations: dict(),
+    supports: dict(),
     supportOrder: [],
     requestedSupportCount: 0,
     messageCount: 0,
-    staff: {},
+    staff: dict(),
     staffOrder: [],
     zoneChanges: [],
     patientOrder: [],
-    versions: {},
+    versions: dict(),
     registeredCount: 0,
-    eventMeta: {},
-    retractedEventIds: {},
+    eventMeta: dict(),
+    retractedEventIds: dict(),
     eventCount: 0,
     lastEventId: null,
     lastRecordedAt: null,
@@ -611,11 +619,11 @@ function unconfirmed<T>(): Reported<T> {
 }
 
 export function locationView(state: AppState, locationId: string): LocationView {
-  return state.locations[locationId] ?? { accepting: unconfirmed(), capacity: {}, staff: {}, lastObservedAt: null };
+  return state.locations[locationId] ?? { accepting: unconfirmed(), capacity: dict(), staff: dict(), lastObservedAt: null };
 }
 
 function applyLocationEvent(state: AppState, e: DomainEvent, correction: Correction | undefined): void {
-  const loc = (state.locations[e.subject.id] ??= { accepting: unconfirmed(), capacity: {}, staff: {}, lastObservedAt: null });
+  const loc = (state.locations[e.subject.id] ??= { accepting: unconfirmed(), capacity: dict(), staff: dict(), lastObservedAt: null });
   const reported = <T>(value: T | null): Reported<T> => ({ value, confirmedAt: e.observedAt, eventId: e.id });
   // 後から入力された古い確認では、新しい確認を上書きしない
   const newer = (r: Reported<unknown> | undefined) => !r?.confirmedAt || laterObservation(e, { observedAt: r.confirmedAt });
@@ -679,7 +687,7 @@ export function incomingTransports(state: AppState, locationId: string): Transpo
 
 /** 付き添いで場所を離れている人数（出発済み・未到着の搬送の付き添い） */
 export function escortsAway(state: AppState, locationId: string): Record<string, number> {
-  const out: Record<string, number> = {};
+  const out = dict<number>();
   for (const t of activeTransports(state)) {
     if (t.fromLocationId !== locationId || !t.steps.departed) continue;
     for (const e of t.escorts) out[e.professionId] = (out[e.professionId] ?? 0) + e.count;

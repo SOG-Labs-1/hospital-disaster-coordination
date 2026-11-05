@@ -2,7 +2,7 @@ import type { HospitalConfig } from './config';
 import type { DomainEvent } from './events';
 import type { CheckRule, Scenario } from './scenario';
 import type { SimView } from './simulator';
-import { activePatients, normalizeIdentifier, reduce, type AppState, type PatientView } from './state';
+import { activePatients, dict, normalizeIdentifier, reduce, type AppState, type PatientView } from './state';
 
 // 訓練の振り返り（純粋な関数）。照合はプログラムで行い、AI は説明文を書く役に限る。
 // 点数や順位は付けない。「記録がない（起きたがボードにない）」と「実施されなかった」を区別する。
@@ -55,7 +55,7 @@ const minutes = (ms: number) => Math.round(ms / 60000);
  */
 export function matchPatients(view: SimView, board: AppState): Record<string, string | null> {
   const used = new Set<string>();
-  const out: Record<string, string | null> = {};
+  const out = dict<string | null>();
   const truth = Object.values(view.patients).sort((a, b) => a.arrivedSimMs - b.arrivedSimMs);
   const boardPatients = activePatients(board);
   for (const t of truth) {

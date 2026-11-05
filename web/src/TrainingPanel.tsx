@@ -261,7 +261,7 @@ function MessageToRole({ snapshot }: { config: HospitalConfig; snapshot: Trainin
         </fieldset>
         <label className="field">
           <span>伝えること</span>
-          <input value={text} onChange={(e) => setText(e.target.value)} autoComplete="off" placeholder="例：受け入れられるか確認します" />
+          <input value={text} onChange={(e) => setText(e.target.value)} autoComplete="off" maxLength={300} placeholder="例：受け入れられるか確認します" />
         </label>
         <button type="submit" className="btn btn-primary" disabled={!to || !text.trim()}>
           無線で伝える

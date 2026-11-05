@@ -18,6 +18,14 @@ import type { AiProvider } from '../ai';
 import { MockProvider } from '../ai/mock';
 import { SimStore } from './sim-store';
 
+/** 本部から部署役への連絡の長さ（無線で伝える1回分。プロンプトを大きくしすぎない） */
+export const MAX_HQ_MESSAGE_LENGTH = 300;
+/** 1回の訓練で本部から送れる連絡の数 */
+export const MAX_HQ_MESSAGES_PER_RUN = 60;
+/** 1回の訓練で振り返りの説明文を作れる回数（自動と手動の合計）と、そのうち自動で作り直す回数 */
+export const MAX_EXPLAIN_ATTEMPTS = 3;
+export const MAX_AUTO_EXPLAIN_ATTEMPTS = 2;
+
 // 訓練の進行。シミュレーター（shared）を時計で動かし、部署役（AiProvider）に刺激を渡し、
 // 返ってきた提案をシミュレーターで検証して記録する。
 // 参加者のボードは読むだけで、書き込まない（書き込めるのは参加者の操作によるコマンドだけ）。
@@ -169,6 +177,8 @@ export class TrainingManager {
   }
 
   private explaining = false;
+  /** 回ごとの説明文の生成回数。失敗が続いても API を呼び続けないよう、上限を設ける（費用の枯渇を防ぐ） */
+  private explainAttempts = new Map<string, number>();
 
   /**
    * 振り返りの説明文を AI に書かせる。照合の結果（指摘と根拠）はプログラムが作り、AI は説明だけを書く。
@@ -179,8 +189,11 @@ export class TrainingManager {
     const sc = this.scenario();
     if (!review || !sc) return { ok: false, error: '訓練が終わってから説明を作る' };
     if (this.explaining) return { ok: true };
-    this.explaining = true;
     const runId = this.runId;
+    const attempts = this.explainAttempts.get(runId ?? '') ?? 0;
+    if (attempts >= MAX_EXPLAIN_ATTEMPTS) return { ok: false, error: `この回の説明文は${MAX_EXPLAIN_ATTEMPTS}回まで作れる（照合の結果は説明文がなくても見られる）` };
+    this.explainAttempts.set(runId ?? '', attempts + 1);
+    this.explaining = true;
     const notes = this.view()!.notes;
     const findings = review.findings.map((f) => ({ id: f.id, title: f.title, detail: f.detail, evidence: f.evidence, participantNote: notes[f.id] }));
     withTimeout(this.deps.provider.explainReview({ scenarioTitle: sc.title, findings }), (this.deps.replyTimeoutMs ?? 20_000) * 3)
@@ -242,10 +255,10 @@ export class TrainingManager {
     return { ok: true };
   }
 
-  /** 時間切れ・終了の直後に、振り返りの説明文を一度だけ作る */
+  /** 時間切れ・終了の直後に、振り返りの説明文を作る。失敗したときの自動の作り直しは、回ごとに上限まで */
   private explainOnceAfterEnd(): void {
     const view = this.view();
-    if (view?.ended && !view.explanations && !this.explaining) this.explain();
+    if (view?.ended && !view.explanations && !this.explaining && (this.explainAttempts.get(this.runId ?? '') ?? 0) < MAX_AUTO_EXPLAIN_ATTEMPTS) this.explain();
   }
 
   /** 本部から部署役へ連絡する（無線で伝えたことにあたる） */
@@ -255,6 +268,9 @@ export class TrainingManager {
     if (!sc || !view || view.ended) return { ok: false, error: '進行中の訓練がない' };
     if (!sc.roles.some((r) => r.locationId === to)) return { ok: false, error: 'その場所には部署役がいない' };
     if (!text.trim()) return { ok: false, error: '内容を書く' };
+    if (text.trim().length > MAX_HQ_MESSAGE_LENGTH) return { ok: false, error: `連絡は${MAX_HQ_MESSAGE_LENGTH}字までにする` };
+    // 部署役への連絡は1通ごとに AI を呼ぶので、回ごとの通数に上限を設ける（費用の枯渇を防ぐ）
+    if (view.outbox.length >= MAX_HQ_MESSAGES_PER_RUN) return { ok: false, error: `この回の連絡は${MAX_HQ_MESSAGES_PER_RUN}通まで` };
     const sim = simMsAt(view, this.now());
     const n = view.outbox.length + 1;
     this.append([

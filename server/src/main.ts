@@ -1,5 +1,5 @@
-import { existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, realpathSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 import { createApp } from './app';
 import { createAiProvider } from './ai';
 import { MockProvider } from './ai/mock';
@@ -17,7 +17,9 @@ const defaultHospitalId = process.env.DEFAULT_HOSPITAL || undefined;
 const port = Number(process.env.SERVER_PORT ?? 4000);
 const dataDir = process.env.DATA_DIR ?? join(repoRoot, 'data');
 // デモ・録画専用の起動（DEMO_CAPTURE=1）は、通常の保存先 data/ では動かさない（架空のデモ用データが、消せない災害運用の記録に混ざるため）
-if (process.env.DEMO_CAPTURE === '1' && dataDir === join(repoRoot, 'data')) {
+// 書き方（相対パス・末尾の / ・シンボリックリンク）の違いで抜けないよう、実際の場所で比べる
+const realDir = (p: string) => (existsSync(p) ? realpathSync(p) : resolve(p));
+if (process.env.DEMO_CAPTURE === '1' && realDir(dataDir) === realDir(join(repoRoot, 'data'))) {
   console.error('DEMO_CAPTURE=1 のときは、DATA_DIR にデモ・録画専用の保存先を指定してください（通常の data/ には書き込みません）');
   process.exit(1);
 }
@@ -34,7 +36,10 @@ const provider = await createAiProvider().catch((err) => {
 });
 const app = createApp({ hospitals, dataDir, defaultHospitalId, staticDir: join(repoRoot, 'web/dist'),
   training: { scenarios, provider },
-  hospitalCreation: { template: loadHospitalTemplate(), dir: createdDir },
+  // HOSPITAL_CREATION=0 で、画面から病院を作る機能を止められる（設定が固まった院内の運用では止めておける）
+  hospitalCreation: process.env.HOSPITAL_CREATION === '0' ? undefined : { template: loadHospitalTemplate(), dir: createdDir },
+  // ALLOWED_HOSTS: localhost・IP アドレス・*.local 以外の名前で開くときに、カンマ区切りで指定する
+  allowedHosts: (process.env.ALLOWED_HOSTS ?? '').split(',').map((h) => h.trim()).filter(Boolean),
   // デモ・録画専用の起動（npm run demo と video/capture/record.ts が DEMO_CAPTURE=1 を渡す）
   demoCapture: process.env.DEMO_CAPTURE === '1',
 });

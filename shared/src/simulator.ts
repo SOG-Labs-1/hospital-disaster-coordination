@@ -2,7 +2,7 @@ import type { HospitalConfig } from './config';
 import type { DomainEvent, SupportItem } from './events';
 import type { Proposal } from './proposals';
 import type { Scenario, ScenarioPatient } from './scenario';
-import { normalizeIdentifier, reduce, type AppState } from './state';
+import { dict, normalizeIdentifier, reduce, type AppState } from './state';
 
 // 訓練のシミュレーター（純粋な関数）。
 // - 「実際の状態（truth）」をシナリオと時間から作る。参加者の「ボード」（訓練の記録）とは別に持つ
@@ -150,26 +150,26 @@ export function emptySimView(): SimView {
     fired: new Set(),
     observed: new Set(),
     stimuli: new Map(),
-    patients: {},
-    locations: {},
-    transports: {},
-    supports: {},
+    patients: dict(),
+    locations: dict(),
+    transports: dict(),
+    supports: dict(),
     needs: [],
     inbox: [],
     outbox: [],
     proposals: [],
-    notes: {},
+    notes: dict(),
     explanations: null,
     providerFailures: 0,
   };
 }
 
 function initLocations(scenario: Scenario, config: HospitalConfig): SimView['locations'] {
-  const out: SimView['locations'] = {};
+  const out: SimView['locations'] = dict();
   for (const l of config.locations) {
-    const capacity: Record<string, number> = {};
+    const capacity = dict<number>();
     for (const c of config.capacity.filter((c) => c.locationId === l.id)) capacity[c.triage] = c.value;
-    out[l.id] = { accepting: true, capacity, staff: {} };
+    out[l.id] = { accepting: true, capacity, staff: dict() };
   }
   for (const i of scenario.initial) {
     const loc = out[i.locationId]!;
@@ -300,6 +300,14 @@ export function patientText(config: HospitalConfig, p: { tagNumber?: string; tri
   return [p.tagNumber ? `タッグ${p.tagNumber}` : 'タッグ番号なし', t ? `${t.label}` : '区分未判定', sex, p.estimatedAge, p.features].filter(Boolean).join('、');
 }
 
+/**
+ * 参加者が書いた文（本部からの連絡、ボードの特徴メモなど）を、部署役への指示と区別できるよう囲む。
+ * 囲みを閉じて指示を書き足されないよう、山かっこは取り除く（プロンプト・インジェクション対策）
+ */
+export function quoteParticipant(text: string): string {
+  return `<参加者の文>${text.replace(/[<>＜＞]/g, '')}</参加者の文>`;
+}
+
 export function describeStimulus(config: HospitalConfig, s: Stimulus): string {
   const loc = (id: string) => config.locations.find((l) => l.id === id)?.name ?? id;
   const items = (xs: SupportItem[]) =>
@@ -322,15 +330,15 @@ export function describeStimulus(config: HospitalConfig, s: Stimulus): string {
     case 'notice':
       return `本部に知らせるべきことがある：${s.text}`;
     case 'transportRequest':
-      return `本部から搬送の受け入れ依頼が来た（${s.transportId}：${loc(s.fromLocationId)}から、${s.patientText}）。受け入れられるか判断して返事をする。`;
+      return `本部から搬送の受け入れ依頼が来た（${s.transportId}：${loc(s.fromLocationId)}から、${quoteParticipant(s.patientText)}）。受け入れられるか判断して返事をする。`;
     case 'transportOrdered':
-      return `本部から搬送の指示が来た（${s.transportId}：${s.patientText}を${loc(s.toLocationId)}へ）。患者を送り出したら出発を報告する。`;
+      return `本部から搬送の指示が来た（${s.transportId}：${quoteParticipant(s.patientText)}を${loc(s.toLocationId)}へ）。患者を送り出したら出発を報告する。`;
     case 'patientArrivedByTransport':
-      return `搬送されてきた患者が到着した（${s.transportId}：${loc(s.fromLocationId)}から、${s.patientText}）。本部へ到着を報告する。`;
+      return `搬送されてきた患者が到着した（${s.transportId}：${loc(s.fromLocationId)}から、${quoteParticipant(s.patientText)}）。本部へ到着を報告する。`;
     case 'supportArrived':
       return `要請した支援が届いた（${s.supportId}：${s.itemsText}）。本部へ伝える。`;
     case 'hqMessage':
-      return `本部から連絡が来た：「${s.text}」。返事をする。`;
+      return `本部から連絡が来た：${quoteParticipant(s.text)}。返事をする。`;
   }
 }
 
@@ -590,7 +598,15 @@ const MEDICAL_ADVICE = new RegExp(
     '(処方|投与|投薬|輸液|輸血|点滴|止血|治療|手術|処置)(を|は)?(すべき|が必要|した(方|ほう)がよい|した(方|ほう)がいい)',
     // 区分（トリアージ）の判断
     '(トリアージ|区分)を[^。、]{0,6}(変更|変え|上げ|下げ)', '(トリアージ|区分)(は|が)[^。]{0,6}(妥当|適切)', '(赤|黄|緑|黒)(に|へ)(上げ|下げ)', '(赤|黄|緑|黒)(に|へ)(変え|変更)(る|す|し)?(べき|た(方|ほう)が|てください)', '(赤|黄|緑|黒)が(妥当|適切)',
+    '(赤|黄|緑|黒)(色)?(に|へ)(す|し)(べき|た(方|ほう)が)', '(赤|黄|緑|黒)(色)?の(方|ほう)が((良|よ)(い|さ)|いい)',
+    // 薬の量と投与の経路・処置の指示（「アドレナリン0.3mgを筋注で」のような言い方。物品の要請の「500ml」だけでは止めない）
+    '\\d+(\\.\\d+)?(mg|μg|mcg|ml|l)(を|で)?(筋注|静注|皮下注|投与|内服|点滴|iv|im)', '\\d+(l|リットル)(/分)?(リザーバー|マスク|カニューラ)',
+    '(筋注|静注|皮下注|点滴静注|挿管|除細動|ルート確保)(で|を|して|し|する|します|開始)',
+    '(止血帯|ターニケット)を(巻|使|つけ)', '圧迫を(続け|して|し)', '手術適応', '(酸素|輸液|点滴|投与|処置)を開始',
+    // 英語の言い方
+    '\\b(diagnos\\w*|administer|inject\\w*|intubat\\w*|start (an )?iv|iv fluids?|triage (him|her|them|the patient|should|to))\\b',
   ].join('|'),
+  'i',
 );
 
 /**
@@ -603,7 +619,9 @@ export function containsMedicalAdvice(text: string, config?: HospitalConfig): bo
     const names = [...config.resources.map((r) => r.name), ...config.locations.map((l) => l.name), ...config.professions.map((p) => p.name)];
     for (const n of names.sort((x, y) => y.length - x.length)) t = t.split(n).join('□');
   }
-  return MEDICAL_ADVICE.test(t);
+  // 全角・半角の違いと空白で抜けないよう、そろえてから確かめる（「診 断」「０．３ｍｇ」など）
+  const n = t.normalize('NFKC');
+  return MEDICAL_ADVICE.test(n) || MEDICAL_ADVICE.test(n.replace(/\s+/g, ''));
 }
 
 export function validateProposal(view: SimView, config: HospitalConfig, role: string, p: Proposal, stimulus?: Stimulus): string | null {

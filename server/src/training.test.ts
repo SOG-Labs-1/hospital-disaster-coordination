@@ -30,7 +30,7 @@ afterEach(async () => {
 });
 
 const post = async (path: string, body: unknown) => {
-  const res = await fetch(`${base}${path}`, { method: 'POST', body: JSON.stringify(body) });
+  const res = await fetch(`${base}${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   return { code: res.status, body: (await res.json()) as any };
 };
 const snapshot = async () => (await (await fetch(`${base}/training/sim`)).json()) as any;
@@ -215,6 +215,28 @@ describe('AI が止まっても訓練は続く', () => {
     const s = await snapshot();
     expect(s.review.findings.length).toBeGreaterThan(0);
     expect(s.review.explainedBy).toBeNull();
+  });
+
+  it('説明文の作成に失敗し続けても、API を呼び続けない（回ごとに上限まで）', async () => {
+    let calls = 0;
+    await restartWith({ ...failing, explainReview: async () => { calls++; throw new Error('API に届かない'); } });
+    await post('/training/sim/control', { action: 'start', scenarioId: 'claude-red-to-or' });
+    await advanceBy(40_000);
+    await post('/training/sim/control', { action: 'end' });
+    for (let i = 0; i < 10; i++) await advanceBy(1_000);
+    expect(calls).toBe(2);
+    // 手動の作り直しも、回ごとの上限まで
+    expect((await post('/training/sim/explain', {})).code).toBe(200);
+    await app.training('claude')!.settle();
+    expect((await post('/training/sim/explain', {})).code).toBe(400);
+    expect(calls).toBe(3);
+  });
+
+  it('本部からの連絡は決まった長さまで', async () => {
+    await post('/training/sim/control', { action: 'start', scenarioId: 'claude-red-to-or' });
+    const to = (await snapshot()).scenarios[0].roles[0].locationId;
+    expect((await post('/training/sim/message', { to, text: 'あ'.repeat(301) })).code).toBe(400);
+    expect((await post('/training/sim/message', { to, text: 'あ'.repeat(300) })).code).toBe(200);
   });
 
   it('補足は振り返りにある指摘にだけ、決まった長さまで付けられる。参加者には作る人向けの説明を見せない', async () => {

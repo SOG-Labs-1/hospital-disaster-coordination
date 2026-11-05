@@ -1,6 +1,6 @@
 import { createReadStream, existsSync, statSync } from 'node:fs';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
-import { extname, join, normalize } from 'node:path';
+import { extname, join, normalize, sep } from 'node:path';
 import { monotonicFactory } from 'ulid';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { stringify as stringifyYaml } from 'yaml';
@@ -42,6 +42,11 @@ export interface AppOptions {
    * デモ用データのスクリプトは、この目印があるサーバーにだけ書き込む（通常の記録に架空のデモ用データを混ぜない）
    */
   demoCapture?: boolean;
+  /**
+   * 開いてよいホスト名（Host ヘッダー）。localhost・IP アドレス・*.local は常に許す。
+   * それ以外の名前（院内の DNS 名など）で開くときに指定する（DNS リバインディング対策）
+   */
+  allowedHosts?: string[];
 }
 
 export interface App {
@@ -52,6 +57,48 @@ export interface App {
 }
 
 const MAX_BODY = 1_000_000;
+/** 画面から作れる病院の数（作りすぎて開くファイルが尽きないように） */
+const MAX_CREATED_HOSPITALS = 20;
+
+/** 病院名の比べ方：全角・半角の違い、見えない文字（ゼロ幅など）、空白を無視する（そっくりな名前の病院を作らせない） */
+export function normalizeHospitalName(name: string): string {
+  return name.normalize('NFKC').replace(/[\s\u200B-\u200F\u2028-\u202F\u2060-\u206F\uFEFF]/g, '').toLowerCase();
+}
+
+/** Host ヘッダーが、この院内のサーバーを指しているか（攻撃者のドメインを院内の IP に向ける DNS リバインディングを防ぐ） */
+export function isAllowedHost(host: string | undefined, allowed: readonly string[] = []): boolean {
+  if (!host) return false;
+  const name = (host.startsWith('[') ? host.slice(0, host.indexOf(']') + 1) : host.replace(/:\d+$/, '')).toLowerCase();
+  return (
+    name === 'localhost' ||
+    name.endsWith('.localhost') ||
+    name.endsWith('.local') ||
+    /^\d{1,3}(\.\d{1,3}){3}$/.test(name) ||
+    /^\[[0-9a-f:.]+\]$/.test(name) ||
+    allowed.some((a) => a.toLowerCase() === name)
+  );
+}
+
+/**
+ * 書き込み（POST）を受けてよいか。ほかのサイトのページから送られた依頼（CSRF）を断る。
+ * - 本文は JSON だけ（text/plain などの「事前確認なしに送れる形」を断る）
+ * - Origin ヘッダーがあれば、開いているサーバーと同じであること
+ */
+function writeRefusal(req: IncomingMessage): { code: number; error: string } | null {
+  const type = req.headers['content-type'] ?? '';
+  if (!/^application\/json\b/i.test(type)) return { code: 415, error: '本文は JSON（application/json）で送る' };
+  const origin = req.headers.origin;
+  if (origin !== undefined) {
+    let originHost: string;
+    try {
+      originHost = new URL(origin).host;
+    } catch {
+      return { code: 403, error: 'ほかのサイトからの書き込みは受け付けない' };
+    }
+    if (originHost.toLowerCase() !== (req.headers.host ?? '').toLowerCase()) return { code: 403, error: 'ほかのサイトからの書き込みは受け付けない' };
+  }
+  return null;
+}
 
 export function createApp(options: AppOptions): App {
   const { dataDir, staticDir } = options;
@@ -153,9 +200,18 @@ export function createApp(options: AppOptions): App {
       newId: () => ulid(),
     });
     if (result.status === 'accepted') {
+      // 保存する前に集計できることを確かめる。記録は追記のみで消せないので、集計を壊す記録を1件でも残すと、
+      // 以後すべての端末とサーバーの起動が止まる
+      let next: AppState;
+      try {
+        next = reduce([...ctx.events, ...result.events]);
+      } catch (err) {
+        console.error('集計できない記録になるため、保存しなかった', err);
+        return { code: 400, body: { status: 'rejected', errors: ['この内容は記録できない（集計できない形になる）'] } };
+      }
       ctx.store.append(result.events);
       ctx.events.push(...result.events);
-      ctx.state = reduce(ctx.events);
+      ctx.state = next;
       broadcast(ctx, result.events);
       // 訓練では、参加者の記録をすぐにシミュレーターに見せる（部署役への依頼などが届く）
       if (ctx.mode === 'training') managers.get(ctx.config.id)?.tick();
@@ -178,6 +234,11 @@ export function createApp(options: AppOptions): App {
   async function route(req: IncomingMessage, res: ServerResponse) {
     const url = new URL(req.url ?? '/', 'http://localhost');
     const path = url.pathname;
+    if (!isAllowedHost(req.headers.host, options.allowedHosts)) return json(res, 421, { status: 'error', errors: ['このホスト名では開けない（ALLOWED_HOSTS に追加する）'] });
+    if (req.method === 'POST') {
+      const refusal = writeRefusal(req);
+      if (refusal) return json(res, refusal.code, { status: 'rejected', errors: [refusal.error] });
+    }
 
     if (path === '/api/health') return json(res, 200, { ok: true, serverTime: now().toISOString(), ...(options.demoCapture ? { demoCapture: true } : {}) });
     if (path === '/api/hospitals' && req.method === 'GET')
@@ -191,7 +252,7 @@ export function createApp(options: AppOptions): App {
       if (!creation) return json(res, 404, { status: 'error', errors: ['病院を作る機能は使えない'] });
       let body: { draft?: unknown };
       try {
-        body = JSON.parse(await readBody(req));
+        body = JSON.parse(await readBody(req)) ?? {};
       } catch {
         return json(res, 400, { status: 'rejected', errors: ['JSON として読めない'] });
       }
@@ -199,7 +260,8 @@ export function createApp(options: AppOptions): App {
       const id = `h-${ulid().toLowerCase().slice(-10)}`;
       const r = buildHospitalConfig(body.draft as never, creation.template, id);
       if (!r.ok) return json(res, 400, { status: 'rejected', errors: r.errors });
-      if (hospitals.some((h) => h.name === r.config.name)) return json(res, 400, { status: 'rejected', errors: [`同じ名前の病院「${r.config.name}」がすでにある`] });
+      if (hospitals.length - options.hospitals.length >= MAX_CREATED_HOSPITALS) return json(res, 400, { status: 'rejected', errors: [`画面から作れる病院は${MAX_CREATED_HOSPITALS}件まで`] });
+      if (hospitals.some((h) => normalizeHospitalName(h.name) === normalizeHospitalName(r.config.name))) return json(res, 400, { status: 'rejected', errors: [`同じ名前の病院「${r.config.name}」がすでにある`] });
       mkdirSync(creation.dir, { recursive: true });
       // 作った病院設定はファイルとして残す（記録の保存先と同じく git の管理外）。次の起動でも読み込む
       writeFileSync(join(creation.dir, `${id}.yaml`), `# 画面から作った病院設定（${now().toISOString()}）\n${stringifyYaml(r.config)}`, { flag: 'wx' });
@@ -231,7 +293,7 @@ export function createApp(options: AppOptions): App {
       if (req.method !== 'POST') return json(res, 405, { status: 'error', errors: ['この操作はできない'] });
       let body: Record<string, unknown>;
       try {
-        body = JSON.parse(await readBody(req));
+        body = JSON.parse(await readBody(req)) ?? {};
       } catch {
         return json(res, 400, { status: 'rejected', errors: ['JSON として読めない'] });
       }
@@ -314,8 +376,16 @@ export function createApp(options: AppOptions): App {
   };
 }
 
+/** すべての応答に付ける：中身の種類を推測させない、ほかのサイトの枠の中に表示させない（クリックジャッキング対策） */
+const securityHeaders = {
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'Content-Security-Policy': "frame-ancestors 'none'",
+  'Referrer-Policy': 'no-referrer',
+};
+
 function json(res: ServerResponse, code: number, body: unknown) {
-  res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+  res.writeHead(code, { ...securityHeaders, 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
   res.end(JSON.stringify(body));
 }
 
@@ -346,10 +416,18 @@ const mimeTypes: Record<string, string> = {
 };
 
 function serveStatic(dir: string, path: string, res: ServerResponse) {
-  const safe = normalize(decodeURIComponent(path)).replace(/^(\.\.[/\\])+/, '');
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(path);
+  } catch {
+    return json(res, 400, { status: 'error', errors: ['URL を読めない'] });
+  }
+  const safe = normalize(decoded).replace(/^(\.\.[/\\])+/, '');
   let file = join(dir, safe);
-  if (!file.startsWith(dir) || !existsSync(file) || statSync(file).isDirectory()) file = join(dir, 'index.html');
+  if (!file.startsWith(dir + sep) || !existsSync(file) || statSync(file).isDirectory()) file = join(dir, 'index.html');
   if (!existsSync(file)) return json(res, 404, { status: 'error', errors: ['画面がビルドされていない（npm run build -w web）'] });
-  res.writeHead(200, { 'Content-Type': mimeTypes[extname(file)] ?? 'application/octet-stream' });
-  createReadStream(file).pipe(res);
+  res.writeHead(200, { ...securityHeaders, 'Content-Type': mimeTypes[extname(file)] ?? 'application/octet-stream' });
+  createReadStream(file)
+    .on('error', () => res.destroy())
+    .pipe(res);
 }

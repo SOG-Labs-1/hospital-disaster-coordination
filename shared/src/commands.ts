@@ -9,6 +9,7 @@ import {
   PatientNoteUpdatedPayload,
   PatientRegisteredPayload,
   PatientTriageChangedPayload,
+  RefIdSchema,
   ReporterSchema,
   identifierLabels,
   payloadSchemas,
@@ -43,19 +44,19 @@ const optionalText = z.string().trim().optional();
 export const CommandSchema = z.discriminatedUnion('type', [
   // 患者
   z.object({ type: z.literal('RegisterPatient'), payload: PatientRegisteredPayload }),
-  z.object({ type: z.literal('AddPatientIdentifier'), patientId: z.string(), payload: PatientIdentifierAddedPayload }),
-  z.object({ type: z.literal('ChangePatientTriage'), patientId: z.string(), payload: PatientTriageChangedPayload }),
-  z.object({ type: z.literal('UpdatePatientNote'), patientId: z.string(), payload: PatientNoteUpdatedPayload }),
-  z.object({ type: z.literal('CorrectPatientDetails'), patientId: z.string(), payload: payloadSchemas.PatientDetailsCorrected }),
+  z.object({ type: z.literal('AddPatientIdentifier'), patientId: RefIdSchema, payload: PatientIdentifierAddedPayload }),
+  z.object({ type: z.literal('ChangePatientTriage'), patientId: RefIdSchema, payload: PatientTriageChangedPayload }),
+  z.object({ type: z.literal('UpdatePatientNote'), patientId: RefIdSchema, payload: PatientNoteUpdatedPayload }),
+  z.object({ type: z.literal('CorrectPatientDetails'), patientId: RefIdSchema, payload: payloadSchemas.PatientDetailsCorrected }),
   /** sourceId の患者を patientId の患者にまとめる */
-  z.object({ type: z.literal('MergePatients'), patientId: z.string(), payload: payloadSchemas.PatientsMerged }),
+  z.object({ type: z.literal('MergePatients'), patientId: RefIdSchema, payload: payloadSchemas.PatientsMerged }),
   // 訂正
-  z.object({ type: z.literal('CorrectEvent'), eventId: z.string(), payload: EventCorrectedPayload }),
+  z.object({ type: z.literal('CorrectEvent'), eventId: RefIdSchema, payload: EventCorrectedPayload }),
   // 搬送（調整・指示）
   z.object({
     type: z.literal('RequestTransport'),
     payload: z.object({
-      patientId: z.string().min(1),
+      patientId: RefIdSchema,
       /** 省略時は患者のいまの所在 */
       fromLocationId: z.string().optional(),
       toLocationId: z.string().min(1),
@@ -64,47 +65,47 @@ export const CommandSchema = z.discriminatedUnion('type', [
       note: optionalText,
     }),
   }),
-  z.object({ type: z.literal('AcceptTransport'), transportId: z.string(), payload: z.object({ decidedBy: DeciderSchema, note: optionalText }) }),
-  z.object({ type: z.literal('DeclineTransport'), transportId: z.string(), payload: z.object({ decidedBy: DeciderSchema, reason: z.string().trim().min(1) }) }),
+  z.object({ type: z.literal('AcceptTransport'), transportId: RefIdSchema, payload: z.object({ decidedBy: DeciderSchema, note: optionalText }) }),
+  z.object({ type: z.literal('DeclineTransport'), transportId: RefIdSchema, payload: z.object({ decidedBy: DeciderSchema, reason: z.string().trim().min(1) }) }),
   z.object({
     type: z.literal('AssignTransportStaff'),
-    transportId: z.string(),
-    payload: z.object({ transporterIds: z.array(z.string()).min(1), teamId: z.string().optional() }),
+    transportId: RefIdSchema,
+    payload: z.object({ transporterIds: z.array(RefIdSchema).min(1), teamId: z.string().optional() }),
   }),
-  z.object({ type: z.literal('OrderTransport'), transportId: z.string(), payload: z.object({ orderedBy: DeciderSchema, note: optionalText }) }),
-  z.object({ type: z.literal('AcknowledgeTransport'), transportId: z.string(), payload: z.object({ note: optionalText }).default({}) }),
-  z.object({ type: z.literal('CancelTransport'), transportId: z.string(), payload: z.object({ reason: z.string().trim().min(1) }) }),
+  z.object({ type: z.literal('OrderTransport'), transportId: RefIdSchema, payload: z.object({ orderedBy: DeciderSchema, note: optionalText }) }),
+  z.object({ type: z.literal('AcknowledgeTransport'), transportId: RefIdSchema, payload: z.object({ note: optionalText }).default({}) }),
+  z.object({ type: z.literal('CancelTransport'), transportId: RefIdSchema, payload: z.object({ reason: z.string().trim().min(1) }) }),
   z.object({
     type: z.literal('RedirectTransport'),
-    transportId: z.string(),
+    transportId: RefIdSchema,
     payload: z.object({ toLocationId: z.string().min(1), reason: z.string().trim().min(1) }),
   }),
   // 搬送（事実）
-  z.object({ type: z.literal('RecordDeparture'), transportId: z.string(), payload: z.object({ note: optionalText }).default({}) }),
-  z.object({ type: z.literal('RecordArrival'), transportId: z.string(), payload: z.object({ note: optionalText }).default({}) }),
-  z.object({ type: z.literal('RecordHandover'), transportId: z.string(), payload: z.object({ note: optionalText }).default({}) }),
+  z.object({ type: z.literal('RecordDeparture'), transportId: RefIdSchema, payload: z.object({ note: optionalText }).default({}) }),
+  z.object({ type: z.literal('RecordArrival'), transportId: RefIdSchema, payload: z.object({ note: optionalText }).default({}) }),
+  z.object({ type: z.literal('RecordHandover'), transportId: RefIdSchema, payload: z.object({ note: optionalText }).default({}) }),
   // 搬送要員
   z.object({
     type: z.literal('SetTransporterAvailability'),
-    transporterId: z.string(),
+    transporterId: RefIdSchema,
     payload: z.object({ available: z.boolean(), note: optionalText }),
   }),
   // 場所
-  z.object({ type: z.literal('ReportLocationStatus'), locationId: z.string(), payload: payloadSchemas.LocationStatusReported }),
-  z.object({ type: z.literal('ReportStaffCount'), locationId: z.string(), payload: payloadSchemas.StaffCountReported }),
+  z.object({ type: z.literal('ReportLocationStatus'), locationId: RefIdSchema, payload: payloadSchemas.LocationStatusReported }),
+  z.object({ type: z.literal('ReportStaffCount'), locationId: RefIdSchema, payload: payloadSchemas.StaffCountReported }),
   // 支援要請
   z.object({ type: z.literal('RequestSupport'), payload: payloadSchemas.SupportRequested }),
-  z.object({ type: z.literal('AssignSupport'), supportId: z.string(), payload: payloadSchemas.SupportAssigned }),
-  z.object({ type: z.literal('DispatchSupport'), supportId: z.string(), payload: payloadSchemas.SupportDispatched }),
-  z.object({ type: z.literal('RecordSupportReceived'), supportId: z.string(), payload: payloadSchemas.SupportReceived.default({}) }),
-  z.object({ type: z.literal('CompleteSupport'), supportId: z.string(), payload: payloadSchemas.SupportCompleted.default({}) }),
-  z.object({ type: z.literal('CancelSupport'), supportId: z.string(), payload: payloadSchemas.SupportCancelled }),
+  z.object({ type: z.literal('AssignSupport'), supportId: RefIdSchema, payload: payloadSchemas.SupportAssigned }),
+  z.object({ type: z.literal('DispatchSupport'), supportId: RefIdSchema, payload: payloadSchemas.SupportDispatched }),
+  z.object({ type: z.literal('RecordSupportReceived'), supportId: RefIdSchema, payload: payloadSchemas.SupportReceived.default({}) }),
+  z.object({ type: z.literal('CompleteSupport'), supportId: RefIdSchema, payload: payloadSchemas.SupportCompleted.default({}) }),
+  z.object({ type: z.literal('CancelSupport'), supportId: RefIdSchema, payload: payloadSchemas.SupportCancelled }),
   // 連絡メモ
   z.object({ type: z.literal('LogMessage'), payload: payloadSchemas.MessageLogged }),
   // 入力者（職員）の追加。meta.enteredBy に 'self' を指定すると、追加した本人を入力者として記録する
   z.object({ type: z.literal('RegisterStaff'), payload: payloadSchemas.StaffRegistered }),
   // 場所の用途（ゾーン）の変更
-  z.object({ type: z.literal('ChangeZoneAssignment'), locationId: z.string(), payload: payloadSchemas.ZoneAssignmentChanged }),
+  z.object({ type: z.literal('ChangeZoneAssignment'), locationId: RefIdSchema, payload: payloadSchemas.ZoneAssignmentChanged }),
 ]);
 export type Command = z.infer<typeof CommandSchema>;
 export type CommandInput = z.input<typeof CommandSchema>;
