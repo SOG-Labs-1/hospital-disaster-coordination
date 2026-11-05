@@ -50,7 +50,7 @@ export const Closing = ({ start }: { start: number }) => {
       </AbsoluteFill>
       {/* 字幕が2行になったので、クレジットは画面の下端ではなく題名の下に置く */}
       <AbsoluteFill style={{ top: 720, alignItems: 'center', gap: 8, opacity: final }}>
-        <div style={{ fontSize: 22, color: c.sub, letterSpacing: 2 }}>Claude Code Hackathon 2026 ／ データはすべて架空です ／ All data is fictional</div>
+        <div style={{ fontSize: 22, color: c.sub, letterSpacing: 2 }}>Built with Claude: Japan 2026 ／ データはすべて架空です ／ All data is fictional</div>
         <div style={{ fontSize: 20, color: c.sub, letterSpacing: 2, opacity: 0.8 }}>音声：Google Cloud Text-to-Speech ／ 効果音：自作</div>
       </AbsoluteFill>
     </AbsoluteFill>

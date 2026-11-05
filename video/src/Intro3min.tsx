@@ -335,7 +335,7 @@ const Final = () => {
       <div style={{ marginTop: 22, width: interpolate(p, [0, 1], [0, 560]), height: 3, backgroundColor: c.accent }} />
       <div style={{ marginTop: 26, fontSize: 32, color: c.sub, letterSpacing: 6, opacity: p }}>院内災害対応の調整ツール ／ AI訓練モード</div>
       <div style={{ marginTop: 44, fontSize: 24, color: c.sub, letterSpacing: 1, opacity: p, textAlign: 'center', lineHeight: 1.7 }}>
-        Claude Code で開発 ／ Claude Code Hackathon 2026
+        Claude Code で開発 ／ Built with Claude: Japan 2026
         <br />
         github.com/SOG-Labs-1/hospital-disaster-coordination
         <br />
