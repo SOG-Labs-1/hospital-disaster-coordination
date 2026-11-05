@@ -8,7 +8,7 @@ import { c, fontFamily, useTiming } from '../theme';
 const capture = (name: string) => getStaticFiles().find((f) => f.name === `captures/${name}`);
 
 /** 場面4：タシカメ。災害時の院内調整と、AIと行う、平常時の訓練。 */
-export const TwoFunctions = ({ start, heading = '― 2つの機能 ―', liveLabel = '災害運用', trainingLabel = '訓練' }: { start: number; heading?: string; liveLabel?: string; trainingLabel?: string }) => {
+export const TwoFunctions = ({ start, heading = '― 2つの機能 ―', liveLabel = '災害運用', trainingLabel = '訓練', note = true }: { start: number; heading?: string; liveLabel?: string; trainingLabel?: string; note?: boolean }) => {
   const { at } = useTiming();
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
@@ -41,9 +41,9 @@ export const TwoFunctions = ({ start, heading = '― 2つの機能 ―', liveLab
       <AbsoluteFill style={{ top: 186, alignItems: 'center', opacity: interpolate(t, [split + 0.2, split + 0.6], [0, 1], clamp) }}>
         <div style={{ fontSize: 24, color: c.sub, letterSpacing: 10 }}>{heading}</div>
       </AbsoluteFill>
-      <AbsoluteFill style={{ top: 812, left: 1030, opacity: interpolate(t, [split + 2.2, split + 2.6], [0, 1], clamp) }}>
+      {note && <AbsoluteFill style={{ top: 812, left: 1030, opacity: interpolate(t, [split + 2.2, split + 2.6], [0, 1], clamp) }}>
         <div style={{ fontSize: 24, color: c.warn, letterSpacing: 2, backgroundColor: 'rgba(7,13,24,0.85)', padding: '6px 14px', border: `2px dashed ${c.warn}`, alignSelf: 'flex-start' }}>※ AIは提案のみ。医療判断はしない</div>
-      </AbsoluteFill>
+      </AbsoluteFill>}
     </AbsoluteFill>
   );
 };

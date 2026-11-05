@@ -79,7 +79,7 @@ let pos = 0;
 // 表の1列目が読み上げ（字幕の日本語）、2列目が英語の字幕。「## 」の見出しごとに場面（section）を分け、場面の切れ目は長めの間にする
 const READ = [['BCP', 'ビーシーピー'], ['Claude Code', 'クロードコード'], ['Claude', 'クロード'], ['AI', 'エーアイ'], ['ID', 'アイディー'], ['「0人」', 'ゼロにん'], ['年に何度も', 'ねんに何度も'], ['私は', 'わたしは'], ['私が', 'わたしが']];
 const gapAfter = new Map();
-const spoken = (t) => READ.reduce((x, [a, b]) => x.replaceAll(a, b), t);
+const spoken = (t) => READ.reduce((x, [a, b]) => x.replaceAll(a, b), t.replaceAll('｜', '')); // 「｜」は字幕の改行の位置（読まない）
 let script = lines.map(([t, en, pause]) => ({ say: t, text: t.replace('エーアイ', 'AI'), en, pause, section: 0 }));
 if (process.env.SCRIPT_MD) {
   const md = readFileSync(process.env.SCRIPT_MD, 'utf8');

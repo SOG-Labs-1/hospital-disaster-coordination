@@ -16,8 +16,8 @@ const lines = narration.lines;
 export const DELAY3 = 0.3;
 const L = (n: number) => lines[n]!.start + DELAY3;
 const E = (n: number) => lines[n]!.end + DELAY3;
-// ハッカソンの規定（3分以内）に合わせて 2分59秒9（5397コマ）。最後の行のあとは題名を見せる
-export const TOTAL3 = 179.9; // 「3分以内」に確実に収める
+// ハッカソンの規定（3分）に合わせて 3分00秒（5400コマ）。最後の行のあとは題名を見せる
+export const TOTAL3 = 180; // 3分00秒（利用者の指定）
 
 // 通しの場面（g1〜g4）の目印（録画の秒）。video/public/captures/manifest.json の g1 の note から写す
 const G = { register: 6.8, request: 14.5, accept: 18.6, assign: 24.4, order: 28.4, depart: 29.7, arrive: 36.3, end: 39.0 };
@@ -444,7 +444,7 @@ const buildShots = (stock: boolean): Shot[] => [
     </>
   ) },
   // 3. 2つのモード
-  { from: cut(9), to: cut(11), name: '2つのモード', node: (_d, s) => <Remap map={{ 5: 9, 6: 10 }}><TwoFunctions start={s} heading="― 2つのモード ―" liveLabel="災害運用モード" trainingLabel="訓練モード" /></Remap> },
+  { from: cut(9), to: cut(11), name: '2つのモード', node: (_d, s) => <Remap map={{ 5: 9, 6: 10 }}><TwoFunctions start={s} heading="― 2つのモード ―" liveLabel="災害運用モード" trainingLabel="訓練モード" note={false} /></Remap> },
   // 4. 災害運用モード：ひとつの場面
   { from: cut(11), to: cut(12), name: '病院の様子とトリアージ', node: () => (
     <>
