@@ -1,5 +1,14 @@
 # 病院リンクBCP（Hospital Link BCP） — 院内災害対応の調整ツール ＋ AI訓練モード
 
+## 公開デモ（インストール不要）
+
+**https://hospital-link-bcp-demo-926016263642.asia-northeast1.run.app**
+
+- 2026年11月13日まで公開します。データはすべて架空です。実在の人や病院の情報は入力しないでください。
+- 病院（Claude総合病院(仮)）を選び、**ブラウザのタブを3つ**開いて、それぞれ「災害対策本部」「救急外来」「手術室」を選ぶと、端末どうしで記録がすぐに同期することが分かります。直接開くこともできます：[本部](https://hospital-link-bcp-demo-926016263642.asia-northeast1.run.app/?hospital=claude&terminal=hq&mode=live)・[救急外来](https://hospital-link-bcp-demo-926016263642.asia-northeast1.run.app/?hospital=claude&terminal=er&mode=live)・[手術室](https://hospital-link-bcp-demo-926016263642.asia-northeast1.run.app/?hospital=claude&terminal=or&mode=live)・[掲示用画面](https://hospital-link-bcp-demo-926016263642.asia-northeast1.run.app/?hospital=claude&view=board&mode=live)
+- **AI訓練モード**：[訓練モードの本部](https://hospital-link-bcp-demo-926016263642.asia-northeast1.run.app/?hospital=claude&terminal=hq&mode=training)の「訓練」タブで「審査用5分シナリオ」を始めると、**Claude（Claude API）が部署役として無線で報告してきます**（2倍速で約2分半）。訓練は同時に1回だけです。
+- ほかの方の操作も同じ記録に表示されます。しばらく操作がないと、記録は最初の状態に戻ります。
+
 > **このリポジトリのデータはすべて架空です。** 実在の患者・職員・病院・非公開資料は一切使っていません。病院名・職員名・患者情報・シナリオはすべて作品用に作ったものです。
 
 災害時、病院の中では患者・人・物の情報が、無線・紙・ホワイトボード・人の記憶を渡り歩きます。そのうちに「いつ確かめたか」「誰が言ったか」が抜け落ちていきます。さらに、日々の業務に追われて、大きな訓練を重ねることもできません。
@@ -42,9 +51,9 @@
 | **掲示用画面（本部の大型モニター）** | **AI訓練モード** |
 | ![掲示用画面](docs/images/board.png) | ![AI訓練モード](docs/images/training.png) |
 
-## まず試す（審査の方へ）
+## 手元で試す
 
-Node.js 22.13 以上が必要です（`node:sqlite` を使います）。
+公開デモのほかに、手元のPCでも動かせます。Node.js 22.13 以上が必要です（`node:sqlite` を使います）。
 
 ```bash
 npm install
@@ -226,6 +235,8 @@ npm run validate:config
 | `scenarios/` | 訓練シナリオ（架空） |
 | `scripts/demo/` | 審査・デモ用の起動とデモ用データ（架空） |
 | `e2e/` | Playwright の画面テスト |
+| `e2e-demo/` | 公開デモの URL に向けて、審査の流れを確かめる画面テスト（`DEMO_URL=... npx playwright test -c e2e-demo`） |
+| `Dockerfile` | 公開デモ（Cloud Run）の入れ物。APIキーは入れず、Secret Manager から渡す |
 | `video/` | 紹介映像（Remotion）と画面録画のスクリプト |
 | `.claude/` | Claude Code の Skills・サブエージェント・フック |
 
@@ -272,6 +283,12 @@ npm run validate:config
   - 訂正の検証
 - 本物の Claude API（claude-sonnet-5-5）で訓練を通しで確認
 - 審査・デモ用の起動（`npm run demo`）、紹介映像（Remotion）と画面録画のスクリプト
+
+### 11/6
+
+- 製品名を「病院リンクBCP」（Hospital Link BCP）に変更
+- 審査用の公開デモ（Google Cloud Run、東京）：案内の表示、訓練の取り合いの防止、1日の訓練回数の上限、しばらく操作がなければ最初の状態に戻す仕組み、審査用5分シナリオ
+- 公開デモの URL に向けた画面テスト（ブラウザのエラーと失敗した通信がないことも確認）
 
 ## Claude Code の使い分け
 

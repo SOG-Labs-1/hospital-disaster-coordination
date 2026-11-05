@@ -1,0 +1,22 @@
+# Cloud Run に置くとき（gcloud run deploy --source）に、送らないもの。
+# 秘密・記録・大きなものを Google Cloud に送らない（.dockerignore と同じ考え方）
+.gcloudignore
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+node_modules
+**/node_modules
+data
+.demo-data
+.capture-data
+e2e
+test-results
+playwright-report
+video
+docs
+web/dist
+**/*.sqlite
+.DS_Store
+.claude
