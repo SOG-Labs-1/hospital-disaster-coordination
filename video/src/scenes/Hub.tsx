@@ -33,11 +33,11 @@ const PatientMark = ({ x, y, s = 1 }: { x: number; y: number; s?: number }) => (
  * - broken：線が途切れて、患者・人・物が「？」（課題）
  * - connected：タシカメで全部の端末がつながり、本部に同じ記録が集まる（解決）
  */
-export const Hub = ({ state }: { state: 'radio' | 'broken' | 'connected' }) => {
+export const Hub = ({ state }: { state: 'radio' | 'broken' | 'connected' | 'triage' }) => {
   const frame = useCurrentFrame();
   const P = FULL;
   const { x: cx, y: cy } = P.hq;
-  const connected = state === 'connected';
+  const connected = state === 'connected' || state === 'triage';
   return (
     <svg width={1920} height={1080} style={{ position: 'absolute', inset: 0 }}>
       {DEPTS.map((id, i) => {
@@ -67,9 +67,35 @@ export const Hub = ({ state }: { state: 'radio' | 'broken' | 'connected' }) => {
       {/* 本部 */}
       <rect x={cx - 150} y={cy - 60} width={300} height={120} fill={c.bg2} stroke={c.accent} strokeWidth={connected ? 5 : 3} />
       <text x={cx} y={cy + 12} fill={c.text} fontFamily={fontFamily} fontSize={34} fontWeight={700} textAnchor="middle">本部</text>
-      {connected && (
+      {state === 'connected' && (
         <g opacity={interpolate(frame, [24, 36], [0, 1], clamp)}>
           <text x={cx} y={cy - 80} fill={c.accent} fontFamily={fontFamily} fontSize={30} fontWeight={700} textAnchor="middle" letterSpacing={6}>タシカメ</text>
+        </g>
+      )}
+      {state === 'triage' && (
+        <g>
+          {([
+            ['red', 'or', 20],
+            ['yellow', 'ward', 50],
+            ['green', 'hall', 80],
+          ] as const).map(([tri, to, at], i) => {
+            const k = interpolate(frame, [at, at + 30], [0, 1], { ...clamp, easing: ease });
+            const from = { x: P.er.x - 60 + i * 60, y: P.er.y + 80 };
+            const dest = { x: P[to].x - 60 + i * 0, y: P[to].y + 80 };
+            const x = from.x + (dest.x - from.x) * k;
+            const y = from.y + (dest.y - from.y) * k - Math.sin(k * Math.PI) * 60;
+            const col = { red: c.red, yellow: c.yellow, green: c.green }[tri];
+            const sym = { red: '◆', yellow: '▲', green: '●' }[tri];
+            return (
+              <g key={tri} transform={`translate(${x} ${y})`} opacity={interpolate(frame, [4, 14], [0, 1], clamp)}>
+                <rect x={-26} y={-22} width={52} height={44} fill={col} stroke="#000" strokeWidth={2} />
+                <text x={0} y={12} fill={tri === 'yellow' ? '#000' : '#fff'} fontFamily={fontFamily} fontSize={30} fontWeight={700} textAnchor="middle">{sym}</text>
+              </g>
+            );
+          })}
+          <text x={960} y={800} fill={c.text} fontFamily={fontFamily} fontSize={40} fontWeight={700} textAnchor="middle" opacity={interpolate(frame, [20, 32], [0, 1], clamp)}>
+            <tspan fill={c.red}>◆赤</tspan>　＞　<tspan fill={c.yellow}>▲黄</tspan>　＞　<tspan fill={c.green}>●緑</tspan>
+          </text>
         </g>
       )}
       {state === 'radio' && (
@@ -80,19 +106,12 @@ export const Hub = ({ state }: { state: 'radio' | 'broken' | 'connected' }) => {
           <text x={cx} y={cy + 196} fill={c.sub} fontFamily={fontFamily} fontSize={22} textAnchor="middle">ホワイトボードに手書き</text>
         </g>
       )}
-      {state === 'broken' && (
-        <g opacity={interpolate(frame, [46, 58], [0, 1], clamp)}>
-          <text x={960} y={770} fill={c.text} fontFamily={fontFamily} fontSize={36} textAnchor="middle">
-            <tspan fill={c.red}>◆</tspan> 患者 ？　○ 人 ？　<tspan fill={c.accent}>▭</tspan> 物 ？　<tspan fill={c.sub}>── どこに、どれだけ？</tspan>
-          </text>
-        </g>
-      )}
     </svg>
   );
 };
 
 /** 小さな地図（操作の場面）。active：いま応答している所、flow：情報が伝わる向き、patient：患者のいる所（move なら救急外来→手術室へ動く） */
-export const HubMini = ({ active, flow, patient = 'er', move = 0, left, top }: { active: NodeId[]; flow?: [NodeId, NodeId][]; patient?: NodeId | 'move'; move?: number; left: number; top: number }) => {
+export const HubMini = ({ active, flow, done = [], patient = 'er', move = 0, left = 1240, top = 172 }: { active: NodeId[]; flow?: [NodeId, NodeId][]; done?: NodeId[]; patient?: NodeId | 'move'; move?: number; left?: number; top?: number }) => {
   const frame = useCurrentFrame();
   const P = MINI;
   const p = interpolate(frame, [0, 12], [0, 1], { ...clamp, easing: ease });
@@ -100,9 +119,11 @@ export const HubMini = ({ active, flow, patient = 'er', move = 0, left, top }: {
   const pp = patient === 'move' ? { x: P.er.x + (P.or.x - P.er.x) * move, y: P.er.y - 2 } : { x: P[patient].x + 48, y: P[patient].y - 2 };
   return (
     <svg width={640} height={215} style={{ position: 'absolute', left, top, opacity: p, overflow: 'visible' }}>
+      <rect x={-16} y={-34} width={672} height={262} rx={10} fill="rgba(7,13,24,0.88)" stroke={c.line} strokeWidth={2} />
       {DEPTS.map((id) => {
         const lit = flow?.some(([a, b]) => (a === id && b === 'hq') || (a === 'hq' && b === id));
-        return <line key={id} x1={P.hq.x} y1={P.hq.y} x2={P[id].x} y2={P[id].y} stroke={lit ? c.warn : c.line} strokeWidth={lit ? 4 : 2} />;
+        const used = done.includes(id);
+        return <line key={id} x1={P.hq.x} y1={P.hq.y} x2={P[id].x} y2={P[id].y} stroke={lit ? c.warn : used ? c.accent : c.line} strokeWidth={lit ? 5 : used ? 4 : 2} />;
       })}
       {patient === 'move' && <line x1={P.er.x} y1={P.er.y} x2={P.or.x} y2={P.or.y} stroke={c.warn} strokeWidth={3} strokeDasharray="8 6" />}
       {flow?.map(([a, b], i) => (

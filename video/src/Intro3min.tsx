@@ -6,7 +6,6 @@ import { AbsoluteFill, Sequence, getStaticFiles, interpolate, staticFile, useCur
 import narration from '../public/narration-3min.json';
 import { Background, clamp, ease, SceneFade, Subtitles } from './common';
 import { Disasters } from './scenes/Disasters';
-import { HospitalPictogram, TriageRoute } from './scenes/HospitalPictogram';
 import { Hub, HubMini, type NodeId } from './scenes/Hub';
 import { Schedule } from './scenes/Schedule';
 import { TwoFunctions } from './scenes/TwoFunctions';
@@ -117,9 +116,11 @@ const CAP: CSSProperties = { left: 385, top: 90 };
 const ONE_L: CSSProperties = { left: 64, top: 150, width: 1100 };
 // 操作の場面：左上に小さな地図を置くので、録画は少し下・少し小さく
 const FLOW_ONE: CSSProperties = { left: 64, top: 262, width: 900 };
-const TWO_L: CSSProperties = { left: 80, top: 300, width: 860 };
-const TWO_R: CSSProperties = { left: 980, top: 300, width: 860 };
-const THREE = (i: number): CSSProperties => ({ left: 60 + i * 610, top: 320, width: 580 });
+// 操作の場面：録画は全画面。右上に図、下に字幕のための暗い帯
+const FULL: CSSProperties = { left: 0, top: 0, width: 1920 };
+const TWO_L: CSSProperties = { left: 40, top: 400, width: 900 };
+const TWO_R: CSSProperties = { left: 980, top: 400, width: 900 };
+const THREE = (i: number): CSSProperties => ({ left: 40 + i * 620, top: 400, width: 600 });
 
 // ---------------- 場面 ----------------
 
@@ -199,6 +200,9 @@ const Overview = () => {
     </AbsoluteFill>
   );
 };
+
+/** 全画面の録画の上で字幕が読めるよう、下に暗い帯を敷く */
+const SubShade = () => <AbsoluteFill style={{ background: 'linear-gradient(transparent 70%, rgba(4,8,16,0.88) 88%)' }} />;
 
 /** モードの区切り：場面の頭に大きく出して、すぐ消える（災害運用＝実線の青、訓練＝破線のだいだい） */
 const ModeChapter = ({ mode }: { mode: 'live' | 'training' }) => {
@@ -369,7 +373,7 @@ const cut = (n: number) => (n === 0 ? 0 : L(n) - Math.min(0.8, L(n) - E(n - 1) -
 /** 搬送中の小さな地図：場面の長さに合わせて患者が救急外来から手術室へ動く */
 const MovingMap = ({ dur }: { dur: number }) => {
   const frame = useCurrentFrame();
-  return <HubMini active={['er', 'or', 'hq']} flow={[['hq', 'er'], ['hq', 'or']]} patient="move" move={interpolate(frame, [15, dur * 30 * 0.8], [0, 1], clamp)} left={640} top={70} />;
+  return <HubMini active={['er', 'or', 'hq']} flow={[['hq', 'er'], ['hq', 'or']]} patient="move" move={interpolate(frame, [15, dur * 30 * 0.8], [0, 1], clamp)} done={['er', 'or']} />;
 };
 
 // 実写あり版の冒頭：Pexels の素材（docs/video/stock-sources.md。public/stock/、git 管理外）を暗く青い色調にそろえてつなぐ
@@ -434,9 +438,8 @@ const buildShots = (stock: boolean): Shot[] => [
           </>
         ) } as Shot,
       ]),
-  { from: cut(2), to: cut(4), name: '情報の伝達', node: () => (
-    <Sequence from={Math.round((L(3) - cut(2)) * 30)}><Problem /></Sequence>
-  ) },
+  { from: cut(2), to: cut(3), name: '訓練のたびに残る課題', node: () => <Big size={84}>訓練のたびに、残る課題</Big> },
+  { from: cut(3), to: cut(4), name: '情報の伝達', node: () => <Problem /> },
   // 2. 経緯（約35秒に詰めた。図だけの場面）
   { from: cut(4), to: cut(5), name: '経緯：無線とホワイトボード', node: () => (
     <>
@@ -474,21 +477,19 @@ const buildShots = (stock: boolean): Shot[] => [
   // 4. 災害運用モード：ひとつの場面（主な操作は実際の速さで、押した所に寄せて見せる）
   { from: cut(9), to: cut(10), name: '病院の様子とトリアージ', node: () => (
     <>
-      <HospitalPictogram phase="terminals" />
-      <Tag>例：ある地震の日（架空の病院）</Tag>
-      <Sequence from={20}><TriageRoute /></Sequence>
+      <Hub state="triage" />
     </>
   ) },
   { from: cut(10), to: cut(11), name: '救急外来で登録', node: (d) => (
     <>
-      <HubMini active={['er']} left={1215} top={140} />
-      <ZoomClip file="g1-flow-er.webm" from={G.start} rate={Math.min(1.3, Math.max(0.8, (G.register - G.start) / d))} zoom={1.2} label="救急外来の端末" style={ONE_L} />
-      <StepLog active={0} />
+      <ZoomClip file="g1-flow-er.webm" from={G.start} rate={Math.min(1.3, Math.max(0.8, (G.register - G.start) / d))} zoom={1.15} style={FULL} bare />
+      <SubShade />
+      <HubMini active={['er']} />
     </>
   ) },
   { from: cut(11), to: cut(12), name: '本部に、すぐに出る', node: (d) => (
     <>
-      <HubMini active={['er', 'hq']} flow={[['er', 'hq']]} left={640} top={70} />
+      <HubMini active={['er', 'hq']} flow={[['er', 'hq']]} />
       <Clip file="g1-flow-er.webm" from={G.register - 0.4} to={G.register + 3.2} dur={d} label="救急外来の端末" style={TWO_L} />
       <Clip file="g2-flow-hq.webm" from={G.register - 0.4} to={G.register + 3.2} dur={d} label="本部の端末：再読み込みなしで一覧に出る" style={TWO_R} />
     </>
@@ -514,14 +515,13 @@ const buildShots = (stock: boolean): Shot[] => [
         name: `操作：${STEPS[step]}`,
         node: () => (
           <>
+            <ZoomClip file={file} from={a} rate={rate} zoom={1.15} style={FULL} bare />
+            <SubShade />
             <HubMini
               active={(([['er'], ['hq'], ['or'], ['hq'], ['hq']] as const)[step] as unknown as NodeId[])}
               flow={(([[], [['hq', 'or']], [['or', 'hq']], [], []] as const)[step] as unknown as [NodeId, NodeId][])}
-              left={1215}
-              top={140}
+              done={(([[], ['er'], ['er', 'or'], ['er', 'or'], ['er', 'or']] as const)[step] as unknown as NodeId[])}
             />
-            <ZoomClip file={file} from={a} rate={rate} zoom={1.2} label={label} style={ONE_L} />
-            <StepLog active={step} />
           </>
         ),
       } as Shot;
@@ -599,7 +599,7 @@ const buildShots = (stock: boolean): Shot[] => [
 const SHOTS = { plain: buildShots(false), stock: buildShots(true) };
 
 // 話題の切れ目になる行（ここで場面をいったん暗くする）
-const SECTION_STARTS = [2, 4, 7, 8, 9, 19, 22, 25, 26, 27];
+const SECTION_STARTS = [2, 3, 4, 7, 8, 9, 19, 22, 25, 26, 27];
 const XF = 10; // クロスフェードのコマ数
 
 export const Intro3min = ({ stock = false }: { stock?: boolean }) => {
@@ -632,10 +632,6 @@ export const Intro3min = ({ stock = false }: { stock?: boolean }) => {
       <Sequence from={Math.round(cut(19) * fps)} durationInFrames={Math.round((cut(22) - cut(19)) * fps)} name="訓練モードの区切り">
         <ModeChapter mode="training" />
         <ModeBadge mode="training" />
-      </Sequence>
-      {/* BCP の説明は、BCP と言ったところから「情報の伝達」の前まで長めに出す */}
-      <Sequence from={Math.round((L(1) + 0.8) * fps)} durationInFrames={Math.round((L(3) - L(1) - 0.8) * fps)} name="BCPの説明">
-        <Term word="BCP（事業継続計画）">災害のときも、病院の機能を続けるための計画</Term>
       </Sequence>
       {/* 英語の字幕は利用者の判断でいったん出さない（english={false}）。日本語は少し小さめ */}
       <Subtitles lines={lines} delay={DELAY3} variant="cinema" english={false} />

@@ -44,7 +44,7 @@ function focusAt(events: CursorEvent[], t: number): { x: number; y: number } {
  * 録画を枠に入れ、押した所に寄せて見せる。
  * from〜to（録画の秒）を dur 秒で再生（速さは rate。実際の速さ＝1）。zoom は寄せる倍率（1 で寄せない）
  */
-export const ZoomClip = ({ file, from, rate = 1, zoom = 1.6, label, style }: { file: string; from: number; rate?: number; zoom?: number; label?: string; style?: CSSProperties }) => {
+export const ZoomClip = ({ file, from, rate = 1, zoom = 1.6, label, style, bare }: { file: string; from: number; rate?: number; zoom?: number; label?: string; style?: CSSProperties; bare?: boolean }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const events = useCursor(file);
@@ -58,7 +58,7 @@ export const ZoomClip = ({ file, from, rate = 1, zoom = 1.6, label, style }: { f
   return (
     <div style={{ position: 'absolute', display: 'flex', flexDirection: 'column', gap: 10, ...style }}>
       {label && <div style={{ fontFamily, fontSize: 28, fontWeight: 700, color: c.text, letterSpacing: 2 }}>{label}</div>}
-      <div style={{ position: 'relative', aspectRatio: '16 / 9', border: `2px solid ${c.line}`, backgroundColor: c.bg2, overflow: 'hidden', boxShadow: `0 0 60px ${c.accentSoft}` }}>
+      <div style={{ position: 'relative', aspectRatio: '16 / 9', border: bare ? 'none' : `2px solid ${c.line}`, backgroundColor: c.bg2, overflow: 'hidden', boxShadow: bare ? 'none' : `0 0 60px ${c.accentSoft}` }}>
         {has(file) ? (
           <AbsoluteFill style={{ transformOrigin: `${(f.x / 1920) * 100}% ${(f.y / 1080) * 100}%`, scale: String(z) }}>
             <Video src={staticFile(`captures/${file}`)} muted trimBefore={Math.round(from * fps)} playbackRate={rate} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
