@@ -17,7 +17,8 @@ const gemini = process.env.GEMINI_TTS;
 // 話し方は VERTEX_PROMPT（指示）。速さの数値は使えないので、指示の言葉で決める
 const vertex = process.env.VERTEX_TTS;
 // 試聴（「ゆっくりめに」）では長すぎたため、利用者の判断で少し速めの指示にした（2026-11-05）
-const vertexPrompt = process.env.VERTEX_PROMPT ?? '日本の医療ドキュメンタリーのナレーターとして、次の文を読んでください。深く、落ち着いた、信頼感のある穏やかな男性の声で。落ち着いたまま、よどみない自然なテンポで読み、文の切れ目の間は短めに。語尾までしっかり言い切ってください。感情を込めすぎず、聞き手に静かに語りかけるように。';
+// 2026-11-05 利用者の指摘「もう少しテンポよく」で、ニュース・ドキュメンタリー調の指示に（試聴 docs/video/samples/gemini-tempo/Charon.wav）
+const vertexPrompt = process.env.VERTEX_PROMPT ?? '日本の医療ドキュメンタリーのナレーターとして、次の文を読んでください。深く、落ち着いた、信頼感のある穏やかな男性の声で。テレビのニュースやドキュメンタリーのナレーションのように、テンポよく、はきはきと。間は短めに保ち、語尾までしっかり言い切ってください。感情を込めすぎず、聞き手に静かに語りかけるように。';
 const stylePrompt = process.env.STYLE_PROMPT ?? '深く、落ち着いた、信頼感のある穏やかな声で。ドキュメンタリーのナレーションのように、ゆっくり、はっきりと読んでください。';
 const tag = vertex ? `vertex_${voice}` : gemini ? `gemini_${voice}` : `google_${voice}`;
 
