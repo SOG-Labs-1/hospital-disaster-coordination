@@ -13,8 +13,13 @@ const [, , voice = 'Charon', rateArg] = process.argv;
 const speakingRate = Number(rateArg ?? 0.95);
 const rate = 48000;
 const gemini = process.env.GEMINI_TTS;
+// VERTEX_TTS=モデル名（例 gemini-3.1-flash-tts-preview）：Vertex AI の generateContent で Gemini の声を作る。キーは .env の GEMINI_API_KEY（表示しない）。
+// 話し方は VERTEX_PROMPT（指示）。速さの数値は使えないので、指示の言葉で決める
+const vertex = process.env.VERTEX_TTS;
+// 試聴（「ゆっくりめに」）では長すぎたため、利用者の判断で少し速めの指示にした（2026-11-05）
+const vertexPrompt = process.env.VERTEX_PROMPT ?? '日本の医療ドキュメンタリーのナレーターとして、次の文を読んでください。深く、落ち着いた、信頼感のある穏やかな男性の声で。落ち着いたまま、よどみない自然なテンポで読み、文の切れ目の間は短めに。語尾までしっかり言い切ってください。感情を込めすぎず、聞き手に静かに語りかけるように。';
 const stylePrompt = process.env.STYLE_PROMPT ?? '深く、落ち着いた、信頼感のある穏やかな声で。ドキュメンタリーのナレーションのように、ゆっくり、はっきりと読んでください。';
-const tag = gemini ? `gemini_${voice}` : `google_${voice}`;
+const tag = vertex ? `vertex_${voice}` : gemini ? `gemini_${voice}` : `google_${voice}`;
 
 // [読み上げる文, 英語の字幕, 後ろの無音（秒）]。字幕の日本語は読み上げ用の「エーアイ」を「AI」に戻して使う
 // 第2版の原稿（です・ます）。声は Enceladus（利用者が聞き比べて選んだ）
@@ -33,13 +38,51 @@ const lines = [
 // 同じ文・声・速さの音声は video/.tts-cache/ に取っておき、作り直すときに API を呼ばない
 const cacheDir = fileURLToPath(new URL('../.tts-cache/', import.meta.url));
 async function synth(text) {
-  const key = createHash('sha256').update(JSON.stringify([text, voice, speakingRate, gemini ?? '', gemini ? stylePrompt : ''])).digest('hex').slice(0, 24);
+  const key = createHash('sha256').update(JSON.stringify(vertex ? ['vertex', vertex, text, voice, vertexPrompt] : [text, voice, speakingRate, gemini ?? '', gemini ? stylePrompt : ''])).digest('hex').slice(0, 24);
   const file = `${cacheDir}${key}.wav`;
   if (existsSync(file)) return readFileSync(file);
-  const wav = await synthApi(text);
+  const wav = vertex ? await synthVertex(text) : await synthApi(text);
   mkdirSync(cacheDir, { recursive: true });
   writeFileSync(file, wav);
   return wav;
+}
+/** Vertex AI の Gemini の声。返る音声（24kHz・16bit・モノラルの生の PCM）を 48kHz にして WAV にする */
+async function synthVertex(text) {
+  const vkey = process.env.GEMINI_API_KEY;
+  if (!vkey) { console.error('GEMINI_API_KEY が .env にありません'); process.exit(1); }
+  for (let attempt = 1; ; attempt++) {
+    const r = await fetch(`https://aiplatform.googleapis.com/v1/projects/926016263642/locations/global/publishers/google/models/${vertex}:generateContent`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': vkey },
+      body: JSON.stringify({
+        contents: [{ role: 'user', parts: [{ text: `${vertexPrompt}\n\n${text}` }] }],
+        generationConfig: { responseModalities: ['AUDIO'], speechConfig: { languageCode: 'ja-JP', voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } } },
+      }),
+    });
+    if (!r.ok) {
+      const msg = (await r.text()).slice(0, 300);
+      if (attempt < 4 && (r.status === 429 || r.status >= 500)) { await new Promise((ok) => setTimeout(ok, 3000 * attempt)); continue; }
+      console.error(`失敗 ${r.status}: ${msg}`); process.exit(1);
+    }
+    const j = await r.json();
+    const part = j.candidates?.[0]?.content?.parts?.find((x) => x.inlineData);
+    if (!part) { if (attempt < 4) continue; console.error(`音声が返らない: ${JSON.stringify(j).slice(0, 200)}`); process.exit(1); }
+    const src = Number(/rate=(\d+)/.exec(part.inlineData.mimeType ?? '')?.[1] ?? 24000);
+    const raw = Buffer.from(part.inlineData.data, 'base64');
+    // 直線補間で 48kHz に
+    const n = raw.length / 2, m = Math.round((n * rate) / src);
+    const out = Buffer.alloc(m * 2);
+    for (let i = 0; i < m; i++) {
+      const x = (i * src) / rate, k = Math.floor(x), f = x - k;
+      const a0 = raw.readInt16LE(Math.min(n - 1, k) * 2), a1 = raw.readInt16LE(Math.min(n - 1, k + 1) * 2);
+      out.writeInt16LE(Math.round(a0 + (a1 - a0) * f), i * 2);
+    }
+    const h = Buffer.alloc(44);
+    h.write('RIFF', 0); h.writeUInt32LE(36 + out.length, 4); h.write('WAVE', 8); h.write('fmt ', 12);
+    h.writeUInt32LE(16, 16); h.writeUInt16LE(1, 20); h.writeUInt16LE(1, 22); h.writeUInt32LE(rate, 24); h.writeUInt32LE(rate * 2, 28); h.writeUInt16LE(2, 32); h.writeUInt16LE(16, 34);
+    h.write('data', 36); h.writeUInt32LE(out.length, 40);
+    return Buffer.concat([h, out]);
+  }
 }
 async function synthApi(text) {
   const r = await fetch('https://texttospeech.googleapis.com/v1/text:synthesize', {
@@ -106,8 +149,8 @@ if (process.env.PARAGRAPH === '1') {
   const sections = [...new Set(script.map((x) => x.section))];
   for (const sec of sections) {
     const items = script.filter((x) => x.section === sec);
-    const v = trim(Buffer.from(pcm(await synth(items.map((x) => x.say).join('')))));
-    const n = v.length / 2;
+    let v = trim(Buffer.from(pcm(await synth(items.map((x) => x.say).join('')))));
+    let n = v.length / 2;
     const amp = (i) => Math.abs(v.readInt16LE(i * 2));
     // 無音の区間（振幅が小さい状態が 120ms 以上続く所）を探す
     const quiet = [];
@@ -169,6 +212,28 @@ if (process.env.PARAGRAPH === '1') {
     sents.forEach((st, j) => { if (j < ends.length && sents[j + 1].line !== st.line) bounds.push(chosen[j]); });
     if (process.env.SPLIT_DEBUG) console.error(`場面${sec} 見込み ${ends.map((e) => (e.expect / rate).toFixed(2)).join(' ')} 無音 ${quiet.map(([a, b]) => `${(a / rate).toFixed(2)}+${((b - a) / rate).toFixed(2)}`).join(' ')}`);
     if (process.env.SPLIT_DEBUG) console.error(`場面${sec}: ${bounds.map(([a, b]) => `${(a / rate).toFixed(2)}+${((b - a) / rate).toFixed(2)}`).join(' ')}`);
+    // GAP_MAX（秒）：文と文の間の無音が長すぎるときは、その長さまで詰める（声そのものは速くしない。Gemini の声は文の間が長いため）
+    const gapMax = process.env.GAP_MAX ? Math.round(Number(process.env.GAP_MAX) * rate) : 0;
+    if (gapMax) {
+      const pieces = [];
+      let last = 0;
+      const shifted = [];
+      let removed = 0;
+      for (const [a, b] of bounds) {
+        const len = b - a;
+        if (len > gapMax) {
+          const keepA = Math.floor(gapMax / 2), keepB = gapMax - keepA;
+          pieces.push(v.subarray(last * 2, (a + keepA) * 2));
+          last = b - keepB;
+          shifted.push([a - removed, a - removed + gapMax]);
+          removed += len - gapMax;
+        } else shifted.push([a - removed, b - removed]);
+      }
+      pieces.push(v.subarray(last * 2));
+      v = Buffer.concat(pieces);
+      n = v.length / 2;
+      bounds.splice(0, bounds.length, ...shifted);
+    }
     const base = pos / 2;
     items.forEach((x, k) => {
       const s0 = k === 0 ? 0 : bounds[k - 1][1];
@@ -191,7 +256,7 @@ for (const { say: t, text, en, pause, section } of script) {
 }
 const outDir = process.env.OUT_DIR;
 const outName = process.env.OUT_NAME ?? 'narration';
-if (outDir) writeFileSync(`${outDir}/${outName}.json`, JSON.stringify({ voice: gemini ? `${gemini}/${voice}` : `ja-JP-Chirp3-HD-${voice}`, speakingRate, lines: timings }, null, 2) + '\n');
+if (outDir) writeFileSync(`${outDir}/${outName}.json`, JSON.stringify({ voice: vertex ? `${vertex}/${voice}` : gemini ? `${gemini}/${voice}` : `ja-JP-Chirp3-HD-${voice}`, ...(vertex ? { prompt: vertexPrompt } : {}), speakingRate, lines: timings }, null, 2) + '\n');
 const data = Buffer.concat(parts);
 const h = Buffer.alloc(44);
 h.write('RIFF', 0); h.writeUInt32LE(36 + data.length, 4); h.write('WAVE', 8);

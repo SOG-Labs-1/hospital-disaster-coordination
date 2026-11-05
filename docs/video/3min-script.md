@@ -1,6 +1,6 @@
-# 3分版のナレーション原稿（第13案）
+# 3分版のナレーション原稿（第14案）
 
-更新：2026-11-05（第13案：操作の場面の前に「操作の例です。」と前置き。操作の場面に左上の小さな地図を戻す。第12案：利用者の判断で、同僚の評価を削った（ハッカソンに協力したと受け取られるおそれ）。「重症の患者から」に。タシカメの概要を具体的に。人や物の応援の要請を足した。第11案：搬送の操作の読み上げを、手順ごとの短い文に分けて、音のない時間をなくした（利用者の指摘）。話題の間 1.0 秒。第10案：利用者の判断で「実際に動いているところ中心」に。経緯を詰め（「訓練では、ホワイトボードと無線で…」「患者はいまどこに…」は画面の文字に、「部署どうし…」は1文に）、「頼んだことと…」も画面の文字に。搬送の操作は読み上げのない間をとって実際の速さで見せる。速さは1.12のまま。第9案：Claude Code の文を「Claude Code を使用し、作成しました」に（数日で、は言わない）。長さは3分00秒、速さ1.12。第8案：訓練モードへの入りを「ここからは、訓練モードです。」で区切り、区切りの画面を入れる。導入の文に主語と「場所や規模に合わせて」を補う（利用者の直し）。字幕を細く背景なしの形に。3分以内に収めるため、速さ1.13・話題の間0.9秒、「そして、」を削った。第7案：利用者の判断で3つ足した。①情報伝達が足りない理由（部署どうしの情報、患者・人・物の関係）と、出典つきの数字2つ（画面の文字）②Claude Code での作り方の場面 ③同僚の評価と「合わせて導入できます」。長さ（3分以内）のため、次は読み上げをやめて画面の文字だけにした：「未確認」、「重複の警告」、「ある地震の日を例に…」、「そして、同じ画面で、訓練ができます。」、「一人でも、他の部署を相手に…」。「慣れない職員でも…」を短くし、速さを1.10、話題の間を1.0秒にした。第6案：締めを「訓練で確かめたことを、本番でも。」に。BGM は使わない（利用者の判断）。第5案：利用者の判断で「0人」のくだりを削った。トリアージタッグの前提を1文足し、例は「最も治療を必要とする『赤』の患者」に（番号は画面だけ）。「慣れない人」を「ふだん使い慣れていない職員」に。Claude は医療の判断や助言をしないと明言。「制作者の私（わたし）は」。テーマ名は画面に出さない。長さのため「端末は…」は画面の文字だけにし、「ある地震の日を例に、見てみましょう。」に短くした。第4案：第1版を見た利用者の直し。「震災」、「0人」の言い方、「大規模な訓練は、年（ねん）に何度も」、締めは「訓練で確かめたこと、本番でも。」で終わり「タシカメ。」は言わない。長さを詰めるため「端末は…」と「災害運用モードでは…」を短くし、「大型モニターの掲示用画面にも」を「大型モニターにも」にした。声は場面ごとに段落でまとめて読ませる（速さ1.06。利用者が聞き比べて選んだ段落読み）。第3案の追記：訓練モードが Claude API を使っていることが伝わるよう、「AI」を「Claude」と言い、画面にモデル名と仕組みを出す。第3案：災害運用モードを、架空の場面を1つ通して見せる形にした）。
+更新：2026-11-05（第14案：声を Gemini-TTS（gemini-3.1-flash-tts-preview・Charon）に変更（利用者が試聴で選択）。声がゆったりなので、指示を少し速め（「落ち着いたまま、よどみない自然なテンポで、文の切れ目の間は短めに」）にし、3分以内に収めるため文を短くした。「慣れない職員でも…」「どちらも、同じ画面です」は画面の文字だけに。文の間の長い無音は 0.75 秒まで詰める（声は速くしない）。操作の場面の読み上げのない間はなくした。第13案：操作の場面の前に「操作の例です。」と前置き。操作の場面に左上の小さな地図を戻す。第12案：利用者の判断で、同僚の評価を削った（ハッカソンに協力したと受け取られるおそれ）。「重症の患者から」に。タシカメの概要を具体的に。人や物の応援の要請を足した。第11案：搬送の操作の読み上げを、手順ごとの短い文に分けて、音のない時間をなくした（利用者の指摘）。話題の間 1.0 秒。第10案：利用者の判断で「実際に動いているところ中心」に。経緯を詰め（「訓練では、ホワイトボードと無線で…」「患者はいまどこに…」は画面の文字に、「部署どうし…」は1文に）、「頼んだことと…」も画面の文字に。搬送の操作は読み上げのない間をとって実際の速さで見せる。速さは1.12のまま。第9案：Claude Code の文を「Claude Code を使用し、作成しました」に（数日で、は言わない）。長さは3分00秒、速さ1.12。第8案：訓練モードへの入りを「ここからは、訓練モードです。」で区切り、区切りの画面を入れる。導入の文に主語と「場所や規模に合わせて」を補う（利用者の直し）。字幕を細く背景なしの形に。3分以内に収めるため、速さ1.13・話題の間0.9秒、「そして、」を削った。第7案：利用者の判断で3つ足した。①情報伝達が足りない理由（部署どうしの情報、患者・人・物の関係）と、出典つきの数字2つ（画面の文字）②Claude Code での作り方の場面 ③同僚の評価と「合わせて導入できます」。長さ（3分以内）のため、次は読み上げをやめて画面の文字だけにした：「未確認」、「重複の警告」、「ある地震の日を例に…」、「そして、同じ画面で、訓練ができます。」、「一人でも、他の部署を相手に…」。「慣れない職員でも…」を短くし、速さを1.10、話題の間を1.0秒にした。第6案：締めを「訓練で確かめたことを、本番でも。」に。BGM は使わない（利用者の判断）。第5案：利用者の判断で「0人」のくだりを削った。トリアージタッグの前提を1文足し、例は「最も治療を必要とする『赤』の患者」に（番号は画面だけ）。「慣れない人」を「ふだん使い慣れていない職員」に。Claude は医療の判断や助言をしないと明言。「制作者の私（わたし）は」。テーマ名は画面に出さない。長さのため「端末は…」は画面の文字だけにし、「ある地震の日を例に、見てみましょう。」に短くした。第4案：第1版を見た利用者の直し。「震災」、「0人」の言い方、「大規模な訓練は、年（ねん）に何度も」、締めは「訓練で確かめたこと、本番でも。」で終わり「タシカメ。」は言わない。長さを詰めるため「端末は…」と「災害運用モードでは…」を短くし、「大型モニターの掲示用画面にも」を「大型モニターにも」にした。声は場面ごとに段落でまとめて読ませる（速さ1.06。利用者が聞き比べて選んだ段落読み）。第3案の追記：訓練モードが Claude API を使っていることが伝わるよう、「AI」を「Claude」と言い、画面にモデル名と仕組みを出す。第3案：災害運用モードを、架空の場面を1つ通して見せる形にした）。
 第2案：利用者の直し（冒頭の言葉、「災害運用モード」、救急外来に限らない登録）を入れ、2つのモード・使い方・端末どうしの同期・推せるポイントが伝わる構成にした。
 声は合成音声（Enceladus の予定）。字幕は日本語と英語。読み上げの速さは「メモ」の長さの項を参照。字幕の改行の位置は「｜」で指定できる（読み上げでは取り除く。日本語と英語の両方に入れる）。
 
@@ -27,8 +27,8 @@
 
 | 読み上げ | 英語の字幕 | 映像 |
 |---|---|---|
-| タシカメは、患者の所在、搬送や応援の依頼、場所ごとの人数を、院内のすべての端末で共有し、確かめながら進めるツールです。 | Tashikame shares patients' locations, transfer and support requests, and staffing by location across every terminal in the hospital, so each step can be confirmed. | ツール名 |
-| モードは二つ。災害のときに使う「災害運用モード」と、｜ふだんの「訓練モード」。どちらも、同じ画面です。 | It has two modes: Disaster Mode for real emergencies,｜and Training Mode for everyday practice. Both use the same screens. | 30秒版と同じく画面を左右に分ける。上部の帯「■ 災害運用」と「◇ 訓練」を並べる |
+| タシカメは、患者・搬送・応援の依頼・人数を、院内のすべての端末で共有するツールです。 | Tashikame shares patients, transfers, support requests and staffing across every terminal in the hospital. | ツール名 |
+| モードは二つ。災害のときの「災害運用モード」と、｜ふだんの「訓練モード」です。 | It has two modes: Disaster Mode for real emergencies,｜and Training Mode for everyday practice. | 30秒版と同じく画面を左右に分ける。上部の帯「■ 災害運用」と「◇ 訓練」を並べる |
 
 ## 4. 災害運用モード：ひとつの場面で見る（0:56–2:00）
 
@@ -36,19 +36,15 @@
 
 | 読み上げ | 英語の字幕 | 映像 | 画面の一言の説明 |
 |---|---|---|---|
-| 災害のときは、患者にトリアージタッグを付けて、治療の急ぎ具合を色で分け、重症の患者から、治療できる場所へ運びます。 | In a disaster, patients get triage tags that sort them by urgency with colors, and the most urgent are moved first to where they can be treated. | 札の付いた患者が、救急外来から手術室へ運ばれる矢印 | トリアージタッグ＝治療の急ぎ具合を色で示す札（赤→黄→緑） |
+| 災害のときは、トリアージタッグで治療の急ぎ具合を色分けし、重症の患者から、治療できる場所へ運びます。 | In a disaster, triage tags color-code urgency, and the most severe patients are moved first to where they can be treated. | 札の付いた患者が、救急外来から手術室へ運ばれる矢印 | トリアージタッグ＝治療の急ぎ具合を色で示す札（赤→黄→緑） |
 | 操作の例です。救急外来に、最も治療を必要とする「赤」の患者が運ばれてきました。 | Here is an example. A "red" patient, the one most in need of treatment, arrives at the ER. | 救急外来の端末 | タッグ＝トリアージタッグ。治療の急ぎ具合を色で示す札。赤は最優先。区分を決めるのは医師・看護師で、タシカメは記録するだけ |
 | 救急外来で登録すると、本部の画面にも、すぐに出ます。 | Register the patient in the ER, and it appears on the HQ screen instantly. | 2台の端末を左右に並べる。救急外来で登録→本部の一覧の先頭に出る | |
 | 本部は、手術室へ、搬送を依頼します。行き先と、運び方を選びます。 | HQ requests a transfer to the OR, choosing the destination and how to move the patient. | 本部の端末（押した所を輪で囲む）。右側に、やったことを手順として残す |
-| （間：1.0秒） | | 依頼の入力（行き先・手段・付き添い）を見せる |
 | 手術室が、受け入れを了承。 | The OR accepts. | 手術室の端末 |
-| （間：1.0秒） | | |
 | 本部が、搬送要員を割り当てて、指示を出します。 | HQ assigns transport staff and gives the order. | 本部の端末 |
-| （間：0.8秒） | | |
 | 頼んだことと、実際に起きたことは、分けて記録されます。 | What was requested and what actually happened are recorded separately. | 本部の端末。搬送のカードの「調整（依頼したこと）」「事実（起きたこと）」 |
-| 出発、そして到着。記録されるたびに、本部の画面にも、大型モニターにも、同時に反映されます。 | Departure, then arrival. Each record shows up at once on the HQ screen and the big wall monitor. | 3画面（救急外来・本部・掲示用画面）を並べ、同じ瞬間に変わる | 掲示用画面＝本部の大型モニター用。操作なしで自動更新 |
+| 出発と到着も、本部と大型モニターに、同時に反映されます。 | Departure and arrival show up at once at HQ and on the big wall monitor. | 3画面（救急外来・本部・掲示用画面）を並べ、同じ瞬間に変わる | 掲示用画面＝本部の大型モニター用。操作なしで自動更新 |
 | 人や物が足りない部署からの応援の要請も、本部でまとめて確かめられます。 | Requests for extra staff or supplies from short-handed departments can be tracked together at HQ. | 支援要請の画面（3階東病棟から人員：看護師2人。物品：車いす2台など） |
-| 慣れない職員でも迷わないように、文字は大きく、状態は文字と記号でも示します。 | So even unfamiliar staff won't get lost: large text, and status shown with words and symbols. | 区分の札（◆赤・▲黄、色＋記号＋文字）に寄る。大きなボタン | |
 
 字幕・画面の文字だけで見せる（読み上げない）：白黒で読める印刷（第4案で読み上げから外した。長さを3分に収めるため）、訂正しても記録は履歴ごと残る（〔訂正済み〕の印）、同じ患者を別の端末で同時に直すとお知らせが出る（「ほかの端末で先に更新されました」）、画面上部の「同期中」と「最終更新」。
 
@@ -58,13 +54,13 @@
 |---|---|---|
 | ここからは、訓練モードです。Claudeが、救急外来や手術室、病棟の役になり、無線で報告してきます。 | Next, Training Mode. Claude plays the ER, the operating room and the wards, reporting in over the radio. | 無線の受信箱に報告が次々と届く。画面の隅に「部署役：Claude API（claude-sonnet-5-5）」 |
 | 参加者は、それを聞いて、自分で記録し、調整します。 | You listen, record it yourself, and coordinate. | 本部役が入力する手元の画面 |
-| 終わると、プログラムが記録を照らし合わせ、ずれた所を、Claudeが根拠つきで説明します。 | Afterward, the system checks your records against what really happened, and Claude explains each gap with evidence. | 振り返りの画面。「説明文：Claude／照合と根拠の番号：プログラム」 |
+| 終わると、記録のずれを、Claudeが根拠つきで説明します。 | Afterward, Claude explains where your records drifted, with evidence. | 振り返りの画面。「説明文：Claude／照合と根拠の番号：プログラム」 |
 
 ## 6. 安全のしくみ（2:34–2:50）
 
 | 読み上げ | 英語の字幕 | 映像 |
 |---|---|---|
-| Claudeが出せるのは、決められた形の提案だけ。反映する前に、必ずプログラムが確かめます。 | Claude can only make proposals in a fixed format, and the system checks each one before applying it. | 提案→検証→反映の図。「strict tool use（JSON Schema で出力の形を固定）」 |
+| Claudeの提案は、反映する前に、必ずプログラムが確かめます。 | Claude's proposals are always checked by the system before they are applied. | 提案→検証→反映の図。「strict tool use（JSON Schema で出力の形を固定）」 |
 | 区分や治療について聞いても、Claudeは医療の判断や助言をせず、「担当の医療者が判断します」と答えます。 | Ask about triage or treatment, and Claude gives no medical judgment or advice: it replies that the medical staff will decide. | 訓練中に本部から部署役へ「区分を黄に下げたほうがいい？」と送り、断る返事が届く（API で撮る場合） |
 | 災害運用モードでは、AIを使いません。 | Disaster Mode uses no AI at all. | |
 
@@ -72,13 +68,13 @@
 
 | 読み上げ | 英語の字幕 | 映像 |
 |---|---|---|
-| タシカメは、場所や役割を、病院ごとの設定で変えられます。総合病院から、中規模病院まで、場所や規模に合わせて導入できます。 | Tashikame's locations and roles are set per hospital, so it can be adopted to fit any layout and size, from general to mid-sized hospitals. | 病院の作成画面で中規模病院を作り、同じ画面が動く（要録画） |
+| タシカメは、病院ごとの設定で、総合病院から中規模病院まで、｜場所や規模に合わせて導入できます。 | With per-hospital settings, Tashikame can be adopted to fit any layout and size,｜from general to mid-sized hospitals. | 病院の作成画面で中規模病院を作り、同じ画面が動く（要録画） |
 
 ## 8. Claude Code での作り方
 
 | 読み上げ | 英語の字幕 | 映像 |
 |---|---|---|
-| プログラミングの経験がない看護師の私が、Claude Code を使用し、作成しました。守るべき決まりを先に書き、Claude 自身が点検を重ねています。 | I'm a nurse with no programming experience, and I built this with Claude Code. We wrote the rules first, and Claude keeps checking its own work. | 画面の文字：コミット約60／TypeScript 約1.5万行／自動テスト207件、点検用サブエージェント：決まりの違反（invariant-auditor）・使いやすさ（ux-reviewer）、設定の自動検証フック、ソフトと映像を別のセッションで並行して開発 |
+| プログラミングの経験がない看護師の私が、Claude Code を使用し、作成しました。｜守るべき決まりを先に書き、Claude 自身が点検を重ねています。 | I'm a nurse with no programming experience, and I built this with Claude Code.｜We wrote the rules first, and Claude keeps checking its own work. | 画面の文字：コミット約60／TypeScript 約1.5万行／自動テスト207件、点検用サブエージェント：決まりの違反（invariant-auditor）・使いやすさ（ux-reviewer）、設定の自動検証フック、ソフトと映像を別のセッションで並行して開発 |
 
 ## 9. 締め
 
