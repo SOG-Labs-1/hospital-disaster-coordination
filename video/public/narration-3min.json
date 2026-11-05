@@ -34,148 +34,169 @@
       "text": "制作者の私は、災害対応に深く関わる病院で、看護師として働いています。",
       "en": "I, the creator, work as a nurse at a hospital deeply involved in disaster response.",
       "section": 1,
-      "start": 18.29,
-      "end": 24.12
+      "start": 18.19,
+      "end": 24.02
     },
     {
       "text": "部署どうしの情報がつながらず、患者と、人と、物の関係がつかめません。",
       "en": "Departments can't connect their information, so no one can see how patients, staff and supplies relate.",
       "section": 1,
-      "start": 24.79,
-      "end": 30.16
+      "start": 24.69,
+      "end": 30.06
     },
     {
       "text": "日々の業務の中で、大規模な訓練は、年に何度もできません。",
       "en": "And amid daily work, large-scale drills can't be held many times a year.",
       "section": 1,
-      "start": 30.92,
-      "end": 35.288
+      "start": 30.82,
+      "end": 35.188
     },
     {
       "text": "タシカメは、院内の災害対応を、確かめながら進めるための調整ツールです。",
       "en": "Tashikame is a coordination tool for confirming every step of a hospital's disaster response.",
       "section": 2,
-      "start": 36.388,
-      "end": 41.718
+      "start": 36.188,
+      "end": 41.518
     },
     {
       "text": "モードは二つ。災害のときに使う「災害運用モード」と、｜ふだんの「訓練モード」。どちらも、同じ画面です。",
       "en": "It has two modes: Disaster Mode for real emergencies,｜and Training Mode for everyday practice. Both use the same screens.",
       "section": 2,
-      "start": 41.918,
-      "end": 50.489
+      "start": 41.718,
+      "end": 50.288
     },
     {
       "text": "災害のときは、患者にトリアージタッグを付けて、治療の急ぎ具合を色で分け、重い患者から、治療できる場所へ運びます。",
       "en": "In a disaster, patients get triage tags that sort them by urgency with colors, and the most urgent are moved first to where they can be treated.",
       "section": 3,
-      "start": 51.589,
-      "end": 60.548
+      "start": 51.288,
+      "end": 59.978
     },
     {
       "text": "救急外来に、最も治療を必要とする「赤」の患者が運ばれてきました。",
       "en": "A \"red\" patient, the one most in need of treatment, arrives at the ER.",
       "section": 3,
-      "start": 60.989,
-      "end": 66.388
+      "start": 60.379,
+      "end": 65.168
     },
     {
       "text": "救急外来で登録すると、本部の画面にも、すぐに出ます。",
       "en": "Register the patient in the ER, and it appears on the HQ screen instantly.",
       "section": 3,
-      "start": 66.879,
-      "end": 70.959
+      "start": 65.549,
+      "end": 69.579
     },
     {
-      "text": "本部は、手術室への搬送を依頼。手術室が受け入れを了承すると、本部が搬送要員に指示します。",
-      "en": "HQ requests a transfer to the OR. Once the OR accepts, HQ dispatches transport staff.",
+      "text": "本部は、手術室へ、搬送を依頼します。行き先と、運び方を選びます。",
+      "en": "HQ requests a transfer to the OR, choosing the destination and how to move the patient.",
       "section": 3,
-      "start": 71.388,
-      "end": 79.032
+      "start": 69.959,
+      "end": 75.761
+    },
+    {
+      "text": "手術室が、受け入れを了承。",
+      "en": "The OR accepts.",
+      "section": 3.01,
+      "start": 76.761,
+      "end": 79.009
+    },
+    {
+      "text": "本部が、搬送要員を割り当てて、指示を出します。",
+      "en": "HQ assigns transport staff and gives the order.",
+      "section": 3.0199999999999996,
+      "start": 80.009,
+      "end": 83.507
+    },
+    {
+      "text": "頼んだことと、実際に起きたことは、分けて記録されます。",
+      "en": "What was requested and what actually happened are recorded separately.",
+      "section": 3.0299999999999994,
+      "start": 84.507,
+      "end": 88.707
     },
     {
       "text": "出発、そして到着。記録されるたびに、本部の画面にも、大型モニターにも、同時に反映されます。",
       "en": "Departure, then arrival. Each record shows up at once on the HQ screen and the big wall monitor.",
-      "section": 3.5,
-      "start": 89.032,
-      "end": 96.472
+      "section": 3.0299999999999994,
+      "start": 88.837,
+      "end": 96.527
     },
     {
       "text": "慣れない職員でも迷わないように、文字は大きく、状態は文字と記号でも示します。",
       "en": "So even unfamiliar staff won't get lost: large text, and status shown with words and symbols.",
-      "section": 3.5,
-      "start": 96.942,
-      "end": 102.726
+      "section": 3.0299999999999994,
+      "start": 97.047,
+      "end": 103.638
     },
     {
       "text": "ここからは、訓練モードです。Claudeが、救急外来や手術室、病棟の役になり、無線で報告してきます。",
       "en": "Next, Training Mode. Claude plays the ER, the operating room and the wards, reporting in over the radio.",
       "section": 4,
-      "start": 103.826,
-      "end": 112.936
+      "start": 104.638,
+      "end": 113.748
     },
     {
       "text": "参加者は、それを聞いて、自分で記録し、調整します。",
       "en": "You listen, record it yourself, and coordinate.",
       "section": 4,
-      "start": 113.276,
-      "end": 117.606
+      "start": 114.088,
+      "end": 118.418
     },
     {
       "text": "終わると、プログラムが記録を照らし合わせ、ずれた所を、Claudeが根拠つきで説明します。",
       "en": "Afterward, the system checks your records against what really happened, and Claude explains each gap with evidence.",
       "section": 4,
-      "start": 117.866,
-      "end": 124.036
+      "start": 118.678,
+      "end": 124.848
     },
     {
       "text": "操作した同僚からは、この規模の訓練を再現できることは、｜BCPにも役立つ、と評価されました。",
       "en": "Colleagues who tried it said that recreating drills on this scale｜is valuable for BCP.",
       "section": 4,
-      "start": 124.286,
-      "end": 131.181
+      "start": 125.098,
+      "end": 131.992
     },
     {
       "text": "Claudeが出せるのは、決められた形の提案だけ。反映する前に、必ずプログラムが確かめます。",
       "en": "Claude can only make proposals in a fixed format, and the system checks each one before applying it.",
       "section": 5,
-      "start": 132.281,
-      "end": 138.851
+      "start": 132.992,
+      "end": 139.562
     },
     {
       "text": "区分や治療について聞いても、Claudeは医療の判断や助言をせず、「担当の医療者が判断します」と答えます。",
       "en": "Ask about triage or treatment, and Claude gives no medical judgment or advice: it replies that the medical staff will decide.",
       "section": 5,
-      "start": 139.111,
-      "end": 146.351
+      "start": 139.822,
+      "end": 147.062
     },
     {
       "text": "災害運用モードでは、AIを使いません。",
       "en": "Disaster Mode uses no AI at all.",
       "section": 5,
-      "start": 146.741,
-      "end": 149.494
+      "start": 147.452,
+      "end": 150.206
     },
     {
       "text": "タシカメは、場所や役割を、病院ごとの設定で変えられます。総合病院から、中規模病院まで、場所や規模に合わせて導入できます。",
       "en": "Tashikame's locations and roles are set per hospital, so it can be adopted to fit any layout and size, from general to mid-sized hospitals.",
       "section": 6,
-      "start": 150.594,
-      "end": 160.352
+      "start": 151.206,
+      "end": 160.963
     },
     {
       "text": "プログラミングの経験がない看護師の私が、Claude Code を使用し、作成しました。守るべき決まりを先に書き、Claude 自身が点検を重ねています。",
       "en": "I'm a nurse with no programming experience, and I built this with Claude Code. We wrote the rules first, and Claude keeps checking its own work.",
       "section": 7,
-      "start": 161.452,
-      "end": 172.424
+      "start": 161.963,
+      "end": 172.936
     },
     {
       "text": "訓練で確かめたことを、本番でも。",
       "en": "What you confirm in drills, you carry into the real thing.",
       "section": 8,
-      "start": 173.524,
-      "end": 175.965
+      "start": 173.936,
+      "end": 176.377
     }
   ]
 }

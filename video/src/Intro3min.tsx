@@ -161,6 +161,27 @@ const TopBarHighlight = ({ left, color, dashed }: { left: number; color: string;
   return <div style={{ position: 'absolute', left, top: 318, width: 150, height: 52, border: `4px ${dashed ? 'dashed' : 'solid'} ${color}`, borderRadius: 6, opacity: p, boxShadow: `0 0 18px ${color}` }} />;
 };
 
+/** 搬送の手順。やったことを右側に残していく（いまの手順を強調、済んだ手順は ✓） */
+const STEPS = ['救急外来：患者を登録', '本部：手術室へ搬送を依頼', '手術室：受け入れを了承', '本部：搬送要員を割り当て', '本部：指示を記録'] as const;
+const StepLog = ({ active }: { active: number }) => {
+  const frame = useCurrentFrame();
+  return (
+    <div style={{ position: 'absolute', left: 1210, top: 190, width: 650, fontFamily, display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div style={{ fontSize: 24, color: c.sub, letterSpacing: 3, marginBottom: 4 }}>やったこと（記録される）</div>
+      {STEPS.slice(0, active + 1).map((st, i) => {
+        const now = i === active;
+        const p = now ? interpolate(frame, [4, 14], [0, 1], { ...clamp, easing: ease }) : 1;
+        return (
+          <div key={st} style={{ display: 'flex', alignItems: 'center', gap: 14, opacity: p, translate: `${(1 - p) * 20}px 0px`, fontSize: now ? 34 : 28, fontWeight: now ? 700 : 400, color: now ? c.warn : c.sub, border: now ? `3px solid ${c.warn}` : `2px solid ${c.line}`, backgroundColor: 'rgba(7,13,24,0.85)', padding: '8px 16px' }}>
+            <span style={{ width: 34, textAlign: 'center' }}>{now ? '▶' : '✓'}</span>
+            <span>{st}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
 /** モードの区切り：場面の頭に大きく出して、すぐ消える（災害運用＝実線の青、訓練＝破線のだいだい） */
 const ModeChapter = ({ mode }: { mode: 'live' | 'training' }) => {
   const frame = useCurrentFrame();
@@ -495,7 +516,10 @@ const buildShots = (stock: boolean): Shot[] => [
     </>
   ) },
   { from: cut(10), to: cut(11), name: '救急外来で登録', node: (d) => (
-    <ZoomClip file="g1-flow-er.webm" from={G.start} rate={Math.min(1.3, Math.max(0.8, (G.register - G.start) / d))} zoom={1.5} label="救急外来の端末：患者を登録" style={ONE_L} />
+    <>
+      <ZoomClip file="g1-flow-er.webm" from={G.start} rate={Math.min(1.3, Math.max(0.8, (G.register - G.start) / d))} zoom={1.2} label="救急外来の端末" style={ONE_L} />
+      <StepLog active={0} />
+    </>
   ) },
   { from: cut(11), to: cut(12), name: '本部に、すぐに出る', node: (d) => (
     <>
@@ -503,35 +527,30 @@ const buildShots = (stock: boolean): Shot[] => [
       <Clip file="g2-flow-hq.webm" from={G.register - 0.4} to={G.register + 3.2} dur={d} label="本部の端末：再読み込みなしで一覧に出る" style={TWO_R} />
     </>
   ) },
-  { from: cut(12), to: cut(13), name: '依頼→了承→割り当て→指示（実際の速さ）', node: (d) => {
-    const rate = (G.order + 1.0 - G.reqStart) / d;
-    const at = (clipT: number) => Math.round(((clipT - G.reqStart) / rate) * 30);
-    const steps: [number, number, string, string, 'g2-flow-hq.webm' | 'g3-flow-or.webm'][] = [
-      [G.reqStart, G.request, '① 本部：手術室への搬送を依頼', '本部の端末', 'g2-flow-hq.webm'],
-      [G.request, G.accept + 0.6, '② 手術室：受け入れを了承', '手術室の端末', 'g3-flow-or.webm'],
-      [G.accept + 0.6, G.assign + 0.4, '③ 本部：搬送要員を割り当て', '本部の端末', 'g2-flow-hq.webm'],
-      [G.assign + 0.4, G.order + 1.0, '④ 本部：指示を記録', '本部の端末', 'g2-flow-hq.webm'],
-    ];
-    return (
+  ...([
+    [12, 13, G.reqStart, G.request + 0.1, '本部の端末', 'g2-flow-hq.webm', 1],
+    [13, 14, G.request + 0.1, G.accept + 0.1, '手術室の端末', 'g3-flow-or.webm', 2],
+    [14, 15, G.accept + 0.1, G.assign + 0.1, '本部の端末', 'g2-flow-hq.webm', 3],
+    [15, 16, G.assign + 0.1, G.order + 1.0, '本部の端末', 'g2-flow-hq.webm', 4],
+  ] as const).map(([n, m, a, b, label, file, step]) => ({
+    from: cut(n),
+    to: cut(m),
+    name: `操作：${STEPS[step]}`,
+    node: (d: number) => (
       <>
-        {steps.map(([a, b, cap, label, file]) => (
-          <Sequence key={cap} from={at(a)} durationInFrames={Math.max(1, at(b) - at(a))}>
-            <ZoomClip file={file} from={a} rate={rate} zoom={1.45} label={label} style={ONE_L} />
-            <Tag color={c.warn} style={{ left: 'auto', right: 64, top: 160, fontSize: 32 }}>{cap}</Tag>
-          </Sequence>
-        ))}
-        <Tag style={{ left: 'auto', right: 64, top: 230, fontSize: 24, fontWeight: 400, borderWidth: 2, maxWidth: 420, whiteSpace: 'normal', lineHeight: 1.5 }}>依頼したこと（調整）と、起きたこと（事実）を、分けて記録</Tag>
+        <ZoomClip file={file} from={a} rate={Math.min(1.3, Math.max(0.8, (b - a) / d))} zoom={1.2} label={label} style={ONE_L} />
+        <StepLog active={step} />
       </>
-    );
-  } },
-  { from: cut(13), to: cut(14), name: '出発・到着が3台に同時に', node: (d) => (
+    ),
+  }) as Shot),
+  { from: cut(16), to: cut(17), name: '出発・到着が3台に同時に', node: (d) => (
     <>
       <Clip file="g2-flow-hq.webm" from={G.depart - 0.6} to={G.end} dur={d} label="本部" style={THREE(0)} />
       <Clip file="g3-flow-or.webm" from={G.depart - 0.6} to={G.end} dur={d} label="手術室" style={THREE(1)} />
       <Clip file="g4-flow-board.webm" from={G.depart - 0.6} to={G.end} dur={d} label="本部の大型モニター" style={THREE(2)} />
     </>
   ) },
-  { from: cut(14), to: cut(15), name: '未確認・重複の警告・使いやすさ', node: (d) => (
+  { from: cut(17), to: cut(18), name: '未確認・重複の警告・使いやすさ', node: (d) => (
     <>
       <Tag>大きな文字とボタン ／ 色＋記号＋文字（◆赤 ▲黄 ●緑）／ 白黒で読める印刷</Tag>
       <Clip file="d-hospital-status.webm" from={4} to={10.5} dur={d} label="報告のない場所は「未確認」（ゼロと区別）" style={TWO_L} />
@@ -539,65 +558,65 @@ const buildShots = (stock: boolean): Shot[] => [
     </>
   ) },
   // 5. 訓練モード
-  { from: cut(15), to: cut(16), name: '訓練：部署役の報告', node: (d) => (
+  { from: cut(18), to: cut(19), name: '訓練：部署役の報告', node: (d) => (
     <>
       <Clip file="i1-training-report.webm" from={0} to={Math.min(8.8, d * 1.2)} dur={d} style={ONE} />
       <Tag color={c.warn} dashed style={CAP}>部署役：Claude API（claude-sonnet-5-5）</Tag>
     </>
   ) },
-  { from: cut(16), to: cut(17), name: '聞いて、自分で記録する', node: (d) => (
+  { from: cut(19), to: cut(20), name: '聞いて、自分で記録する', node: (d) => (
     <>
-      <ZoomClip file="i4-training-input.webm" from={I4.memo} rate={Math.min(1.3, Math.max(0.8, (I4.saved - I4.memo) / d))} zoom={1.4} style={ONE} />
+      <ZoomClip file="i4-training-input.webm" from={I4.memo} rate={Math.min(1.3, Math.max(0.8, (I4.saved - I4.memo) / d))} zoom={1.2} style={ONE} />
       <Tag color={c.warn} dashed style={CAP}>一人でも、他の部署を相手に本部の訓練ができる</Tag>
     </>
   ) },
-  { from: cut(17), to: cut(18), name: '振り返り', node: (d) => (
+  { from: cut(20), to: cut(21), name: '振り返り', node: (d) => (
     <>
       <Clip file="i3-training-review.webm" from={1} to={Math.min(15, 1 + d * 1.3)} dur={d} style={ONE} />
       <Tag color={c.warn} dashed style={CAP}>照合と根拠の番号：プログラム ／ 説明文：Claude</Tag>
     </>
   ) },
-  { from: cut(18), to: cut(19), name: '同僚の評価', node: () => (
+  { from: cut(21), to: cut(22), name: '同僚の評価', node: () => (
     <>
       <Backdrop file="i4-training-input.webm" from={2} dim={0.2} />
       <Quote />
     </>
   ) },
   // 6. 安全のしくみ
-  { from: cut(19), to: cut(20), name: '提案→検証→反映', node: () => (
+  { from: cut(22), to: cut(23), name: '提案→検証→反映', node: () => (
     <>
       <Backdrop file="i1-training-report.webm" from={1} dim={0.22} />
       <Guard />
     </>
   ) },
-  { from: cut(20), to: cut(21), name: '医療の判断はしない', node: (d) => (
+  { from: cut(23), to: cut(24), name: '医療の判断はしない', node: (d) => (
     <>
       <Clip file="i2-training-refusal.webm" from={15} to={Math.min(23, 15 + d * 1.2)} dur={d} style={ONE} />
       <Tag color={c.warn} dashed style={CAP}>Claude API の実際の返事</Tag>
     </>
   ) },
-  { from: cut(21), to: cut(22), name: 'AIを使わない', node: () => (
+  { from: cut(24), to: cut(25), name: 'AIを使わない', node: () => (
     <>
       <Backdrop file="d-hospital-status.webm" from={2} dim={0.28} />
       <NoAi />
     </>
   ) },
   // 7. どの病院でも
-  { from: cut(22), to: cut(23), name: 'どの病院でも', node: (d) => (
+  { from: cut(25), to: cut(26), name: 'どの病院でも', node: (d) => (
     <>
       <Clip file="j-hospitals.webm" from={0} to={Math.min(15.6, d * 1.3)} dur={d} style={ONE} />
       <Tag color={c.text} style={CAP}>病院ごとの設定で導入（総合病院・中規模病院の2つの架空の病院）</Tag>
     </>
   ) },
   // 8. Claude Code での作り方（実際の開発の出力）
-  { from: cut(23), to: cut(24), name: 'Claude Code での作り方', node: () => <BuiltWith /> },
-  { from: cut(24), to: TOTAL3, name: '締め', node: () => <Final />, fade: 1 },
+  { from: cut(26), to: cut(27), name: 'Claude Code での作り方', node: () => <BuiltWith /> },
+  { from: cut(27), to: TOTAL3, name: '締め', node: () => <Final />, fade: 1 },
 ];
 
 const SHOTS = { plain: buildShots(false), stock: buildShots(true) };
 
 // 話題の切れ目になる行（ここで場面をいったん暗くする）
-const SECTION_STARTS = [2, 4, 7, 9, 15, 19, 22, 23, 24];
+const SECTION_STARTS = [2, 4, 7, 9, 18, 22, 25, 26, 27];
 const XF = 10; // クロスフェードのコマ数
 
 export const Intro3min = ({ stock = false }: { stock?: boolean }) => {
@@ -623,11 +642,11 @@ export const Intro3min = ({ stock = false }: { stock?: boolean }) => {
         );
       })}
       {/* 災害運用モードと訓練モードの区切り：場面の頭に大きく、そのあとは右上の札で示し続ける */}
-      <Sequence from={Math.round(cut(9) * fps)} durationInFrames={Math.round((cut(15) - cut(9)) * fps)} name="災害運用モードの区切り">
+      <Sequence from={Math.round(cut(9) * fps)} durationInFrames={Math.round((cut(18) - cut(9)) * fps)} name="災害運用モードの区切り">
         <ModeChapter mode="live" />
         <ModeBadge mode="live" />
       </Sequence>
-      <Sequence from={Math.round(cut(15) * fps)} durationInFrames={Math.round((cut(19) - cut(15)) * fps)} name="訓練モードの区切り">
+      <Sequence from={Math.round(cut(18) * fps)} durationInFrames={Math.round((cut(22) - cut(18)) * fps)} name="訓練モードの区切り">
         <ModeChapter mode="training" />
         <ModeBadge mode="training" />
       </Sequence>
@@ -640,8 +659,8 @@ export const Intro3min = ({ stock = false }: { stock?: boolean }) => {
       {([
         ['sfx/boom-tail.wav', L(3) - 0.05, 0.35, '効果音：情報の伝達'],
         ['sfx/reveal.wav', L(7) - 1.5, 0.22, '効果音：タシカメ'],
-        ['sfx/radio.wav', cut(15) + 0.1, 0.25, '効果音：訓練モード'],
-        ['sfx/outro.wav', cut(24) + 0.1, 0.3, '効果音：締め'],
+        ['sfx/radio.wav', cut(18) + 0.1, 0.25, '効果音：訓練モード'],
+        ['sfx/outro.wav', cut(27) + 0.1, 0.3, '効果音：締め'],
       ] as const).map(([src, t, volume, name]) => (
         <Sequence key={name} from={Math.round(t * fps)} name={name}>
           <Audio src={staticFile(src)} volume={volume} />

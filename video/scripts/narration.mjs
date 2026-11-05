@@ -93,7 +93,7 @@ if (process.env.SCRIPT_MD) {
     const [ja, en] = line.split('|').slice(1, 3).map((x) => x.trim());
     // 「（間：N秒）」の行：読み上げない。その長さの無音を入れて、段落をそこで区切る（画面の文字だけで見せる所）
     const gap = ja.match(/^（間：([\d.]+)秒）$/);
-    if (gap) { section += 0.5; gapAfter.set(script.at(-1).section, Number(gap[1])); continue; }
+    if (gap) { section += 0.01; gapAfter.set(script.at(-1).section, Number(gap[1])); continue; }
     // 間（秒）：話す内容（場面）が変わるところは長めに。PAUSE_LINE・PAUSE_SECTION で調整する
     if (script.length && script.at(-1).section !== section) script.at(-1).pause = Number(process.env.PAUSE_SECTION ?? 1.5);
     script.push({ say: spoken(ja), text: ja, en, pause: Number(process.env.PAUSE_LINE ?? 0.6), section });
