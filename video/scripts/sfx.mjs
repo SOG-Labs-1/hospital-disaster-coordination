@@ -4,7 +4,7 @@
 //   public/sfx/reveal.wav     タシカメの名前：低い音がふくらみ、明るい和音に開く
 //   public/sfx/radio.wav      訓練モードへ：無線の「ザッ」と、低く脈打つ音
 //   public/sfx/outro.wav      締め：長く伸びる低い余韻
-//   public/sfx/bgm.wav        BGM（約3分）：低く静かなシンセの持続音と、ゆっくり変わる和音。git には入れない（このスクリプトで作る）
+//   public/sfx/bgm.wav        BGM の試作（約3分）。利用者の判断で映像には使っていない。git には入れない
 import { mkdirSync, writeFileSync } from 'node:fs';
 
 const rate = 48000;

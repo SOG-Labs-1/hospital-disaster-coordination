@@ -373,10 +373,6 @@ export const Intro3min = () => {
           <Audio src={staticFile(src)} volume={volume} />
         </Sequence>
       ))}
-      {/* BGM（自作。scripts/sfx.mjs で作る。git には入れない）。ナレーションの邪魔にならない小さな音 */}
-      <Sequence from={Math.round(2.5 * fps)} name="BGM">
-        <Audio src={staticFile('sfx/bgm.wav')} volume={(f) => interpolate(f, [0, 90, 5250, 5320], [0, 0.16, 0.16, 0], clamp)} />
-      </Sequence>
       <Sequence from={0} durationInFrames={Math.round(4.5 * fps)} name="地鳴り">
         <Audio src={staticFile('sfx/rumble.wav')} volume={0.85} />
       </Sequence>
