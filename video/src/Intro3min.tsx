@@ -117,6 +117,108 @@ const THREE = (i: number): CSSProperties => ({ left: 60 + i * 610, top: 300, wid
 /** 「情報の伝達」：BCP の説明のあと、大きな文字で課題を出す */
 const Problem = () => <Big sub="Communication">情報の伝達</Big>;
 
+/** 部署どうしの情報がつながらない：本部と部署を結ぶ線が途切れ、患者・人・物に「？」 */
+const BrokenLinks = () => {
+  const frame = useCurrentFrame();
+  const depts = [
+    { n: '救急外来', x: 420, y: 250 },
+    { n: '手術室', x: 1500, y: 250 },
+    { n: '病棟', x: 420, y: 630 },
+    { n: '外来ホール', x: 1500, y: 630 },
+  ];
+  const cx = 960, cy = 440;
+  return (
+    <AbsoluteFill>
+      <svg width={1920} height={1080}>
+        {depts.map((d, i) => {
+          const p = interpolate(frame, [4 + i * 5, 16 + i * 5], [0, 1], { ...clamp, easing: ease });
+          const br = interpolate(frame, [30 + i * 6, 40 + i * 6], [0, 1], clamp);
+          const mx = (cx + d.x) / 2, my = (cy + d.y) / 2;
+          return (
+            <g key={d.n} opacity={p}>
+              <line x1={cx} y1={cy} x2={mx - (mx - cx) * 0.12 * br} y2={my - (my - cy) * 0.12 * br} stroke={c.line} strokeWidth={3} />
+              <line x1={mx + (d.x - mx) * 0.12 * br} y1={my + (d.y - my) * 0.12 * br} x2={d.x} y2={d.y} stroke={c.line} strokeWidth={3} />
+              <text x={mx} y={my + 14} fill={c.red} fontFamily={fontFamily} fontSize={44} fontWeight={700} textAnchor="middle" opacity={br}>✕</text>
+              <rect x={d.x - 150} y={d.y - 50} width={300} height={100} fill="rgba(7,13,24,0.9)" stroke={c.line} strokeWidth={2} />
+              <text x={d.x} y={d.y + 10} fill={c.text} fontFamily={fontFamily} fontSize={30} fontWeight={700} textAnchor="middle">{d.n}</text>
+            </g>
+          );
+        })}
+        <rect x={cx - 140} y={cy - 55} width={280} height={110} fill={c.bg2} stroke={c.accent} strokeWidth={3} />
+        <text x={cx} y={cy + 10} fill={c.text} fontFamily={fontFamily} fontSize={34} fontWeight={700} textAnchor="middle">本部</text>
+      </svg>
+      <div style={{ position: 'absolute', left: 0, right: 0, top: 740, display: 'flex', justifyContent: 'center', gap: 70, fontFamily, fontSize: 36, color: c.text, opacity: interpolate(frame, [50, 62], [0, 1], clamp) }}>
+        <span><span style={{ color: c.red }}>◆</span> 患者 ？</span>
+        <span>○ 人 ？</span>
+        <span><span style={{ color: c.accent }}>▭</span> 物 ？</span>
+        <span style={{ color: c.sub }}>── どこに、どれだけ？</span>
+      </div>
+    </AbsoluteFill>
+  );
+};
+
+/** 出典つきの数字（画面の上に出す） */
+const Fact = ({ children, source }: { children: ReactNode; source: string }) => {
+  const frame = useCurrentFrame();
+  const p = interpolate(frame, [10, 24], [0, 1], { ...clamp, easing: ease });
+  return (
+    <div style={{ position: 'absolute', left: 64, right: 64, top: 90, fontFamily, opacity: p, translate: `0px ${(1 - p) * -16}px`, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 4 }}>
+      <div style={{ fontSize: 32, fontWeight: 700, color: c.text, backgroundColor: 'rgba(7,13,24,0.9)', borderLeft: `6px solid ${c.warn}`, padding: '8px 18px' }}>{children}</div>
+      <div style={{ fontSize: 20, color: c.sub, paddingLeft: 24 }}>出典：{source}</div>
+    </div>
+  );
+};
+
+/** 同僚の評価 */
+const Quote = () => {
+  const frame = useCurrentFrame();
+  const p = interpolate(frame, [4, 20], [0, 1], { ...clamp, easing: ease });
+  return (
+    <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'center', fontFamily, paddingBottom: 160 }}>
+      <div style={{ opacity: p, maxWidth: 1400, textAlign: 'center' }}>
+        <div style={{ fontSize: 28, color: c.sub, letterSpacing: 4 }}>操作した同僚の評価</div>
+        <div style={{ marginTop: 24, fontSize: 50, fontWeight: 700, color: c.text, lineHeight: 1.5 }}>「この規模の訓練をシミュレーションできることは、<br />災害対策・BCPにおいても有用」</div>
+      </div>
+    </AbsoluteFill>
+  );
+};
+
+/** Claude Code での作り方（数字は 2026-11-05 にリポジトリで確認：コミット60、TypeScript 約1.46万行、自動テスト 177＋画面テスト30＝207件） */
+const BuiltWith = () => {
+  const frame = useCurrentFrame();
+  const stats = [
+    ['コミット', '約60'],
+    ['TypeScript', '約1.5万行'],
+    ['自動テスト', '207件'],
+  ];
+  return (
+    <AbsoluteFill style={{ fontFamily }}>
+      <div style={{ position: 'absolute', left: 0, right: 0, top: 110, textAlign: 'center', fontSize: 40, fontWeight: 700, color: c.text, opacity: interpolate(frame, [0, 12], [0, 1], clamp) }}>
+        Claude Code での作り方
+      </div>
+      <div style={{ position: 'absolute', left: 0, right: 0, top: 200, display: 'flex', justifyContent: 'center', gap: 60 }}>
+        {stats.map(([k, v], i) => {
+          const p = interpolate(frame, [8 + i * 6, 20 + i * 6], [0, 1], { ...clamp, easing: ease });
+          return (
+            <div key={k} style={{ opacity: p, width: 360, border: `3px solid ${c.accent}`, padding: '20px 0', textAlign: 'center', backgroundColor: 'rgba(7,13,24,0.8)' }}>
+              <div style={{ fontSize: 26, color: c.sub }}>{k}</div>
+              <div style={{ fontSize: 60, fontWeight: 700, color: c.text, marginTop: 6 }}>{v}</div>
+            </div>
+          );
+        })}
+      </div>
+      <Points
+        items={[
+          '先に決まりを書く（CLAUDE.md）：架空データのみ／AIは提案だけ／医療判断をしない',
+          '点検用サブエージェント：決まりの違反（invariant-auditor）・使いやすさ（ux-reviewer）',
+          '設定の自動検証フック ／ ソフトと映像を別のセッションで並行して開発',
+        ]}
+        style={{ left: 200, right: 200, top: 440, gap: 24 }}
+      />
+    </AbsoluteFill>
+  );
+};
+
 /** 一人でも、他の部署を相手に：本部を中心に、Claude が演じる部署が並ぶ */
 const SoloDrill = () => {
   const frame = useCurrentFrame();
@@ -205,7 +307,7 @@ const Final = () => {
       <div style={{ marginTop: 22, width: interpolate(p, [0, 1], [0, 560]), height: 3, backgroundColor: c.accent }} />
       <div style={{ marginTop: 26, fontSize: 32, color: c.sub, letterSpacing: 6, opacity: p }}>院内災害対応の調整ツール ／ AI訓練モード</div>
       <div style={{ marginTop: 44, fontSize: 24, color: c.sub, letterSpacing: 1, opacity: p, textAlign: 'center', lineHeight: 1.7 }}>
-        Claude Code で開発（自作 Skill・点検用サブエージェント・設定の自動検証フック・自動テスト）／ Claude Code Hackathon 2026
+        Claude Code で開発 ／ Claude Code Hackathon 2026
         <br />
         github.com/SOG-Labs-1/hospital-disaster-coordination
         <br />
@@ -301,17 +403,26 @@ const buildShots = (stock: boolean): Shot[] => [
       <Tag style={{ top: 150, fontSize: 24, fontWeight: 400, borderWidth: 0, color: c.sub }}>見取り図は架空です</Tag>
     </>
   ) },
-  { from: cut(7), to: cut(8), name: '訓練の時間がない', node: (_d, s) => <Remap map={{ 4: 7 }}><Schedule start={s} /></Remap> },
+  { from: cut(7), to: cut(8), name: '部署どうしの情報がつながらない', node: () => (
+    <>
+      <BrokenLinks />
+      <Fact source="千代ほか、日本臨床救急医学会雑誌 15巻3号（2012）">訓練の参加者アンケートでも「連携と情報伝達が不十分」の回答が多い（154人）</Fact>
+    </>
+  ) },
+  { from: cut(8), to: cut(9), name: '訓練の時間がない', node: (_d, s) => (
+    <>
+      <Remap map={{ 4: 8 }}><Schedule start={s} /></Remap>
+      <Fact source="日本看護管理学会「病院における防災訓練に関する実態調査報告書」（2024、300病院）">訓練の日も、87.3%の病院は通常どおり業務</Fact>
+    </>
+  ) },
   // 3. 2つのモード
-  { from: cut(8), to: cut(10), name: '2つのモード', node: (_d, s) => <Remap map={{ 5: 8, 6: 9 }}><TwoFunctions start={s} heading="― 2つのモード ―" liveLabel="災害運用モード" trainingLabel="訓練モード" /></Remap> },
+  { from: cut(9), to: cut(11), name: '2つのモード', node: (_d, s) => <Remap map={{ 5: 9, 6: 10 }}><TwoFunctions start={s} heading="― 2つのモード ―" liveLabel="災害運用モード" trainingLabel="訓練モード" /></Remap> },
   // 4. 災害運用モード：ひとつの場面
-  { from: cut(10), to: cut(12), name: '病院の様子とトリアージ', node: (_d, s) => (
+  { from: cut(11), to: cut(12), name: '病院の様子とトリアージ', node: () => (
     <>
       <HospitalPictogram phase="terminals" />
       <Tag>例：ある地震の日（架空の病院）／ 場所ごとのパソコンで開く・ログイン不要</Tag>
-      <Sequence from={Math.round((L(11) - s - 0.2) * 30)}>
-        <TriageRoute />
-      </Sequence>
+      <Sequence from={20}><TriageRoute /></Sequence>
     </>
   ) },
   { from: cut(12), to: cut(14), name: '救急外来で登録→本部に出る', node: (d) => (
@@ -338,58 +449,59 @@ const buildShots = (stock: boolean): Shot[] => [
     </>
   ) },
   { from: cut(16), to: cut(17), name: '依頼したこと／起きたこと', node: (d) => <Clip file="c-transport.webm" from={0} to={9} dur={d} style={ONE} /> },
-  { from: cut(17), to: cut(18), name: '未確認', node: (d) => <Clip file="d-hospital-status.webm" from={3.5} to={10.5} dur={d} style={ONE} /> },
-  { from: cut(18), to: cut(19), name: '重複の警告', node: (d) => <Clip file="h-duplicate-warning.webm" from={4} to={13} dur={d} style={ONE} /> },
-  { from: cut(19), to: cut(20), name: '誰でも使える画面', node: (d) => (
+  { from: cut(17), to: cut(18), name: '未確認・重複の警告・使いやすさ', node: (d) => (
     <>
-      <Clip file="a-register.webm" from={0} to={10} dur={d} style={{ left: 80, top: 160, width: 1060 }} />
-      <Points items={['BIZ UDゴシック', '本文18px以上・ボタン48px以上', '色＋記号＋文字（◆赤 ▲黄 ●緑）', 'コントラスト WCAG 2.2 AA', '紙に切り替えるときは、白黒で読める印刷']} style={{ left: 1190, top: 200, gap: 30 }} />
+      <Tag>BIZ UDゴシック ／ 本文18px以上・ボタン48px以上 ／ 色＋記号＋文字（◆赤 ▲黄 ●緑）／ 白黒で読める印刷</Tag>
+      <Clip file="d-hospital-status.webm" from={4} to={10.5} dur={d} label="報告のない場所は「未確認」（ゼロと区別）" style={TWO_L} />
+      <Clip file="h-duplicate-warning.webm" from={5} to={13} dur={d} label="同じタッグ番号は警告。理由を残して先へ" style={TWO_R} />
     </>
   ) },
   // 5. 訓練モード
-  { from: cut(20), to: cut(22), name: '訓練：部署役の報告', node: (d) => (
+  { from: cut(18), to: cut(19), name: '訓練：部署役の報告', node: (d) => (
     <>
       <Clip file="i1-training-report.webm" from={0} to={8.8} dur={d} style={ONE} />
-      <Tag color={c.warn} dashed style={CAP}>部署役：Claude API（claude-sonnet-5-5）</Tag>
+      <Tag color={c.warn} dashed style={CAP}>◇ 訓練モード ／ 部署役：Claude API（claude-sonnet-5-5）</Tag>
     </>
   ) },
-  { from: cut(22), to: cut(23), name: '自分で記録し、調整する', node: (d) => (
+  { from: cut(19), to: cut(20), name: '一人でも', node: () => (
     <>
-      <Clip file="i2-training-refusal.webm" from={0} to={8.5} dur={d} style={ONE} />
-      <Tag color={c.warn} dashed style={CAP}>本部から部署へ、無線で連絡</Tag>
+      <SoloDrill />
+      <Tag color={c.warn} dashed>一人でも、他の部署を相手に本部の訓練ができる</Tag>
     </>
   ) },
-  { from: cut(23), to: cut(24), name: '一人でも', node: () => <SoloDrill /> },
-  { from: cut(24), to: cut(25), name: '振り返り', node: (d) => (
+  { from: cut(20), to: cut(21), name: '振り返り', node: (d) => (
     <>
       <Clip file="i3-training-review.webm" from={1} to={15} dur={d} style={ONE} />
       <Tag color={c.warn} dashed style={CAP}>照合と根拠の番号：プログラム ／ 説明文：Claude</Tag>
     </>
   ) },
+  { from: cut(21), to: cut(22), name: '同僚の評価', node: () => <Quote /> },
   // 6. 安全のしくみ
-  { from: cut(25), to: cut(26), name: '提案→検証→反映', node: () => <Guard /> },
-  { from: cut(26), to: cut(27), name: '医療の判断はしない', node: (d) => (
+  { from: cut(22), to: cut(23), name: '提案→検証→反映', node: () => <Guard /> },
+  { from: cut(23), to: cut(24), name: '医療の判断はしない', node: (d) => (
     <>
       <Clip file="i2-training-refusal.webm" from={15} to={23} dur={d} style={ONE} />
       <Tag color={c.warn} dashed style={CAP}>Claude API の実際の返事</Tag>
     </>
   ) },
-  { from: cut(27), to: cut(28), name: 'AIを使わない', node: () => <NoAi /> },
+  { from: cut(24), to: cut(25), name: 'AIを使わない', node: () => <NoAi /> },
   // 7. どの病院でも
-  { from: cut(28), to: cut(29), name: 'どの病院でも', node: (d) => (
+  { from: cut(25), to: cut(26), name: 'どの病院でも', node: (d) => (
     <>
       <Clip file="j-hospitals.webm" from={0} to={15.6} dur={d} style={ONE} />
-      <Tag color={c.text} style={CAP}>2つの架空の病院（総合病院・中規模病院）</Tag>
+      <Tag color={c.text} style={CAP}>病院ごとの設定で導入（総合病院・中規模病院の2つの架空の病院）</Tag>
     </>
   ) },
+  // 8. Claude Code での作り方
+  { from: cut(26), to: cut(27), name: 'Claude Code での作り方', node: () => <BuiltWith /> },
   // 8. 締め
-  { from: cut(29), to: TOTAL3, name: '締め', node: () => <Final />, fade: 1 },
+  { from: cut(27), to: TOTAL3, name: '締め', node: () => <Final />, fade: 1 },
 ];
 
 const SHOTS = { plain: buildShots(false), stock: buildShots(true) };
 
 // 話題の切れ目になる行（ここで場面をいったん暗くする）
-const SECTION_STARTS = [2, 4, 8, 10, 20, 25, 28, 29];
+const SECTION_STARTS = [2, 4, 9, 11, 18, 22, 25, 26, 27];
 const XF = 10; // クロスフェードのコマ数
 
 export const Intro3min = ({ stock = false }: { stock?: boolean }) => {
@@ -422,9 +534,9 @@ export const Intro3min = ({ stock = false }: { stock?: boolean }) => {
       {/* 低音の効果音（自作。scripts/sfx.mjs）：場面ごとに違う音。ナレーションより大きくならないよう音量を測って決めた（2026-11-05） */}
       {([
         ['sfx/boom-tail.wav', L(3) - 0.05, 0.35, '効果音：情報の伝達'],
-        ['sfx/reveal.wav', L(8) - 1.5, 0.22, '効果音：タシカメ'],
-        ['sfx/radio.wav', cut(20) + 0.1, 0.25, '効果音：訓練モード'],
-        ['sfx/outro.wav', cut(29) + 0.1, 0.3, '効果音：締め'],
+        ['sfx/reveal.wav', L(9) - 1.5, 0.22, '効果音：タシカメ'],
+        ['sfx/radio.wav', cut(18) + 0.1, 0.25, '効果音：訓練モード'],
+        ['sfx/outro.wav', cut(27) + 0.1, 0.3, '効果音：締め'],
       ] as const).map(([src, t, volume, name]) => (
         <Sequence key={name} from={Math.round(t * fps)} name={name}>
           <Audio src={staticFile(src)} volume={volume} />

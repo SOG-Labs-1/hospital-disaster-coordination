@@ -1,6 +1,6 @@
-# 3分版のナレーション原稿（第6案）
+# 3分版のナレーション原稿（第7案）
 
-更新：2026-11-05（第6案：締めを「訓練で確かめたことを、本番でも。」に。BGM は使わない（利用者の判断）。第5案：利用者の判断で「0人」のくだりを削った。トリアージタッグの前提を1文足し、例は「最も治療を必要とする『赤』の患者」に（番号は画面だけ）。「慣れない人」を「ふだん使い慣れていない職員」に。Claude は医療の判断や助言をしないと明言。「制作者の私（わたし）は」。テーマ名は画面に出さない。長さのため「端末は…」は画面の文字だけにし、「ある地震の日を例に、見てみましょう。」に短くした。第4案：第1版を見た利用者の直し。「震災」、「0人」の言い方、「大規模な訓練は、年（ねん）に何度も」、締めは「訓練で確かめたこと、本番でも。」で終わり「タシカメ。」は言わない。長さを詰めるため「端末は…」と「災害運用モードでは…」を短くし、「大型モニターの掲示用画面にも」を「大型モニターにも」にした。声は場面ごとに段落でまとめて読ませる（速さ1.06。利用者が聞き比べて選んだ段落読み）。第3案の追記：訓練モードが Claude API を使っていることが伝わるよう、「AI」を「Claude」と言い、画面にモデル名と仕組みを出す。第3案：災害運用モードを、架空の場面を1つ通して見せる形にした）。
+更新：2026-11-05（第7案：利用者の判断で3つ足した。①情報伝達が足りない理由（部署どうしの情報、患者・人・物の関係）と、出典つきの数字2つ（画面の文字）②Claude Code での作り方の場面 ③同僚の評価と「合わせて導入できます」。長さ（3分以内）のため、次は読み上げをやめて画面の文字だけにした：「未確認」、「重複の警告」、「ある地震の日を例に…」、「そして、同じ画面で、訓練ができます。」、「一人でも、他の部署を相手に…」。「慣れない職員でも…」を短くし、速さを1.10、話題の間を1.0秒にした。第6案：締めを「訓練で確かめたことを、本番でも。」に。BGM は使わない（利用者の判断）。第5案：利用者の判断で「0人」のくだりを削った。トリアージタッグの前提を1文足し、例は「最も治療を必要とする『赤』の患者」に（番号は画面だけ）。「慣れない人」を「ふだん使い慣れていない職員」に。Claude は医療の判断や助言をしないと明言。「制作者の私（わたし）は」。テーマ名は画面に出さない。長さのため「端末は…」は画面の文字だけにし、「ある地震の日を例に、見てみましょう。」に短くした。第4案：第1版を見た利用者の直し。「震災」、「0人」の言い方、「大規模な訓練は、年（ねん）に何度も」、締めは「訓練で確かめたこと、本番でも。」で終わり「タシカメ。」は言わない。長さを詰めるため「端末は…」と「災害運用モードでは…」を短くし、「大型モニターの掲示用画面にも」を「大型モニターにも」にした。声は場面ごとに段落でまとめて読ませる（速さ1.06。利用者が聞き比べて選んだ段落読み）。第3案の追記：訓練モードが Claude API を使っていることが伝わるよう、「AI」を「Claude」と言い、画面にモデル名と仕組みを出す。第3案：災害運用モードを、架空の場面を1つ通して見せる形にした）。
 第2案：利用者の直し（冒頭の言葉、「災害運用モード」、救急外来に限らない登録）を入れ、2つのモード・使い方・端末どうしの同期・推せるポイントが伝わる構成にした。
 声は合成音声（Enceladus の予定）。字幕は日本語と英語。読み上げの速さは「メモ」の長さの項を参照。
 
@@ -22,6 +22,7 @@
 | 制作者の私は、災害対応に深く関わる病院で、看護師として働いています。 | I, the creator, work as a nurse at a hospital deeply involved in disaster response. | 院内の見取り図（架空の Claude総合病院(仮) の配置で描く）。顔は出さない |
 | 訓練では、ホワイトボードと無線で、患者や人の動きを追います。 | In drills, we track patients and staff with whiteboards and radios. | ホワイトボードと無線の再現（架空の内容） |
 | 患者はいまどこにいるのか。頼んだ搬送は、本当に届いたのか。 | Where is each patient now? Did the transfer we asked for actually happen? | 見取り図の点に「？」が増える |
+| 部署どうしの情報がつながらず、患者と、人と、物の関係がつかめない。それが、毎回の訓練で残る課題です。 | Departments can't connect their information, so no one can see how patients, staff and supplies relate. That problem remains after every drill. | 画面の文字（出典つき）：訓練の参加者アンケートでも「連携と情報伝達が不十分」の回答が多い（千代ほか 2012、154人） |
 | そして、日々の業務の中で、大規模な訓練は、年に何度もできません。 | And amid daily work, large-scale drills can't be held many times a year. | 勤務表が埋まる図（30秒版から） |
 
 ## 3. タシカメと2つのモード（0:44–0:56）
@@ -37,16 +38,13 @@
 
 | 読み上げ | 英語の字幕 | 映像 | 画面の一言の説明 |
 |---|---|---|---|
-| ある地震の日を例に、見てみましょう。 | Let's walk through one example: the day of an earthquake. | 病院の断面図（架空）。場所ごとのパソコンが灯る。画面の文字「場所ごとのパソコンで開く／ログイン不要」 | 本部＝院内の災害対策本部 |
 | 災害のときは、患者にトリアージタッグを付けて、治療の急ぎ具合を色で分け、重い患者から、治療できる場所へ運びます。 | In a disaster, patients get triage tags that sort them by urgency with colors, and the most urgent are moved first to where they can be treated. | 札の付いた患者が、救急外来から手術室へ運ばれる矢印 | トリアージタッグ＝治療の急ぎ具合を色で示す札（赤→黄→緑） |
 | 救急外来に、最も治療を必要とする「赤」の患者が運ばれてきました。 | A "red" patient, the one most in need of treatment, arrives at the ER. | 救急外来の端末 | タッグ＝トリアージタッグ。治療の急ぎ具合を色で示す札。赤は最優先。区分を決めるのは医師・看護師で、タシカメは記録するだけ |
 | 救急外来で登録すると、本部の画面にも、すぐに出ます。 | Register the patient in the ER, and it appears on the HQ screen instantly. | 2台の端末を左右に並べる。救急外来で登録→本部の一覧の先頭に出る | |
 | 本部は、手術室への搬送を依頼。手術室が受け入れを了承すると、本部が搬送要員に指示します。 | HQ requests a transfer to the OR. Once the OR accepts, HQ dispatches transport staff. | 本部の搬送のカード。「次にすること」が了承→要員の割り当て→指示と進む | 搬送要員＝患者を運ぶ担当の職員 |
 | 出発、そして到着。記録されるたびに、本部の画面にも、大型モニターにも、同時に反映されます。 | Departure, then arrival. Each record shows up at once on the HQ screen and the big wall monitor. | 3画面（救急外来・本部・掲示用画面）を並べ、同じ瞬間に変わる | 掲示用画面＝本部の大型モニター用。操作なしで自動更新 |
 | 頼んだことと、実際に起きたことは、分けて残ります。まだ記録のない段階も、ひと目で分かります。 | What was requested and what actually happened are kept separate. Missing steps are easy to spot. | 搬送のカード。「調整（依頼したこと）」「事実（起きたこと）」、記録済みは ✓ と実線、未記録は – と破線 | |
-| 報告のない場所の人数は、ゼロではなく「未確認」と表示します。 | Counts from places that haven't reported show as "unconfirmed," not zero. | 院内の状況。病棟の「未確認」 | |
-| 同じタッグ番号の登録には警告を出しますが、止めません。理由を残して、先へ進めます。 | Duplicate tag numbers raise a warning, not a block. Record a reason and keep going. | 警告と理由の選択 | |
-| ふだん使い慣れていない職員でも迷わないように、文字は大きく、状態は色だけでなく、文字と記号でも示します。 | So that even staff who rarely use it won't get lost, text is large, and status uses words and symbols, not color alone. | 区分の札（◆赤・▲黄、色＋記号＋文字）に寄る。大きなボタン | |
+| 慣れない職員でも迷わないように、文字は大きく、状態は文字と記号でも示します。 | So even unfamiliar staff won't get lost: large text, and status shown with words and symbols. | 区分の札（◆赤・▲黄、色＋記号＋文字）に寄る。大きなボタン | |
 
 字幕・画面の文字だけで見せる（読み上げない）：白黒で読める印刷（第4案で読み上げから外した。長さを3分に収めるため）、訂正しても記録は履歴ごと残る（〔訂正済み〕の印）、同じ患者を別の端末で同時に直すとお知らせが出る（「ほかの端末で先に更新されました」）、画面上部の「同期中」と「最終更新」。
 
@@ -54,11 +52,10 @@
 
 | 読み上げ | 英語の字幕 | 映像 |
 |---|---|---|
-| そして、同じ画面で、訓練ができます。 | And you can train on the very same screens. | 上部の帯が「◇ 訓練」に変わる。記録は災害運用とは別に保存 |
 | Claudeが、救急外来や手術室、病棟の役になり、無線で報告してきます。 | Claude plays the ER, the operating room and the wards, reporting in over the radio. | 無線の受信箱に報告が次々と届く。画面の隅に「部署役：Claude API（claude-sonnet-5-5）」 |
 | 参加者は、それを聞いて、自分で記録し、調整します。 | You listen, record it yourself, and coordinate. | 本部役が入力する手元の画面 |
-| 一人でも、他の部署を相手に、本部の訓練ができます。 | Even alone, you can run an HQ drill against every other department. | |
 | 終わると、プログラムが記録を照らし合わせ、ずれた所を、Claudeが根拠つきで説明します。 | Afterward, the system checks your records against what really happened, and Claude explains each gap with evidence. | 振り返りの画面。「説明文：Claude／照合と根拠の番号：プログラム」 |
+| 操作した同僚からは、この規模の訓練を再現できることは、BCPにも役立つ、と評価されました。 | Colleagues who tried it said that recreating drills on this scale is valuable for BCP. | 振り返りの画面の続き。画面の文字「同僚の評価」 |
 
 ## 6. 安全のしくみ（2:34–2:50）
 
@@ -72,9 +69,15 @@
 
 | 読み上げ | 英語の字幕 | 映像 |
 |---|---|---|
-| 場所や役割は、病院ごとに設定できます。総合病院から、中規模病院まで。 | Locations and roles are set per hospital, from general hospitals to mid-sized ones. | 病院の作成画面で中規模病院を作り、同じ画面が動く（要録画） |
+| 場所や役割は、病院ごとの設定で変えられます。総合病院から、中規模病院まで、合わせて導入できます。 | Locations and roles change with each hospital's settings, so it can be adopted anywhere from general to mid-sized hospitals. | 病院の作成画面で中規模病院を作り、同じ画面が動く（要録画） |
 
-## 8. 締め（2:56–3:00）
+## 8. Claude Code での作り方
+
+| 読み上げ | 英語の字幕 | 映像 |
+|---|---|---|
+| プログラミングの経験がない看護師の私が、Claude Code と、数日で作りました。守るべき決まりを先に書き、Claude 自身が点検を重ねています。 | I'm a nurse with no programming experience, and I built this with Claude Code in a few days. We wrote the rules first, and Claude keeps checking its own work. | 画面の文字：コミット約60／TypeScript 約1.5万行／自動テスト207件、点検用サブエージェント：決まりの違反（invariant-auditor）・使いやすさ（ux-reviewer）、設定の自動検証フック、ソフトと映像を別のセッションで並行して開発 |
+
+## 9. 締め
 
 | 読み上げ | 英語の字幕 | 映像 |
 |---|---|---|

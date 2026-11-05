@@ -77,7 +77,8 @@ const timings = [];
 let pos = 0;
 // SCRIPT_MD=原稿の md を渡すと、その表から読み上げを作る（3分版。原稿を1か所で直せば声と字幕が変わる）
 // 表の1列目が読み上げ（字幕の日本語）、2列目が英語の字幕。「## 」の見出しごとに場面（section）を分け、場面の切れ目は長めの間にする
-const READ = [['BCP', 'ビーシーピー'], ['Claude', 'クロード'], ['AI', 'エーアイ'], ['ID', 'アイディー'], ['「0人」', 'ゼロにん'], ['年に何度も', 'ねんに何度も'], ['私は', 'わたしは']];
+const READ = [['BCP', 'ビーシーピー'], ['Claude Code', 'クロードコード'], ['Claude', 'クロード'], ['AI', 'エーアイ'], ['ID', 'アイディー'], ['「0人」', 'ゼロにん'], ['年に何度も', 'ねんに何度も'], ['私は', 'わたしは'], ['私が', 'わたしが']];
+const gapAfter = new Map();
 const spoken = (t) => READ.reduce((x, [a, b]) => x.replaceAll(a, b), t);
 let script = lines.map(([t, en, pause]) => ({ say: t, text: t.replace('エーアイ', 'AI'), en, pause, section: 0 }));
 if (process.env.SCRIPT_MD) {
@@ -85,10 +86,14 @@ if (process.env.SCRIPT_MD) {
   const body = md.slice(0, md.indexOf('## 推せるポイント'));
   script = [];
   let section = -1;
+  // 次の段落に移る前の無音の長さ（「（間：N秒）」の行で決める）
   for (const line of body.split('\n')) {
-    if (/^## \d/.test(line)) { section++; continue; }
+    if (/^## \d/.test(line)) { section = Math.floor(section) + 1; continue; }
     if (section < 0 || !line.startsWith('| ') || line.startsWith('| 読み上げ') || line.startsWith('|---')) continue;
     const [ja, en] = line.split('|').slice(1, 3).map((x) => x.trim());
+    // 「（間：N秒）」の行：読み上げない。その長さの無音を入れて、段落をそこで区切る（画面の文字だけで見せる所）
+    const gap = ja.match(/^（間：([\d.]+)秒）$/);
+    if (gap) { section += 0.5; gapAfter.set(script.at(-1).section, Number(gap[1])); continue; }
     // 間（秒）：話す内容（場面）が変わるところは長めに。PAUSE_LINE・PAUSE_SECTION で調整する
     if (script.length && script.at(-1).section !== section) script.at(-1).pause = Number(process.env.PAUSE_SECTION ?? 1.5);
     script.push({ say: spoken(ja), text: ja, en, pause: Number(process.env.PAUSE_LINE ?? 0.6), section });
@@ -130,18 +135,25 @@ if (process.env.PARAGRAPH === '1') {
       }
     });
     const ends = sents.slice(0, -1); // 最後の文の終わりは区間の最後
+    // 各文の長さの見込み（1文で読んだ長さを段落全体の長さに合わせて縮めたもの）
+    const durs = sents.map((st, j) => st.expect - (j ? sents[j - 1].expect : 0));
     const w = Number(process.env.SPLIT_W ?? 0.5);
-    const cost = (j, q) => Math.abs((quiet[q][0] + quiet[q][1]) / 2 - ends[j].expect) / rate - w * ((quiet[q][1] - quiet[q][0]) / rate);
+    const mid = (q) => (quiet[q][0] + quiet[q][1]) / 2;
+    const len = (q) => quiet[q][1] - quiet[q][0];
+    // 動的計画法：文 j の終わりを無音 q にするとき、見込みは「前の文の終わり（無音 p の終わり）＋ 文 j の長さ」
     const Q = quiet.length;
     if (Q < ends.length) throw new Error(`場面 ${sec}：無音の区間が足りない`);
     const dp = ends.map(() => new Array(Q).fill(Infinity));
     const prev = ends.map(() => new Array(Q).fill(-1));
-    if (ends.length) for (let q = 0; q < Q; q++) dp[0][q] = cost(0, q);
+    const cost = (expect, q) => Math.abs(mid(q) - expect) / rate - w * (len(q) / rate);
+    if (ends.length) for (let q = 0; q < Q; q++) dp[0][q] = cost(durs[0], q);
     for (let j = 1; j < ends.length; j++) {
-      let bestSoFar = Infinity, bestIdx = -1;
       for (let q = 0; q < Q; q++) {
-        if (q > 0 && dp[j - 1][q - 1] < bestSoFar) [bestSoFar, bestIdx] = [dp[j - 1][q - 1], q - 1];
-        if (bestIdx >= 0) [dp[j][q], prev[j][q]] = [bestSoFar + cost(j, q), bestIdx];
+        for (let p = 0; p < q; p++) {
+          if (dp[j - 1][p] === Infinity) continue;
+          const c = dp[j - 1][p] + cost(quiet[p][1] + durs[j], q);
+          if (c < dp[j][q]) [dp[j][q], prev[j][q]] = [c, p];
+        }
       }
     }
     const chosen = new Array(ends.length);
@@ -152,6 +164,7 @@ if (process.env.PARAGRAPH === '1') {
     // 行の切れ目＝その行の最後の文の終わり
     const bounds = [];
     sents.forEach((st, j) => { if (j < ends.length && sents[j + 1].line !== st.line) bounds.push(chosen[j]); });
+    if (process.env.SPLIT_DEBUG) console.error(`場面${sec} 見込み ${ends.map((e) => (e.expect / rate).toFixed(2)).join(' ')} 無音 ${quiet.map(([a, b]) => `${(a / rate).toFixed(2)}+${((b - a) / rate).toFixed(2)}`).join(' ')}`);
     if (process.env.SPLIT_DEBUG) console.error(`場面${sec}: ${bounds.map(([a, b]) => `${(a / rate).toFixed(2)}+${((b - a) / rate).toFixed(2)}`).join(' ')}`);
     const base = pos / 2;
     items.forEach((x, k) => {
@@ -160,7 +173,7 @@ if (process.env.PARAGRAPH === '1') {
       timings.push({ text: x.text, en: x.en, section: sec, start: +((base + s0) / rate).toFixed(3), end: +((base + e0) / rate).toFixed(3) });
     });
     parts.push(v); pos += v.length;
-    const pause = sec === sections.at(-1) ? 0.5 : Number(process.env.PAUSE_SECTION ?? 1.5);
+    const pause = sec === sections.at(-1) ? 0.5 : (gapAfter.get(sec) ?? Number(process.env.PAUSE_SECTION ?? 1.5));
     const silence = Buffer.alloc(Math.round(pause * rate) * 2);
     parts.push(silence); pos += silence.length;
   }
