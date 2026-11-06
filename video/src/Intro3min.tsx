@@ -202,7 +202,7 @@ const Overview = () => {
 };
 
 /** 共有できない図 → つながる図 の切り替えまでのコマ数 */
-const BEFORE = 66;
+const BEFORE = 115; // 「このツールを活用することで、これまで共有できなかった」を言い終わるころ（利用者の指示で約1秒以上長く 2026-11-07）
 /** 図の上の見出し（共有できない／すべての端末で共有）。色だけにせず、言葉と枠で示す */
 const ShareCaption = ({ text, color }: { text: string; color: string }) => (
   <AbsoluteFill style={{ top: 70, alignItems: 'center', fontFamily }}>

@@ -6,7 +6,7 @@
   "scripts": {
     "studio": "remotion studio",
     "typecheck": "tsc --noEmit",
-    "narration:3min": "OUT_DIR=public OUT_NAME=narration-3min SCRIPT_MD=../docs/video/3min-script.md PARAGRAPH=1 PAUSE_SECTION=0.65 GAP_MAX=0.75 VERTEX_TTS=gemini-3.1-flash-tts-preview VOICE_REF=../docs/video/samples/gemini-tempo/Charon.wav VOICE_TAKES=16 REF_FIRST=1 node scripts/narration.mjs Charon 1",
+    "narration:3min": "OUT_DIR=public OUT_NAME=narration-3min SCRIPT_MD=../docs/video/3min-script.md PARAGRAPH=1 PAUSE_SECTION=0.65 GAP_MAX=0.75 VERTEX_TTS=gemini-3.1-flash-tts-preview VOICE_REF=../docs/video/samples/gemini-tempo/Charon.wav VOICE_TAKES=16 REF_FIRST=1 MORE_TAKES=40 RETAKE_D=0.6 HOLD=これまで共有できなかった=1.0 node scripts/narration.mjs Charon 1",
     "render:3min": "remotion render Intro3min out/intro-3min.mp4",
     "sfx": "node scripts/rumble.mjs && node scripts/sfx.mjs",
     "render:3min-stock": "remotion render Intro3minStock out/intro-3min-stock.mp4",

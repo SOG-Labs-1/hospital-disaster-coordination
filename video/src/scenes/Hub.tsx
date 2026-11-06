@@ -54,7 +54,8 @@ export const Hub = ({ state }: { state: 'radio' | 'broken' | 'connected' | 'tria
         const k0 = toHq ? cyc * 2 : (cyc - 0.5) * 2;
         const k = k0 < 0.5 ? 2 * k0 * k0 : 1 - (-2 * k0 + 2) ** 2 / 2;
         const dot = toHq ? { x: d.x + (cx - d.x) * k, y: d.y + (cy - d.y) * k } : { x: cx + (d.x - cx) * k, y: cy + (d.y - cy) * k };
-        const aiNode = training && (id === 'or' || id === 'hall');
+        // 訓練：4つの部署すべてを Claude が担う（オレンジの点線）。本部だけがあなた（利用者の指示 2026-11-07）
+        const aiNode = training;
         const stroke = aiNode ? c.warn : connected ? c.accent : c.line;
         const dash = state === 'radio' ? '14 10' : undefined;
         return (
@@ -111,8 +112,8 @@ export const Hub = ({ state }: { state: 'radio' | 'broken' | 'connected' | 'tria
 
 /** 小さな地図（操作の場面）。active：いま応答している所、flow：情報が伝わる向き、patient：患者のいる所（move なら救急外来→手術室へ動く） */
 export const HubMini = ({ active, flow, done = [], patient = 'er', move = 0, left = 1248, top = 52, ai = false }: { active: NodeId[]; flow?: [NodeId, NodeId][]; done?: NodeId[]; patient?: NodeId | 'move' | null; move?: number; left?: number; top?: number; ai?: boolean }) => {
-  // 訓練（ai）：手術室と搬送要員（外来ホールの位置）が Claude。救急外来・病棟は端末で記録（支援要請の催促は Claude。大きな図の「催促：Claude」）
-  const isAi = (id: NodeId) => ai && (id === 'or' || id === 'hall');
+  // 訓練（ai）：本部以外の部署はすべて Claude（大きな図と同じくオレンジの点線）
+  const isAi = (id: NodeId) => ai && id !== 'hq';
   const frame = useCurrentFrame();
   const P = MINI;
   const p = interpolate(frame, [0, 12], [0, 1], { ...clamp, easing: ease });

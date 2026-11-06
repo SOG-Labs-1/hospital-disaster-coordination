@@ -152,7 +152,7 @@ const timings = [];
 let pos = 0;
 // SCRIPT_MD=原稿の md を渡すと、その表から読み上げを作る（3分版。原稿を1か所で直せば声と字幕が変わる）
 // 表の1列目が読み上げ（字幕の日本語）、2列目が英語の字幕。「## 」の見出しごとに場面（section）を分け、場面の切れ目は長めの間にする
-const READ = [['事業継続計画（BCP）', '事業継続計画'], ['病院リンクBCP', 'びょういんリンク、ビーシーピー'], ['BCP', 'ビーシーピー'], ['Claude Code', 'クロードコード'], ['Claude', 'クロード'], ['AI', 'エーアイ'], ['ID', 'アイディー'], ['「0人」', 'ゼロにん'], ['年に何度も', 'ねんに何度も'], ['私は', 'わたしは'], ['私が', 'わたしが']];
+const READ = [['事業継続計画（BCP）', '事業継続計画'], ['病院リンクBCP', 'びょういんリンク、ビーシーピー'], ['BCP', 'ビーシーピー'], ['Claude Code', 'クロードコード'], ['Claude', 'クロード'], ['AI', 'エーアイ'], ['ID', 'アイディー'], ['「0人」', 'ゼロにん'], ['年に何度も', 'ねんに何度も'], ['私は', 'わたしは'], ['私が', 'わたしが'], ['フィードバック', 'ふぃーどばっく']];
 const gapAfter = new Map();
 const spoken = (t) => READ.reduce((x, [a, b]) => x.replaceAll(a, b), t.replaceAll('｜', '')); // 「｜」は字幕の改行の位置（読まない）
 if (!process.env.SCRIPT_MD) { console.error('SCRIPT_MD（原稿の md）を指定してください'); process.exit(1); }
@@ -190,20 +190,33 @@ if (process.env.PARAGRAPH === '1') {
     let v = first;
     if (vertex && process.env.VOICE_REF) {
       const takes = Number(process.env.VOICE_TAKES ?? 3);
-      let best = v, bestD = Infinity;
       const cands = [];
-      for (let t = 0; t < takes; t++) {
-        const w = t === 0 ? null : await synth(paraText, t);
-        if (t !== 0 && !w) continue;
-        cands.push([t, t === 0 ? v : trim(Buffer.from(pcm(w)))]);
-      }
-      // 長さも見る：いちばん短い候補より長いほど減点（間の長い読み方を避ける）
-      const minLen = Math.min(...cands.map(([, x]) => x.length));
-      for (const [t, cand] of cands) {
-        const f = voiceFeatures(cand);
-        const d = Math.abs(Math.log(f.f0 / refF.f0)) * 3 + Math.abs(Math.log(f.cent / refF.cent)) + 4 * (cand.length / minLen - 1);
-        if (process.env.SPLIT_DEBUG) console.error(`場面${sec} 候補${t}: f0 ${f.f0.toFixed(0)} 重心 ${f.cent.toFixed(0)} 差 ${d.toFixed(3)}`);
-        if (d < bestD) [best, bestD] = [cand, d];
+      const addTakes = async (from, to) => {
+        for (let t = from; t < to; t++) {
+          const w = t === 0 ? null : await synth(paraText, t);
+          if (t !== 0 && !w) continue;
+          cands.push([t, t === 0 ? v : trim(Buffer.from(pcm(w)))]);
+        }
+      };
+      const pick = () => {
+        let best = v, bestD = Infinity;
+        // 長さも見る：いちばん短い候補より長いほど減点（間の長い読み方を避ける）
+        const minLen = Math.min(...cands.map(([, x]) => x.length));
+        for (const [t, cand] of cands) {
+          const f = voiceFeatures(cand);
+          const d = Math.abs(Math.log(f.f0 / refF.f0)) * 3 + Math.abs(Math.log(f.cent / refF.cent)) + 4 * (cand.length / minLen - 1);
+          if (process.env.SPLIT_DEBUG) console.error(`場面${sec} 候補${t}: f0 ${f.f0.toFixed(0)} 重心 ${f.cent.toFixed(0)} 差 ${d.toFixed(3)}`);
+          if (d < bestD) [best, bestD] = [cand, d];
+        }
+        return [best, bestD];
+      };
+      await addTakes(0, takes);
+      let [best, bestD] = pick();
+      // MORE_TAKES：冒頭以外で、まだ声が離れている（差が RETAKE_D より大きい）場面だけ、候補を増やす
+      const more = Number(process.env.MORE_TAKES ?? 0);
+      if (more > takes && sec !== sections[0] && bestD > Number(process.env.RETAKE_D ?? 0.6)) {
+        await addTakes(takes, more);
+        [best, bestD] = pick();
       }
       v = best;
       // REF_FIRST=1：2つ目の場面からは、冒頭（1つ目の場面）に選んだ声を基準にする。場面ごとに声の感じが変わらないように（利用者の指摘 2026-11-06）
@@ -317,6 +330,18 @@ if (process.env.PARAGRAPH === '1') {
       v = Buffer.concat(pieces);
       n = v.length / 2;
       bounds.splice(0, bounds.length, ...shifted);
+    }
+    // HOLD="文の一部=秒;…"：その文のあとの間を、指定した秒だけ長くする（図を長く見せるため。利用者の指示 2026-11-07）
+    for (const spec of (process.env.HOLD ?? '').split(';').filter(Boolean)) {
+      const [key, sec2] = spec.split('=');
+      const k = items.findIndex((x) => x.text.includes(key));
+      if (k < 0 || k >= items.length - 1) continue;
+      const add = Math.round(Number(sec2) * rate);
+      const at = Math.round((bounds[k][0] + bounds[k][1]) / 2);
+      v = Buffer.concat([v.subarray(0, at * 2), Buffer.alloc(add * 2), v.subarray(at * 2)]);
+      n = v.length / 2;
+      bounds[k] = [bounds[k][0], bounds[k][1] + add];
+      for (let j = k + 1; j < bounds.length; j++) bounds[j] = [bounds[j][0] + add, bounds[j][1] + add];
     }
     const base = pos / 2;
     items.forEach((x, k) => {
