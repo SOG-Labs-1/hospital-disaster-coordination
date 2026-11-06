@@ -473,6 +473,52 @@ const StockShot = ({ file, from, to, dur, portrait, bright = 0.62 }: { file: str
   );
 };
 
+/** 訓練モードの頭で、全画面の図を見せる長さ（秒） */
+const trainingFig = (d: number) => Math.min(3.4, d * 0.45);
+// 手術室の判断（了承）→ 救急外来の催促（支援要請のカード）→ 搬送要員との無線。速さは 1.3 倍まで
+const TRAINING_PARTS = [
+  ['t2-training-request.webm', 3.6, 5.0, ['hq'], [['hq', 'or']]],
+  ['t3-training-accepted.webm', 1.9, 3.9, ['or'], [['or', 'hq']]],
+  ['t8-training-followup.webm', 2.0, 4.1, ['er'], [['er', 'hq']]],
+  ['t4-training-radio-order.webm', 4.6, 5.6, ['hq'], [['hq', 'hall']]],
+  ['t5-training-radio-departed.webm', 1.8, 3.8, ['hall'], [['hall', 'hq']]],
+] as const;
+const trainingParts = (d: number) => {
+  const raw = TRAINING_PARTS.reduce((t, [, a, b]) => t + (b - a), 0);
+  const rate = Math.min(1.3, Math.max(0.8, raw / d));
+  let at = 0;
+  const segs = TRAINING_PARTS.map(([file, a, b, active, flow], i) => {
+    const from = at;
+    const len = i === TRAINING_PARTS.length - 1 ? d - at : (b - a) / rate;
+    at += len;
+    return { file, a, from, len, active: active as readonly NodeId[], flow: flow as readonly (readonly [NodeId, NodeId])[] };
+  });
+  return { rate, segs };
+};
+
+/**
+ * 訓練モードの右上の小さな図。カットごとに出し直すと切り替えのたびに暗くなるので、
+ * 訓練の場面の間はひとつの図を出し続け、光らせる所だけを時刻で変える（利用者の指示 2026-11-07）
+ */
+const TrainingMini = ({ start, end }: { start: number; end: number }) => {
+  const { fps } = useVideoConfig();
+  const t = start + useCurrentFrame() / fps;
+  let active: readonly NodeId[] = ['er', 'hq'];
+  let flow: readonly (readonly [NodeId, NodeId])[] = [['er', 'hq']];
+  let patient: 'er' | null = 'er';
+  if (t >= cut(20) && t < cut(21)) {
+    const seg = [...trainingParts(cut(21) - cut(20)).segs].reverse().find((x) => t - cut(20) >= x.from);
+    if (seg) [active, flow] = [seg.active, seg.flow];
+  } else if (t >= cut(21) && t < cut(22)) [active, flow, patient] = [['hq'], [], null];
+  else if (t >= cut(22)) [active, flow, patient] = [['hall'], [['hall', 'hq']], null];
+  const out = interpolate(t, [end - 0.35, end], [1, 0], clamp);
+  return (
+    <AbsoluteFill style={{ opacity: out }}>
+      <HubMini ai active={[...active]} flow={flow.length ? (flow as [NodeId, NodeId][]) : undefined} patient={patient} />
+    </AbsoluteFill>
+  );
+};
+
 const buildShots = (stock: boolean): Shot[] => [
   // 1. 冒頭
   ...(stock
@@ -619,7 +665,7 @@ const buildShots = (stock: boolean): Shot[] => [
   // 5. 訓練モード
   // 5. 訓練モード：同じ図で「本部はあなた、部署は Claude」を見せてから、災害運用モードと同じ全画面＋右上の図で操作を見せる
   { from: cut(19), to: cut(20), name: '訓練：部署の記録が本部に入る', node: (d) => {
-    const fig = Math.min(3.4, d * 0.45);
+    const fig = trainingFig(d);
     return (
       <>
         <Sequence durationInFrames={Math.round(fig * 30) + 8}>
@@ -628,38 +674,21 @@ const buildShots = (stock: boolean): Shot[] => [
         <Sequence from={Math.round(fig * 30)}>
           <ZoomClip file="t1-training-board.webm" from={0.8} rate={Math.min(1.3, Math.max(0.8, 5.4 / (d - fig)))} zoom={1} style={FULL} bare />
           <SubShade />
-          <HubMini ai active={['er', 'hq']} flow={[['er', 'hq']]} />
         </Sequence>
       </>
     );
   } },
   // 手術室（Claude）の了承 → 搬送要員に無線で指示 → 搬送要員（Claude）から「出発しました」。同じ速さで並べる
   { from: cut(20), to: cut(21), name: '訓練：部署の判断や催促と、搬送要員との無線', node: (d) => {
-    // 手術室の判断（了承）→ 救急外来の催促（支援要請のカード）→ 搬送要員との無線。速さは 1.3 倍まで
-    const parts = [
-      ['t2-training-request.webm', 3.6, 5.0, [['hq'], [['hq', 'or']]]],
-      ['t3-training-accepted.webm', 1.9, 3.9, [['or'], [['or', 'hq']]]],
-      ['t8-training-followup.webm', 2.0, 4.1, [['er'], [['er', 'hq']]]],
-      ['t4-training-radio-order.webm', 4.6, 5.6, [['hq'], [['hq', 'hall']]]],
-      ['t5-training-radio-departed.webm', 1.8, 3.8, [['hall'], [['hall', 'hq']]]],
-    ] as const;
-    const raw = parts.reduce((t, [, a, b]) => t + (b - a), 0);
-    const rate = Math.min(1.3, Math.max(0.8, raw / d));
-    let at = 0;
+    const { rate, segs } = trainingParts(d);
     return (
       <>
-        {parts.map(([file, a, b, [act, fl]], i) => {
-          const from = at;
-          const len = i === parts.length - 1 ? d - at : (b - a) / rate;
-          at += len;
-          return (
-            <Sequence key={file} from={Math.round(from * 30)} durationInFrames={Math.max(1, Math.round(len * 30))}>
-              <ZoomClip file={file} from={a} rate={rate} zoom={1} style={FULL} bare />
-              <SubShade />
-              <HubMini ai active={act as unknown as NodeId[]} flow={fl as unknown as [NodeId, NodeId][]} />
-            </Sequence>
-          );
-        })}
+        {segs.map(({ file, a, from, len }) => (
+          <Sequence key={file} from={Math.round(from * 30)} durationInFrames={Math.max(1, Math.round(len * 30))}>
+            <ZoomClip file={file} from={a} rate={rate} zoom={1} style={FULL} bare />
+            <SubShade />
+          </Sequence>
+        ))}
       </>
     );
   } },
@@ -667,7 +696,6 @@ const buildShots = (stock: boolean): Shot[] => [
     <>
       <ZoomClip file="t6-training-review.webm" from={0.5} rate={Math.min(1.3, Math.max(0.8, 9 / d))} zoom={1} style={FULL} bare />
       <SubShade />
-      <HubMini ai active={['hq']} patient={null} />
     </>
   ) },
   // 6. 安全のしくみ
@@ -675,7 +703,6 @@ const buildShots = (stock: boolean): Shot[] => [
     <>
       <ZoomClip file="t7-training-medical-reply.webm" from={4.6} rate={Math.min(1.3, Math.max(0.8, 6 / d))} zoom={1} style={FULL} bare />
       <SubShade />
-      <HubMini ai active={['hall']} flow={[['hall', 'hq']]} patient={null} />
     </>
   ) },
   { from: cut(23), to: cut(24), name: 'AIを使わない', node: () => (
@@ -732,6 +759,15 @@ export const Intro3min = ({ stock = false }: { stock?: boolean }) => {
       <Sequence from={Math.round(cut(19) * fps)} durationInFrames={Math.round((cut(22) - cut(19)) * fps)} name="訓練モードの区切り">
         <ModeChapter mode="training" />
       </Sequence>
+      {/* 訓練モードの右上の図：全画面の図のあとから「医療の判断はしない」の場面の終わりまで、出し続ける */}
+      {(() => {
+        const a = cut(19) + trainingFig(cut(20) - cut(19));
+        return (
+          <Sequence from={Math.round(a * fps)} durationInFrames={Math.round((cut(23) - a) * fps)} name="訓練モードの右上の図">
+            <TrainingMini start={Math.round(a * fps) / fps} end={cut(23)} />
+          </Sequence>
+        );
+      })()}
       {/* 英語の字幕は利用者の判断でいったん出さない（english={false}）。日本語は少し小さめ */}
       <Subtitles lines={lines} delay={DELAY3} variant="cinema" english={false} />
       {/* 低音の効果音（自作。scripts/sfx.mjs）：場面ごとに違う音。ナレーションより大きくならないよう音量を測って決めた（2026-11-05） */}
