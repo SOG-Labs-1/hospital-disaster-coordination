@@ -177,7 +177,8 @@ function logCursor(page: Page, e: Omit<CursorEvent, 't'>) {
   cursorLog.set(page, list);
 }
 
-async function moveCursor(page: Page, target: Locator) {
+/** left：文字に重ならないよう、要素の左端（✉ の印など）に置く */
+async function moveCursor(page: Page, target: Locator, left = false) {
   // 見えていれば動かさない（画面が揺れないように）
   const moved = await target.evaluate((el) => {
     const r = el.getBoundingClientRect();
@@ -188,11 +189,13 @@ async function moveCursor(page: Page, target: Locator) {
   if (moved) await sleep(600);
   const box = await target.boundingBox();
   if (!box) return;
+  const x = left ? box.x + 24 : box.x + box.width / 2;
+  const y = left ? box.y + 28 : box.y + box.height / 2;
   await page.evaluate(({ x, y }) => {
     const c = document.getElementById('__capture-cursor');
     if (c) Object.assign(c.style, { left: `${x}px`, top: `${y}px` });
-  }, { x: box.x + box.width / 2, y: box.y + box.height / 2 });
-  logCursor(page, { x: box.x + box.width / 2, y: box.y + box.height / 2 });
+  }, { x, y });
+  logCursor(page, { x, y });
   await sleep(650);
 }
 
@@ -702,7 +705,7 @@ async function clipS() {
 /** t. 新しい訓練（このツールを使った訓練、審査用5分シナリオ）。CAPTURE_AI=anthropic なら手術室と搬送要員の役は本物の Claude。
  *  1回の録画から、待ち時間を切って何本かに分ける：
  *  t1 救急外来の端末から患者がボードに入る ／ t2 本部が手術室へ搬送を依頼 ／ t3 手術室（Claude）の了承が入る ／
- *  t4 本部が搬送要員に無線で指示 ／ t5 搬送要員（Claude）から「出発しました」 ／ t6 振り返り */
+ *  t4 本部が搬送要員に無線で指示 ／ t5 搬送要員（Claude）から「出発しました」 ／ t8 救急外来（Claude）の催促 ／ t6 振り返り */
 async function clipT() {
   const page = await openTerminal('hq', '青木 はるか', 'training');
   await tab(page, /訓練/);
@@ -785,6 +788,19 @@ async function clipT() {
   await sleep(5000);
   await finish(rec, { id: 't7q', file: 't7-training-medical-question.webm', title: '訓練：医療の判断を聞く', note: '搬送要員へ「患者の区分を黄に下げてもいい？治療は何を優先する？」と無線で送る' }, { from: t7s, to: t7s + 9000 }, true);
   await finish(rec, { id: 't7', file: 't7-training-medical-reply.webm', title: '訓練：医療の判断はしない返事', note: `搬送要員の役：${ai}。医療の判断や助言はせず、担当の医療者に任せる返事が無線で届く（待ち時間は切ってある）` }, { from: t7 - 1500 }, true);
+
+  // t8：救急外来の役（Claude）が、手配のない支援要請を端末から催促する（支援要請のカードに届く）
+  await tab(page, /支援要請/);
+  const t8 = Date.now();
+  const msg = page.getByTestId('support-messages').filter({ hasText: '救急外来から' }).first();
+  await msg.waitFor({ timeout: 180_000 });
+  await sleep(600);
+  await msg.evaluate((el) => el.scrollIntoView({ block: 'center', behavior: 'smooth' }));
+  await sleep(900);
+  await moveCursor(page, msg, true);
+  await sleep(4000);
+  await finish(rec, { id: 't8', file: 't8-training-followup.webm', title: '訓練：部署（Claude）からの催促', note: `救急外来の役：${ai}。手配のない支援要請に、救急外来の端末から催促が届く（支援要請のカード）` }, { from: t8 - 300 }, true);
+  await tab(page, /訓練/);
 
   // t6：訓練を終えて振り返り
   // シナリオの時間が過ぎて訓練がすでに終わっていれば、ボタンは出ない

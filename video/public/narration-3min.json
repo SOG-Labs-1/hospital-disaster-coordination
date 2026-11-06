@@ -141,56 +141,56 @@
       "en": "In Training Mode, you run headquarters,｜and records from each department flow into your screen.",
       "section": 4,
       "start": 117.285,
-      "end": 123.925
+      "end": 123.905
     },
     {
-      "text": "手術室の判断と、搬送要員との無線は、Claudeが演じます。",
-      "en": "Claude plays the operating room's decisions and the transport staff on the radio.",
+      "text": "部署の判断や催促と、搬送要員との無線は、Claudeが演じます。",
+      "en": "Claude plays the departments' decisions and reminders, and the transport staff on the radio.",
       "section": 4,
-      "start": 124.725,
-      "end": 129.452
+      "start": 124.705,
+      "end": 129.813
     },
     {
       "text": "終わると、記録のずれを、Claudeが根拠つきで説明します。",
       "en": "Afterward, Claude explains where your records drifted, with evidence.",
       "section": 4.01,
-      "start": 130.952,
-      "end": 135.292
+      "start": 131.313,
+      "end": 135.652
     },
     {
       "text": "訓練中に治療の相談をしても、Claudeは医療の判断や助言はせず、｜判断は医療者に任せます。",
       "en": "Even if you ask about treatment during a drill, Claude gives no medical judgment or advice,｜and leaves decisions to medical staff.",
       "section": 5,
-      "start": 135.942,
-      "end": 142.232
+      "start": 136.302,
+      "end": 142.592
     },
     {
       "text": "災害運用モードでは、AIを使いません。｜AIのサービスが止まっても動き続け、患者の情報を外のAIに送ることもありません。",
       "en": "Disaster Mode uses no AI.｜It keeps working even if AI services go down, and never sends patient data to an outside AI.",
       "section": 5,
-      "start": 142.462,
-      "end": 153.826
+      "start": 142.822,
+      "end": 154.186
     },
     {
       "text": "病院ごとの設定で、総合病院から中規模病院まで、｜場所や規模に合わせて導入できます。",
       "en": "With per-hospital settings, it can be adopted from general to mid-sized hospitals,｜fitting each layout and size.",
       "section": 6,
-      "start": 154.476,
-      "end": 161.733
+      "start": 154.836,
+      "end": 162.093
     },
     {
       "text": "プログラミングの経験がない看護師の私が、Claude Code を使用し、作成しました。｜守るべき決まりを先に書き、Claude 自身が点検を重ねています。",
       "en": "I'm a nurse with no programming experience, and I built this with Claude Code.｜We wrote the rules first, and Claude keeps checking its own work.",
       "section": 7,
-      "start": 162.383,
-      "end": 173.422
+      "start": 162.743,
+      "end": 173.782
     },
     {
       "text": "訓練で確かめたことを、本番でも。",
       "en": "What you confirm in drills, you carry into the real thing.",
       "section": 8,
-      "start": 174.072,
-      "end": 176.638
+      "start": 174.432,
+      "end": 176.998
     }
   ]
 }

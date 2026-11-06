@@ -609,12 +609,14 @@ const buildShots = (stock: boolean): Shot[] => [
     );
   } },
   // 手術室（Claude）の了承 → 搬送要員に無線で指示 → 搬送要員（Claude）から「出発しました」。同じ速さで並べる
-  { from: cut(20), to: cut(21), name: '訓練：手術室の判断と、搬送要員との無線', node: (d) => {
+  { from: cut(20), to: cut(21), name: '訓練：部署の判断や催促と、搬送要員との無線', node: (d) => {
+    // 手術室の判断（了承）→ 救急外来の催促（支援要請のカード）→ 搬送要員との無線。速さは 1.3 倍まで
     const parts = [
-      ['t2-training-request.webm', 3.6, 5.2, [['hq'], [['hq', 'or']]]],
-      ['t3-training-accepted.webm', 1.8, 4.0, [['or'], [['or', 'hq']]]],
-      ['t4-training-radio-order.webm', 4.6, 5.8, [['hq'], [['hq', 'hall']]]],
-      ['t5-training-radio-departed.webm', 1.8, 4.2, [['hall'], [['hall', 'hq']]]],
+      ['t2-training-request.webm', 3.6, 5.0, [['hq'], [['hq', 'or']]]],
+      ['t3-training-accepted.webm', 1.9, 3.9, [['or'], [['or', 'hq']]]],
+      ['t8-training-followup.webm', 2.0, 4.1, [['er'], [['er', 'hq']]]],
+      ['t4-training-radio-order.webm', 4.6, 5.6, [['hq'], [['hq', 'hall']]]],
+      ['t5-training-radio-departed.webm', 1.8, 3.8, [['hall'], [['hall', 'hq']]]],
     ] as const;
     const raw = parts.reduce((t, [, a, b]) => t + (b - a), 0);
     const rate = Math.min(1.3, Math.max(0.8, raw / d));
@@ -646,7 +648,7 @@ const buildShots = (stock: boolean): Shot[] => [
   // 6. 安全のしくみ
   { from: cut(22), to: cut(23), name: '医療の判断はしない', node: (d) => (
     <>
-      <ZoomClip file="t7-training-medical-reply.webm" from={0.5} rate={Math.min(1.3, Math.max(0.8, 6 / d))} zoom={1} style={FULL} bare />
+      <ZoomClip file="t7-training-medical-reply.webm" from={4.6} rate={Math.min(1.3, Math.max(0.8, 6 / d))} zoom={1} style={FULL} bare />
       <SubShade />
       <HubMini ai active={['hall']} flow={[['hall', 'hq']]} patient={null} />
     </>

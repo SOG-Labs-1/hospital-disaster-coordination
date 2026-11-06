@@ -66,7 +66,7 @@ export const Hub = ({ state }: { state: 'radio' | 'broken' | 'connected' | 'tria
             {training && <circle cx={dot.x} cy={dot.y} r={11} fill={aiNode ? c.warn : c.accent} stroke="#fff" strokeWidth={2} />}
             {state === 'connected' && <circle cx={dot.x} cy={dot.y} r={11} fill={toHq ? c.warn : c.accent} stroke="#fff" strokeWidth={2} opacity={interpolate(frame, [20, 30], [0, 1], clamp)} />}
             <rect x={d.x - 150} y={d.y - 50} width={300} height={100} fill="rgba(7,13,24,0.92)" stroke={aiNode ? c.warn : connected ? c.accent : c.line} strokeWidth={connected ? 3 : 2} strokeDasharray={aiNode ? '12 8' : undefined} />
-            {training && <><rect x={d.x - 150} y={d.y + 58} width={300} height={40} fill={c.bg} /><text x={d.x} y={d.y + 88} fill={aiNode ? c.warn : c.accent} fontFamily={fontFamily} fontSize={26} fontWeight={700} textAnchor="middle">{id === 'or' ? '判断：Claude' : id === 'hall' ? '無線：Claude' : '端末で記録'}</text></>}
+            {training && <><rect x={d.x - 150} y={d.y + 58} width={300} height={40} fill={c.bg} /><text x={d.x} y={d.y + 88} fill={c.warn} fontFamily={fontFamily} fontSize={26} fontWeight={700} textAnchor="middle">{id === 'or' ? '判断：Claude' : id === 'hall' ? '無線：Claude' : '催促：Claude'}</text></>}
             <text x={d.x - (connected && !training ? 30 : 0)} y={d.y + 10} fill={c.text} fontFamily={fontFamily} fontSize={30} fontWeight={700} textAnchor="middle">{training && id === 'hall' ? '搬送要員' : NAMES[id]}</text>
             {connected && !training && <Pc x={d.x + 100} y={d.y} on={interpolate(frame, [12 + i * 4, 22 + i * 4], [0, 1], clamp)} />}
           </g>
@@ -111,7 +111,7 @@ export const Hub = ({ state }: { state: 'radio' | 'broken' | 'connected' | 'tria
 
 /** 小さな地図（操作の場面）。active：いま応答している所、flow：情報が伝わる向き、patient：患者のいる所（move なら救急外来→手術室へ動く） */
 export const HubMini = ({ active, flow, done = [], patient = 'er', move = 0, left = 1248, top = 52, ai = false }: { active: NodeId[]; flow?: [NodeId, NodeId][]; done?: NodeId[]; patient?: NodeId | 'move' | null; move?: number; left?: number; top?: number; ai?: boolean }) => {
-  // 訓練（ai）：手術室と搬送要員（外来ホールの位置）が Claude。救急外来・病棟は端末で記録
+  // 訓練（ai）：手術室と搬送要員（外来ホールの位置）が Claude。救急外来・病棟は端末で記録（支援要請の催促は Claude。大きな図の「催促：Claude」）
   const isAi = (id: NodeId) => ai && (id === 'or' || id === 'hall');
   const frame = useCurrentFrame();
   const P = MINI;
