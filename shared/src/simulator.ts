@@ -22,6 +22,10 @@ export type Stimulus =
   | { kind: 'transportOrdered'; transportId: string; patientText: string; toLocationId: string }
   | { kind: 'patientArrivedByTransport'; transportId: string; patientText: string; fromLocationId: string }
   | { kind: 'supportArrived'; supportId: string; itemsText: string }
+  /** 自部署の支援要請が、手配されないまま時間がたった（端末から本部に催促する） */
+  | { kind: 'supportFollowUp'; supportId: string; itemsText: string; note?: string; assigned: boolean; waitedMinutes: number }
+  /** 本部が自部署の支援要請の手配を記録した（端末から短く返事をする） */
+  | { kind: 'supportArranged'; supportId: string; itemsText: string; providerText: string }
   | { kind: 'hqMessage'; text: string };
 
 /** 搬送要員の役（AI）。本部と無線でやりとりするのは、この役だけ */
@@ -55,7 +59,7 @@ export type SimEvent = SimBase &
     | { type: 'TransportOrderedInSim'; transportId: string; simMs: number }
     | { type: 'TransportRedirectedInSim'; transportId: string; toLocationId: string }
     | { type: 'TransportCancelledInSim'; transportId: string }
-    | { type: 'SupportObserved'; supportId: string; fromLocationId: string }
+    | { type: 'SupportObserved'; supportId: string; fromLocationId: string; simMs?: number }
     | { type: 'SupportDispatchedInSim'; supportId: string; simMs: number }
     | { type: 'TransportArrivedInSim'; transportId: string; simMs: number }
     | { type: 'SupportDeliveredInSim'; supportId: string; simMs: number }
@@ -96,6 +100,8 @@ export interface TruthTransport {
 export interface TruthSupport {
   id: string;
   fromLocationId: string;
+  /** ボードに要請が記録された時刻（シナリオの時間） */
+  requestedSimMs?: number;
   dispatchedSimMs?: number;
   deliveredSimMs?: number;
 }
@@ -252,7 +258,7 @@ function applySim(v: SimView, e: SimEvent, scenario: Scenario): void {
       v.transports[e.transportId]!.cancelled = true;
       return;
     case 'SupportObserved':
-      v.supports[e.supportId] = { id: e.supportId, fromLocationId: e.fromLocationId };
+      v.supports[e.supportId] = { id: e.supportId, fromLocationId: e.fromLocationId, requestedSimMs: e.simMs };
       return;
     case 'SupportDispatchedInSim':
       v.supports[e.supportId]!.dispatchedSimMs = e.simMs;
@@ -365,6 +371,10 @@ export function describeStimulus(config: HospitalConfig, s: Stimulus): string {
       return `運んでいた患者が到着先に着いた（${s.transportId}：${loc(s.fromLocationId)}から、${quoteParticipant(s.patientText)}）。本部へ無線で到着を伝える。`;
     case 'supportArrived':
       return `要請した支援が届いた（${s.supportId}：${s.itemsText}）。本部へ伝える。`;
+    case 'supportFollowUp':
+      return `あなたの部署が出した支援要請（${s.supportId}：${s.itemsText}${s.note ? `。理由：${s.note}` : ''}）が、${s.waitedMinutes}分たっても手配されていない（本部の担当は${s.assigned ? '付いている' : 'まだ付いていない'}）。部署の端末から本部のボードに、短く催促の連絡を残す。何に困っているかを具体的に伝え、人数や物品は要請の中身だけを使う。`;
+    case 'supportArranged':
+      return `本部が、あなたの部署の支援要請の手配を記録した（${s.supportId}：${s.itemsText}、${s.providerText}）。部署の端末から本部のボードに、確認したことを短く返事する。`;
     case 'hqMessage':
       return `本部から無線で連絡が来た：${quoteParticipant(s.text)}。返事をする。`;
   }
@@ -578,9 +588,15 @@ export function advance(input: AdvanceInput): AdvanceResult {
     // ボードの受け入れの了承・断り（参加者が手で記録したもの、部署役のいない行き先など）も、実際の状態に反映する
     if ((e.type === 'TransportAccepted' || e.type === 'TransportDeclined') && tt && tt.roleAccepted !== (e.type === 'TransportAccepted'))
       push({ type: 'TransportDecisionObserved', transportId: tt.id, accepted: e.type === 'TransportAccepted' });
-    if (e.type === 'SupportRequested') push({ type: 'SupportObserved', supportId: e.subject.id, fromLocationId: e.payload.fromLocationId });
-    if (e.type === 'SupportDispatched' && view.supports[e.subject.id] && view.supports[e.subject.id]!.dispatchedSimMs === undefined)
+    if (e.type === 'SupportRequested') push({ type: 'SupportObserved', supportId: e.subject.id, fromLocationId: e.payload.fromLocationId, simMs: sim });
+    const ts = view.supports[e.subject.id];
+    if (e.type === 'SupportDispatched' && ts && ts.dispatchedSimMs === undefined) {
       push({ type: 'SupportDispatchedInSim', supportId: e.subject.id, simMs: sim });
+      // 要請した部署（部署役のいる部署）は、手配の記録を見て端末から返事をする
+      const bs = board.supports[e.subject.id];
+      const provider = e.payload.providerLocationId ? config.locations.find((l) => l.id === e.payload.providerLocationId)?.name : e.payload.providerName;
+      if (bs) queue(ts.fromLocationId, { kind: 'supportArranged', supportId: bs.id, itemsText: describeItems(config, e.payload.items?.length ? e.payload.items : bs.items), providerText: provider ? `${provider}から` : '送り元は未記録' });
+    }
   }
 
   // 3. 予定された事実（到着・支援の到着）
@@ -604,6 +620,17 @@ export function advance(input: AdvanceInput): AdvanceResult {
     if (due > sim) continue;
     // 受け取りは要請した部署の端末から記録する（pendingBoardWrites）
     push({ type: 'SupportDeliveredInSim', supportId: s.id, simMs: due });
+  }
+
+  // 3b. 手配されないままの支援要請：要請した部署役が、端末から本部に催促する（1件の要請に1回だけ）
+  const followedUp = new Set([...view.stimuli.values()].flatMap((x) => (x.stimulus.kind === 'supportFollowUp' ? [x.stimulus.supportId] : [])));
+  for (const s of Object.values(view.supports)) {
+    if (s.requestedSimMs === undefined || s.dispatchedSimMs !== undefined || followedUp.has(s.id)) continue;
+    const bs = board.supports[s.id];
+    if (!bs || bs.retracted || bs.closed || bs.steps.dispatched) continue;
+    const waited = sim - s.requestedSimMs;
+    if (waited < scenario.settings.supportFollowUpMinutes * 60000) continue;
+    queue(s.fromLocationId, { kind: 'supportFollowUp', supportId: s.id, itemsText: describeItems(config, bs.items), note: bs.note, assigned: !!bs.steps.assigned, waitedMinutes: Math.max(1, Math.round(waited / 60000)) });
   }
 
   // 4. 返事の時間が来た刺激を部署役に渡す
@@ -644,6 +671,9 @@ export const allowedActions: Record<Stimulus['kind'], Proposal['action'][]> = {
   transportOrdered: ['report_departure', 'reply_message'],
   patientArrivedByTransport: ['report_arrival', 'reply_message'],
   supportArrived: ['reply_message'],
+  // 支援要請の催促と、手配への返事は、部署の端末から本部のボードに残す連絡（決まった形の連絡だけ）
+  supportFollowUp: ['reply_message'],
+  supportArranged: ['reply_message'],
   // 本部からの無線（搬送要員への指示など）
   hqMessage: ['reply_message', 'report_departure'],
 };
@@ -704,8 +734,17 @@ export function validateProposal(view: SimView, config: HospitalConfig, role: st
   if ('reason' in p && typeof p.reason === 'string' && containsMedicalAdvice(p.reason, config)) return '理由に医療的な判断を含む言葉がある';
   const t = 'transportId' in p ? view.transports[p.transportId] : undefined;
   switch (p.action) {
-    case 'reply_message':
+    case 'reply_message': {
+      if (stimulus?.kind !== 'supportFollowUp' && stimulus?.kind !== 'supportArranged') return null;
+      const sup = view.supports[stimulus.supportId];
+      if (!sup || sup.fromLocationId !== role) return 'この部署の支援要請ではない';
+      if (stimulus.kind === 'supportFollowUp' && sup.dispatchedSimMs !== undefined) return 'すでに手配されている（催促は要らない）';
+      // 言葉の中の人数・数量は、要請の中身にある数だけ（数字を作り出さない）
+      const known = new Set([...stimulus.itemsText.normalize('NFKC').matchAll(/\d+/g)].map((m) => m[0]));
+      const said = [...p.message.normalize('NFKC').matchAll(/(\d+)\s*(人|名|本|台|個|枚|セット|箱)/g)].map((m) => m[1]!);
+      if (said.some((n) => !known.has(n))) return '言葉の中の数が要請の中身と違う';
       return null;
+    }
     case 'report_status': {
       if (p.accepting === null && p.capacity.length === 0) return '報告する状況がない（返事だけなら reply_message）';
       if (p.accepting !== null && p.accepting !== loc.accepting) return '受け入れ可否が実際の状態と違う';

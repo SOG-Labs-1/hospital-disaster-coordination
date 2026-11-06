@@ -2,6 +2,8 @@
 # 赤・黄・緑の患者が1分ごとに救急外来へ運ばれ、同じタッグ番号の別の患者と、病棟からの応援要請が加わる。
 # 「このツールを使った訓練」：救急外来は患者を端末で登録し、病棟は支援要請を端末で出す（シナリオのプログラムが記録する）。
 # 手術室の受け入れの判断は AI の部署役が行い、手術室の端末の記録として届く。無線でやりとりするのは搬送要員（AI）だけ。
+# 救急外来と病棟の支援要請が重なる。手配されないまま時間がたつと、要請した部署の AI の部署役が端末から催促し、
+# 本部が手配を記録すると、その部署役が端末から返事をする（どれも決まった形の連絡で、要請の中身はシナリオの値）。
 # 参加者は本部。画面に入ってくる記録を見て、搬送と支援要請を調整する。
 # 患者の区分はシナリオの作者が書いた架空の値で、AI は判定しない。
 
@@ -14,13 +16,14 @@ durationMinutes: 5
 description: >
   審査で短く試せるように、5分に縮めたシナリオ。1分ごとに赤・黄・緑の患者が救急外来に運ばれる。
   3分目に、1人目と同じ手書きのタッグ番号（201）の別の患者が来る（救急外来は特徴で見分けて別の患者として登録する）。
-  4分目に、3階東病棟から看護師の応援要請が端末で届く。
+  2分30秒に救急外来から、3分30秒に3階東病棟から、看護師の応援要請が端末で届き、限られた人手の配り方を考える場面になる。
+  手配されないまま45秒たつと、要請した部署の部署役（AI）が端末から催促する。
   本部は、赤の患者の手術室への搬送を依頼し、手術室の了承を確かめ、搬送要員に無線で指示し、出発を記録する。
 # 参加者に見せる説明（先の出来事は書かない）
 briefing: >
   市内で架空の多数傷病者事故が起きました。救急外来に、患者が1分ごとに運ばれてきます。
   各部署は自分の端末で記録するので、運ばれてきた患者や支援要請は、本部の画面に入ってきます。
-  あなたは災害対策本部の調整担当です。赤の患者の手術室への搬送と、病棟からの支援要請を調整してください。
+  あなたは災害対策本部の調整担当です。赤の患者の手術室への搬送と、部署からの支援要請を調整してください。
   搬送要員とは無線でやりとりします（約5分）。
 
 roles:
@@ -51,6 +54,7 @@ settings:
   responseDelaySeconds: 10
   travelMinutes: 1
   supportDeliveryMinutes: 1
+  supportFollowUpMinutes: 0.75
 
 timeline:
   - type: patientArrives
@@ -65,12 +69,18 @@ timeline:
     at: "02:00"
     locationId: er
     patient: { key: p3, tagNumber: "203", triage: green, sex: male, estimatedAge: 20代, features: 白いスニーカー、リュック }
+  - type: supportNeed
+    at: "02:30"
+    locationId: er
+    kindId: staff
+    items: [{ professionId: nurse, quantity: 2 }]
+    note: 患者が続けて運ばれてきて手が足りない
   - type: patientArrives
     at: "03:00"
     locationId: er
     patient: { key: p4, tagNumber: "201", triage: red, sex: female, estimatedAge: 40代, features: 赤いマフラー、眼鏡 }
   - type: supportNeed
-    at: "04:00"
+    at: "03:30"
     locationId: ward-3e
     kindId: staff
     items: [{ professionId: nurse, quantity: 2 }]
@@ -86,6 +96,9 @@ checks:
   - id: request-second-red
     text: 2人目の赤の患者（タッグ201・赤いマフラー）の搬送を依頼したか
     rule: { type: transportRequested, patientKey: p4 }
+  - id: support-assigned-er
+    text: 救急外来の応援要請に1分以内に担当を付けたか
+    rule: { type: supportAssigned, fromLocationId: er, withinMinutes: 1 }
   - id: support-assigned
     text: 3階東病棟の応援要請に1分以内に担当を付けたか
     rule: { type: supportAssigned, fromLocationId: ward-3e, withinMinutes: 1 }

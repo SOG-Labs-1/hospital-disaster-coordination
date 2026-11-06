@@ -244,6 +244,86 @@ describe('搬送：部署の判断は端末の記録として、搬送要員と�
   });
 });
 
+describe('支援要請：手配されないと部署役が端末から催促し、手配には返事をする', () => {
+  /** 2:00 に場所B の支援要請が入り、本部のボードで観察されるまで進める。要請の番号を返す */
+  function requested() {
+    run.tick(2 * 60_000);
+    run.tick(0);
+    return reduce(run.board).supportOrder[0]!;
+  }
+  const followUps = () => [...run.view().stimuli].filter(([, x]) => x.stimulus.kind === 'supportFollowUp');
+  function dispatch(id: string) {
+    run.boardSend((b) => ({ command: { type: 'DispatchSupport', supportId: id, payload: { providerLocationId: 'loc-a' } }, meta, expectedVersion: versionOf(reduce(b), { kind: 'support', id }) }));
+  }
+
+  it('手配されないまま決まった時間（既定1分）たつと、要請した部署役に催促の刺激が1回だけ渡る', () => {
+    const id = requested();
+    run.tick(59_000);
+    expect(followUps()).toHaveLength(0);
+    run.tick(1_000);
+    expect(followUps()).toHaveLength(1);
+    const [sid, f] = followUps()[0]!;
+    expect(f.role).toBe('loc-b');
+    expect(f.stimulus).toMatchObject({ kind: 'supportFollowUp', supportId: id, assigned: false, waitedMinutes: 1 });
+    expect(run.tick(10_000)).toContain(sid);
+    run.tick(3 * 60_000);
+    expect(followUps()).toHaveLength(1);
+  });
+
+  it('催促は、要請した部署の端末から要請に結び付けた連絡として記録され、要請のカードに出る', () => {
+    const id = requested();
+    run.tick(70_000);
+    const [sid] = followUps()[0]!;
+    run.propose(sid, { action: 'reply_message', message: '場所Bです。看護師1人の応援はまだでしょうか' });
+    const msg = run.board.find((e) => e.type === 'MessageLogged')!;
+    expect(msg).toMatchObject({ terminal: 'loc-b', reportedBy: { name: '訓練の部署役（AI）' }, payload: { fromLocationId: 'loc-b', relatedIds: [id], text: '（訓練の部署役（AI））場所Bです。看護師1人の応援はまだでしょうか' } });
+    expect(reduce(run.board).supports[id]!.messages).toMatchObject([{ fromLocationId: 'loc-b', reportedByName: '訓練の部署役（AI）' }]);
+    expect(run.view().inbox).toHaveLength(0); // 無線には届かない
+  });
+
+  it('時間までに手配すれば催促は来ず、手配への返事が部署の端末から記録される', () => {
+    const id = requested();
+    run.tick(30_000);
+    dispatch(id);
+    run.tick(0);
+    const arranged = [...run.view().stimuli].find(([, x]) => x.stimulus.kind === 'supportArranged')!;
+    expect(arranged[1]).toMatchObject({ role: 'loc-b', stimulus: { supportId: id, providerText: '場所Aから' } });
+    run.tick(2 * 60_000);
+    expect(followUps()).toHaveLength(0);
+    run.propose(arranged[0], { action: 'reply_message', message: '場所Bです。手配を確認しました' });
+    expect(run.board.filter((e) => e.type === 'MessageLogged')).toHaveLength(1);
+  });
+
+  it('返事を待つ間に手配された催促や、要請にない数を言う催促は記録しない', () => {
+    const id = requested();
+    run.tick(70_000);
+    const [sid] = followUps()[0]!;
+    run.propose(sid, { action: 'reply_message', message: '場所Bです。看護師5人の応援をお願いします' });
+    expect(run.view().proposals.at(-1)).toMatchObject({ accepted: false, reason: '言葉の中の数が要請の中身と違う' });
+
+    const fresh = new Run(scenario());
+    run = fresh;
+    const id2 = requested();
+    run.tick(70_000);
+    const [sid2] = followUps()[0]!;
+    dispatch(id2);
+    run.tick(0);
+    run.propose(sid2, { action: 'reply_message', message: '場所Bです。応援はまだでしょうか' });
+    expect(run.view().proposals.at(-1)).toMatchObject({ accepted: false, reason: 'すでに手配されている（催促は要らない）' });
+    expect(run.board.filter((e) => e.type === 'MessageLogged')).toHaveLength(0);
+    expect(id).toBe(id2);
+  });
+
+  it('部署役のいない部署の要請には、催促も返事も来ない', () => {
+    run = new Run(scenario({ roles: [{ locationId: 'loc-a', name: '場所Aの人' }] }));
+    const id = requested();
+    run.tick(2 * 60_000);
+    dispatch(id);
+    run.tick(0);
+    expect([...run.view().stimuli.values()].filter((x) => x.stimulus.kind === 'supportFollowUp' || x.stimulus.kind === 'supportArranged')).toHaveLength(0);
+  });
+});
+
 describe('部署役が知り得る情報だけを渡す', () => {
   it('部署：自部署の状態だけ。搬送要員：動いている搬送と無線のやりとりだけ', () => {
     run.tick(60_000);

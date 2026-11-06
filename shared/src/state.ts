@@ -143,6 +143,8 @@ export interface SupportView {
   closed: boolean;
   overrides: { eventId: string; codes: string[]; reason: string }[];
   retracted: boolean;
+  /** この要請に結び付けた連絡メモ（要請した部署からの催促など。記録の順） */
+  messages: { eventId: string; text: string; fromLocationId?: string; reportedByName?: string; recordedAt: string }[];
 }
 
 export interface TransporterActivity {
@@ -362,8 +364,14 @@ function applyEvent(state: AppState, e: DomainEvent, correction: Correction | un
   if (e.subject.kind === 'location') return applyLocationEvent(state, e, correction);
   if (e.subject.kind === 'support') return applySupportEvent(state, e, correction);
   if (e.subject.kind === 'message') {
-    // 連絡メモは状態を変えない。クロノロジーに出すだけ
-    if (e.type === 'MessageLogged') state.messageCount += 1;
+    // 連絡メモは状態を変えない。クロノロジーに出し、支援要請に結び付いたものはその要請のカードにも出す
+    if (e.type === 'MessageLogged') {
+      state.messageCount += 1;
+      const p = effectivePayload(e, correction);
+      if (p)
+        for (const id of new Set(p.relatedIds))
+          state.supports[id]?.messages.push({ eventId: e.id, text: p.text, fromLocationId: p.fromLocationId, reportedByName: e.reportedBy?.name, recordedAt: e.recordedAt });
+    }
     return;
   }
 
@@ -722,6 +730,7 @@ function applySupportEvent(state: AppState, e: DomainEvent, correction: Correcti
       closed: false,
       overrides: [],
       retracted: correction?.retract ?? false,
+      messages: [],
     };
     if (e.override) s.overrides.push({ eventId: e.id, codes: e.override.codes, reason: e.override.reason });
     state.supports[s.id] = s;

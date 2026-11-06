@@ -39,6 +39,15 @@ export class MockProvider implements AiProvider {
         return [{ action: 'report_arrival', transportId: s.transportId, message: `搬送です。${s.transportId}、到着先に着きました。引き渡しました。` }];
       case 'supportArrived':
         return [{ action: 'reply_message', message: `${me}です。応援（${s.itemsText}）が届きました。ありがとうございます。` }];
+      case 'supportFollowUp':
+        return [
+          {
+            action: 'reply_message',
+            message: `${me}です。${s.supportId}（${s.itemsText}）の応援はまだでしょうか。${s.note ? `${s.note}ため、` : ''}${s.assigned ? '手配の見通しを教えてください。' : '担当を決めてください。'}`,
+          },
+        ];
+      case 'supportArranged':
+        return [{ action: 'reply_message', message: `${me}です。${s.supportId}の手配（${s.providerText}）を確認しました。到着を待ちます。` }];
       case 'hqMessage': {
         // 搬送要員：本部の無線の指示に、搬送の番号（T-001）があれば、その搬送を運び出す。番号がなく、出発前の搬送が1件だけならそれを運ぶ
         if (ctx.roleKind === 'transporter') {

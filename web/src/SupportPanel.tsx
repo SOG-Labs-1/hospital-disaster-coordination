@@ -307,6 +307,17 @@ export function SupportCard({ support: s, config, state, terminal, enteredBy, no
         ))}
       </ul>
       {s.note && <p className="transport-meta">メモ：{s.note}</p>}
+      {s.messages.filter((m) => !state.retractedEventIds[m.eventId]).length > 0 && (
+        <ul className="support-messages" aria-label={`${s.id} への連絡`} data-testid="support-messages">
+          {s.messages
+            .filter((m) => !state.retractedEventIds[m.eventId])
+            .map((m) => (
+              <li key={m.eventId}>
+                <span aria-hidden="true">✉</span> {formatTime(m.recordedAt, now)} {m.fromLocationId ? `${locationName(config, m.fromLocationId)}から` : '連絡'}：{m.text}
+              </li>
+            ))}
+        </ul>
+      )}
       {alert && (
         <p className="missing-note">
           {alert.kind === 'unassigned'

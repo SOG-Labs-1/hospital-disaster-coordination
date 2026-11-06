@@ -191,7 +191,7 @@ export function TrainingTab({ config, snapshot, now, review }: Props) {
             )}
           </div>
           <p className="hint">
-            部署役：{providerLabel(snapshot.provider)}。部署（{(snapshot.scenarios.find((x) => x.id === snapshot.run?.scenarioId)?.roles ?? []).map((r) => config.locations.find((l) => l.id === r.locationId)?.name ?? r.locationId).join('・')}）は、ふつうの端末と同じように記録します。患者の登録・受け入れの返事・支援要請・到着は、このボードに入ってきます。あなた（本部）は、搬送と支援要請を調整してください。無線でやりとりするのは搬送要員だけです（「無線の受信」に届きます）。
+            部署役：{providerLabel(snapshot.provider)}。部署（{(snapshot.scenarios.find((x) => x.id === snapshot.run?.scenarioId)?.roles ?? []).map((r) => config.locations.find((l) => l.id === r.locationId)?.name ?? r.locationId).join('・')}）は、ふつうの端末と同じように記録します。患者の登録・受け入れの返事・支援要請・到着は、このボードに入ってきます。支援要請を放っておくと、部署から催促の連絡が要請のカードに届きます。あなた（本部）は、搬送と支援要請を調整してください。無線でやりとりするのは搬送要員だけです（「無線の受信」に届きます）。
           </p>
           {isPublicDemo && <p className="hint">公開デモでは、訓練は同時に1回だけです。ほかの方の訓練中は、終えずにお待ちください。部署役への連絡は Claude API に送られるので、個人の情報は書かないでください。</p>}
         </section>

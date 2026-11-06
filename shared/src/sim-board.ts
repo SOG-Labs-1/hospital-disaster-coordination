@@ -141,6 +141,23 @@ export function pendingBoardWrites(view: SimView, scenario: Scenario, config: Ho
     });
   }
 
+  // 2b. 部署役（AI）の支援要請の催促・手配への返事：その部署の端末から、要請に結び付けた連絡として記録する
+  for (const r of view.proposals) {
+    if (!r.accepted || !r.proposal || r.role === TRANSPORTER_ROLE || r.proposal.action !== 'reply_message') continue;
+    const st = view.stimuli.get(r.stimulusId)?.stimulus;
+    if (st?.kind !== 'supportFollowUp' && st?.kind !== 'supportArranged') continue;
+    const bs = board.supports[st.supportId];
+    if (!bs || bs.retracted) continue;
+    const text = `（${AI_ROLE_REPORTER}）${r.proposal.message}`;
+    if (containsMedicalAdvice(text, config)) continue;
+    const envelope: CommandEnvelopeInput = {
+      command: { type: 'LogMessage', payload: { channel: 'other', fromLocationId: r.role, toLocationId: undefined, text, relatedIds: [bs.id] } },
+      meta: { ...meta(r.role), reportedBy: { locationId: r.role, name: AI_ROLE_REPORTER } },
+    };
+    // 返事を待つ間に本部が手配したなら、催促は残さない
+    add(st.kind === 'supportFollowUp' && (bs.steps.dispatched || bs.closed) ? { key: `note-${r.id}`, envelope, skipReason: '催促の前に手配された' } : { key: `note-${r.id}`, envelope });
+  }
+
   // 3. 到着：到着先の端末から記録する（搬送要員は、無線で本部に到着を伝える）
   for (const t of Object.values(view.transports)) {
     if (t.arrivedSimMs === undefined) continue;

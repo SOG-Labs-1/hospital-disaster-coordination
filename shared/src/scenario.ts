@@ -108,8 +108,10 @@ export const ScenarioSchema = z
         travelMinutes: z.number().positive().default(2),
         /** 手配の指示から支援が届くまでの時間（分） */
         supportDeliveryMinutes: z.number().positive().default(3),
+        /** 部署役のいる部署の支援要請が、手配されないままこの時間（分）たつと、その部署役が端末から催促する */
+        supportFollowUpMinutes: z.number().positive().default(1),
       })
-      .default({ responseDelaySeconds: 20, travelMinutes: 2, supportDeliveryMinutes: 3 }),
+      .default({ responseDelaySeconds: 20, travelMinutes: 2, supportDeliveryMinutes: 3, supportFollowUpMinutes: 1 }),
     timeline: z.array(TimelineEventSchema).min(1),
     checks: z.array(z.object({ id, text: z.string().min(1), rule: CheckRuleSchema })).default([]),
   })
