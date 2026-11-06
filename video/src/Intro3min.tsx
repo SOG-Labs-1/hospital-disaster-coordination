@@ -245,8 +245,7 @@ const ModeChapter = ({ mode }: { mode: 'live' | 'training' }) => {
       : { alignItems: 'center', justifyContent: 'flex-end', fontFamily, paddingBottom: 200 }}>
       <div style={{ opacity: op, textAlign: 'center', scale: String(0.96 + 0.04 * op), ...(live ? {} : { backgroundColor: 'rgba(7,13,24,0.92)', padding: '18px 40px' }) }}>
         <div style={{ display: 'inline-block', fontSize: live ? 92 : 72, fontWeight: 700, color: col, border: `5px ${live ? 'solid' : 'dashed'} ${col}`, padding: '10px 48px', letterSpacing: 8 }}>{live ? '■ 災害運用モード' : '◇ 訓練モード'}</div>
-        {/* 災害運用モードの下の説明（「AI は使わない」）は利用者の判断で出さない（2026-11-06） */}
-        {!live && <div style={{ marginTop: 18, fontSize: 34, color: c.text, letterSpacing: 4 }}>ふだんの訓練。部署の役を Claude が担う</div>}
+        {/* 下の説明は、災害運用（「AI は使わない」2026-11-06）も訓練（「ふだんの訓練…」2026-11-07）も、利用者の判断で出さない */}
       </div>
     </AbsoluteFill>
   );
