@@ -85,12 +85,13 @@ export const Hub = ({ state }: { state: 'radio' | 'broken' | 'connected' | 'tria
       {state === 'triage' && (
         <g>
           {([
-            ['red', 'or', 20],
-            ['yellow', 'ward', 95],
+            // 災害運用モードの区切り（約3秒）が明けてから動かす
+            ['red', 'or', 80],
+            ['yellow', 'ward', 125],
             ['green', 'hall', 170],
           ] as const).map(([tri, to, at], i) => {
-            // 1人ずつ、2秒かけてゆっくり運ぶ
-            const k = interpolate(frame, [at, at + 60], [0, 1], { ...clamp, easing: ease });
+            // 1人ずつ、約2秒かけてゆっくり運ぶ
+            const k = interpolate(frame, [at, at + 58], [0, 1], { ...clamp, easing: ease });
             const from = { x: P.er.x - 110 + i * 110, y: P.er.y + 140 };
             const dest = { x: P[to].x - 40, y: P[to].y + 140 };
             const x = from.x + (dest.x - from.x) * k;

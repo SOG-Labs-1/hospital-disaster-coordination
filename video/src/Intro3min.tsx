@@ -226,12 +226,14 @@ const ModeChapter = ({ mode }: { mode: 'live' | 'training' }) => {
   const frame = useCurrentFrame();
   const live = mode === 'live';
   const col = live ? c.accent : c.warn;
-  const op = interpolate(frame, [0, 8, 40, 52], [0, 1, 1, 0], clamp);
+  // 災害運用モードは少し長く見せる（利用者の指示 2026-11-06。約1.3秒→約2.7秒）
+  const op = interpolate(frame, live ? [0, 8, 80, 92] : [0, 8, 40, 52], [0, 1, 1, 0], clamp);
   return (
     <AbsoluteFill style={{ backgroundColor: `rgba(7,13,24,${0.92 * op})`, alignItems: 'center', justifyContent: 'center', fontFamily, paddingBottom: 140 }}>
       <div style={{ opacity: op, textAlign: 'center', scale: String(0.96 + 0.04 * op) }}>
         <div style={{ display: 'inline-block', fontSize: 92, fontWeight: 700, color: col, border: `5px ${live ? 'solid' : 'dashed'} ${col}`, padding: '10px 48px', letterSpacing: 8 }}>{live ? '■ 災害運用モード' : '◇ 訓練モード'}</div>
-        <div style={{ marginTop: 26, fontSize: 34, color: c.text, letterSpacing: 4 }}>{live ? '災害のときに使う。AI は使わない' : 'ふだんの訓練。部署の役を Claude が担う'}</div>
+        {/* 災害運用モードの下の説明（「AI は使わない」）は利用者の判断で出さない（2026-11-06） */}
+        {!live && <div style={{ marginTop: 26, fontSize: 34, color: c.text, letterSpacing: 4 }}>ふだんの訓練。部署の役を Claude が担う</div>}
       </div>
     </AbsoluteFill>
   );
