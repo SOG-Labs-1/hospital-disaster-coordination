@@ -54,19 +54,20 @@ export const Hub = ({ state }: { state: 'radio' | 'broken' | 'connected' | 'tria
         const k0 = toHq ? cyc * 2 : (cyc - 0.5) * 2;
         const k = k0 < 0.5 ? 2 * k0 * k0 : 1 - (-2 * k0 + 2) ** 2 / 2;
         const dot = toHq ? { x: d.x + (cx - d.x) * k, y: d.y + (cy - d.y) * k } : { x: cx + (d.x - cx) * k, y: cy + (d.y - cy) * k };
-        const stroke = training ? c.warn : connected ? c.accent : c.line;
+        const aiNode = training && (id === 'or' || id === 'hall');
+        const stroke = aiNode ? c.warn : connected ? c.accent : c.line;
         const dash = state === 'radio' ? '14 10' : undefined;
         return (
           <g key={id} opacity={p}>
-            <line x1={cx} y1={cy} x2={mx - (mx - cx) * 0.12 * br} y2={my - (my - cy) * 0.12 * br} stroke={stroke} strokeWidth={connected ? 5 : 3} strokeDasharray={dash} />
-            <line x1={mx + (d.x - mx) * 0.12 * br} y1={my + (d.y - my) * 0.12 * br} x2={d.x} y2={d.y} stroke={stroke} strokeWidth={connected ? 5 : 3} strokeDasharray={dash} />
+            <line x1={cx} y1={cy} x2={mx - (mx - cx) * 0.12 * br} y2={my - (my - cy) * 0.12 * br} stroke={stroke} strokeWidth={connected ? 5 : 3} strokeDasharray={aiNode ? '14 10' : dash} />
+            <line x1={mx + (d.x - mx) * 0.12 * br} y1={my + (d.y - my) * 0.12 * br} x2={d.x} y2={d.y} stroke={stroke} strokeWidth={connected ? 5 : 3} strokeDasharray={aiNode ? '14 10' : dash} />
             {state === 'broken' && <text x={mx} y={my + 14} fill={c.red} fontFamily={fontFamily} fontSize={44} fontWeight={700} textAnchor="middle" opacity={br}>✕</text>}
             {state === 'radio' && <text x={mx} y={my - 14} fill={c.sub} fontFamily={fontFamily} fontSize={22} textAnchor="middle">無線</text>}
-            {training && <circle cx={d.x + (cx - d.x) * (((frame / 30) * 0.5 + i * 0.25) % 1)} cy={d.y + (cy - d.y) * (((frame / 30) * 0.5 + i * 0.25) % 1)} r={11} fill={c.warn} stroke="#fff" strokeWidth={2} />}
+            {training && <circle cx={dot.x} cy={dot.y} r={11} fill={aiNode ? c.warn : c.accent} stroke="#fff" strokeWidth={2} />}
             {state === 'connected' && <circle cx={dot.x} cy={dot.y} r={11} fill={toHq ? c.warn : c.accent} stroke="#fff" strokeWidth={2} opacity={interpolate(frame, [20, 30], [0, 1], clamp)} />}
-            <rect x={d.x - 150} y={d.y - 50} width={300} height={100} fill="rgba(7,13,24,0.92)" stroke={training ? c.warn : connected ? c.accent : c.line} strokeWidth={connected ? 3 : 2} strokeDasharray={training ? '12 8' : undefined} />
-            {training && <text x={d.x} y={d.y + 86} fill={c.warn} fontFamily={fontFamily} fontSize={26} fontWeight={700} textAnchor="middle">役：Claude（AI）</text>}
-            <text x={d.x - (connected && !training ? 30 : 0)} y={d.y + 10} fill={c.text} fontFamily={fontFamily} fontSize={30} fontWeight={700} textAnchor="middle">{NAMES[id]}</text>
+            <rect x={d.x - 150} y={d.y - 50} width={300} height={100} fill="rgba(7,13,24,0.92)" stroke={aiNode ? c.warn : connected ? c.accent : c.line} strokeWidth={connected ? 3 : 2} strokeDasharray={aiNode ? '12 8' : undefined} />
+            {training && <><rect x={d.x - 150} y={d.y + 58} width={300} height={40} fill={c.bg} /><text x={d.x} y={d.y + 88} fill={aiNode ? c.warn : c.accent} fontFamily={fontFamily} fontSize={26} fontWeight={700} textAnchor="middle">{id === 'or' ? '判断：Claude' : id === 'hall' ? '無線：Claude' : '端末で記録'}</text></>}
+            <text x={d.x - (connected && !training ? 30 : 0)} y={d.y + 10} fill={c.text} fontFamily={fontFamily} fontSize={30} fontWeight={700} textAnchor="middle">{training && id === 'hall' ? '搬送要員' : NAMES[id]}</text>
             {connected && !training && <Pc x={d.x + 100} y={d.y} on={interpolate(frame, [12 + i * 4, 22 + i * 4], [0, 1], clamp)} />}
           </g>
         );
@@ -74,7 +75,7 @@ export const Hub = ({ state }: { state: 'radio' | 'broken' | 'connected' | 'tria
       {/* 本部 */}
       <rect x={cx - 150} y={cy - 60} width={300} height={120} fill={c.bg2} stroke={c.accent} strokeWidth={connected ? 5 : 3} />
       <text x={cx} y={cy + 12} fill={c.text} fontFamily={fontFamily} fontSize={34} fontWeight={700} textAnchor="middle">本部</text>
-      {training && <text x={cx} y={cy + 100} fill={c.accent} fontFamily={fontFamily} fontSize={30} fontWeight={700} textAnchor="middle">あなたが操作</text>}
+      {training && <><rect x={cx - 120} y={cy + 68} width={240} height={44} fill={c.bg} /><text x={cx} y={cy + 100} fill={c.text} fontFamily={fontFamily} fontSize={30} fontWeight={700} textAnchor="middle">あなたが操作</text></>}
       {state === 'connected' && (
         <g opacity={interpolate(frame, [24, 36], [0, 1], clamp)}>
           <rect x={cx - 150} y={cy - 116} width={300} height={48} fill={c.bg} />
@@ -109,6 +110,8 @@ export const Hub = ({ state }: { state: 'radio' | 'broken' | 'connected' | 'tria
 
 /** 小さな地図（操作の場面）。active：いま応答している所、flow：情報が伝わる向き、patient：患者のいる所（move なら救急外来→手術室へ動く） */
 export const HubMini = ({ active, flow, done = [], patient = 'er', move = 0, left = 1248, top = 52, ai = false }: { active: NodeId[]; flow?: [NodeId, NodeId][]; done?: NodeId[]; patient?: NodeId | 'move' | null; move?: number; left?: number; top?: number; ai?: boolean }) => {
+  // 訓練（ai）：手術室と搬送要員（外来ホールの位置）が Claude。救急外来・病棟は端末で記録
+  const isAi = (id: NodeId) => ai && (id === 'or' || id === 'hall');
   const frame = useCurrentFrame();
   const P = MINI;
   const p = interpolate(frame, [0, 12], [0, 1], { ...clamp, easing: ease });
@@ -131,8 +134,8 @@ export const HubMini = ({ active, flow, done = [], patient = 'er', move = 0, lef
         const w = id === 'hq' ? 150 : 140;
         return (
           <g key={id}>
-            <rect x={P[id].x - w / 2} y={P[id].y - 22} width={w} height={44} fill={on ? '#2a2414' : '#0b1322'} stroke={on ? c.warn : id === 'hq' ? c.accent : ai ? c.warn : c.line} strokeWidth={on ? 4 : 2} strokeDasharray={ai && id !== 'hq' ? '8 5' : undefined} />
-            <text x={P[id].x} y={P[id].y + 8} fill={on ? c.text : c.sub} fontFamily={fontFamily} fontSize={id === 'hq' ? 24 : 21} fontWeight={700} textAnchor="middle">{NAMES[id]}</text>
+            <rect x={P[id].x - w / 2} y={P[id].y - 22} width={w} height={44} fill={on ? '#2a2414' : '#0b1322'} stroke={on ? c.warn : id === 'hq' ? c.accent : isAi(id) ? c.warn : c.line} strokeWidth={on ? 4 : 2} strokeDasharray={isAi(id) ? '8 5' : undefined} />
+            <text x={P[id].x} y={P[id].y + 8} fill={on ? c.text : c.sub} fontFamily={fontFamily} fontSize={id === 'hq' ? 24 : 21} fontWeight={700} textAnchor="middle">{ai && id === 'hall' ? '搬送要員' : NAMES[id]}</text>
           </g>
         );
       })}

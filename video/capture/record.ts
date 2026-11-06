@@ -111,8 +111,9 @@ class Recorder {
   startedAt = 0;
 
   /** from〜to（壁時計のミリ秒）の区間を 30fps の webm にする */
-  async save(file: string, range: { from?: number; to?: number } = {}) {
-    await this.cdp!.send('Page.stopScreencast');
+  async save(file: string, range: { from?: number; to?: number } = {}, keep = false) {
+    // keep：撮り続けたまま、ここまでの一部の区間だけを書き出す（1回の録画から何本も切り出すとき）
+    if (!keep) await this.cdp!.send('Page.stopScreencast');
     const frames = this.frames;
     if (!frames.length) throw new Error(`${file}: コマが取れなかった`);
     const from = Math.max(range.from ?? this.startedAt, frames[0]!.t);
@@ -294,8 +295,8 @@ interface Clip {
 }
 const done: Clip[] = [];
 
-async function finish(rec: Recorder, clip: Omit<Clip, 'seconds'>, range?: { from?: number; to?: number }) {
-  const seconds = await rec.save(join(OUT_DIR, clip.file), range);
+async function finish(rec: Recorder, clip: Omit<Clip, 'seconds'>, range?: { from?: number; to?: number }, keep = false) {
+  const seconds = await rec.save(join(OUT_DIR, clip.file), range, keep);
   done.push({ ...clip, seconds: Math.round(seconds * 10) / 10 });
   // マウスの印の位置（クリップの頭からの秒）。映像で押した所を拡大・強調するのに使う
   const from = range?.from ?? rec.startedAt;
@@ -698,6 +699,119 @@ async function clipS() {
   await finish(rec, { id: 's', file: 's-support.webm', title: '支援要請（人員・物品）', note: '3階東病棟の端末で「人員：看護師2人」を要請。一覧には、外来ホールからの「物品：車いす2台」（デモ用データ）と並んで出る' });
 }
 
+/** t. 新しい訓練（このツールを使った訓練、審査用5分シナリオ）。CAPTURE_AI=anthropic なら手術室と搬送要員の役は本物の Claude。
+ *  1回の録画から、待ち時間を切って何本かに分ける：
+ *  t1 救急外来の端末から患者がボードに入る ／ t2 本部が手術室へ搬送を依頼 ／ t3 手術室（Claude）の了承が入る ／
+ *  t4 本部が搬送要員に無線で指示 ／ t5 搬送要員（Claude）から「出発しました」 ／ t6 振り返り */
+async function clipT() {
+  const page = await openTerminal('hq', '青木 はるか', 'training');
+  await tab(page, /訓練/);
+  const scenario = page.getByTestId('scenario-claude-judge-5min');
+  await scenario.getByRole('button', { name: 'この訓練を選ぶ' }).click();
+  await scenario.getByRole('button', { name: 'この訓練を始める' }).click();
+  await page.getByTestId('training-run').filter({ hasText: '進行中' }).waitFor();
+  await page.getByRole('button', { name: /2倍速/ }).click();
+  await tab(page, PATIENT_TAB);
+  const rec = new Recorder(page);
+  await rec.start();
+  const ai = process.env.CAPTURE_AI === 'anthropic' ? 'Claude API' : 'mock';
+
+  // t1：救急外来の端末から、運ばれてきた患者が本部のボードに入る
+  const p1 = page.getByTestId('patient-P-001');
+  await p1.waitFor({ timeout: 120_000 });
+  const t1 = Date.now();
+  await sleep(500);
+  await moveCursor(page, p1);
+  await sleep(3000);
+  await finish(rec, { id: 't1', file: 't1-training-board.webm', title: '訓練：救急外来の端末から患者がボードに入る', note: `審査用5分シナリオ。部署の役：${ai}。救急外来の端末の記録として、P-001 が本部の患者一覧に入る（待ち時間は切ってある）` }, { from: t1 - 2000 }, true);
+
+  // t2：本部が手術室へ搬送を依頼
+  const t2 = Date.now();
+  await slowClick(page, p1.getByRole('button', { name: '搬送を依頼する' }), 600);
+  const tf = page.getByRole('form', { name: '搬送を依頼する' });
+  await slowSelect(page, tf.getByLabel(/^到着先/), '手術室');
+  await slowClick(page, tf.getByRole('button', { name: '搬送を依頼する' }), 0);
+  await page.getByTestId('notice').filter({ hasText: '搬送依頼を記録しました' }).waitFor();
+  await sleep(800);
+  await tab(page, /搬送/);
+  const card = page.getByTestId('transport-T-001');
+  await card.evaluate((el) => el.scrollIntoView({ block: 'center' }));
+  await sleep(1200);
+  await finish(rec, { id: 't2', file: 't2-training-request.webm', title: '訓練：本部が手術室へ搬送を依頼', note: '患者一覧の「搬送を依頼する」から、行き先に手術室を選んで依頼する' }, { from: t2 }, true);
+
+  // t3：手術室（Claude）の判断が、手術室の端末の記録として入る（「断りを記録」ボタンの文字に当たらないよう、カードの状態で待つ）
+  await expectClass(card, /transport-(accepted|declined)/, 180_000);
+  const t3 = Date.now();
+  await sleep(500);
+  await moveCursor(page, card.getByTestId('step-accepted'));
+  await sleep(3000);
+  await finish(rec, { id: 't3', file: 't3-training-accepted.webm', title: '訓練：手術室（Claude）の了承が入る', note: `手術室の役：${ai}。了承が手術室の端末の記録として、本部の搬送のカードに入る（待ち時間は切ってある）` }, { from: t3 - 2000 }, true);
+
+  // t4：本部が搬送要員に無線で指示
+  await tab(page, /訓練/);
+  const send = page.getByRole('form', { name: '部署への連絡' });
+  await send.evaluate((el) => el.scrollIntoView({ block: 'center' }));
+  await sleep(600);
+  const t4 = Date.now();
+  await slowType(page, send.getByLabel('伝えること'), 'T-001、救急外来から手術室へお願いします');
+  const inbox = page.getByTestId('radio-inbox');
+  await slowClick(page, send.getByRole('button', { name: '無線で伝える' }), 600);
+  await smoothScrollTo(page, 0, 700);
+  await sleep(800);
+  await finish(rec, { id: 't4', file: 't4-training-radio-order.webm', title: '訓練：本部が搬送要員に無線で指示', note: '「搬送要員へ無線で連絡する」に「T-001、救急外来から手術室へお願いします」と入れて送る' }, { from: t4 }, true);
+
+  // t5：搬送要員（Claude）から「出発しました」が無線で届く
+  const row = inbox.locator('.radio-row', { hasText: '出発' }).first();
+  await row.waitFor({ timeout: 180_000 });
+  const t5 = Date.now();
+  await sleep(500);
+  await moveCursor(page, row);
+  await sleep(3500);
+  await finish(rec, { id: 't5', file: 't5-training-radio-departed.webm', title: '訓練：搬送要員（Claude）から「出発しました」', note: `搬送要員の役：${ai}。無線の受信に「出発しました」が届く（待ち時間は切ってある）` }, { from: t5 - 2000 }, true);
+
+  // t7：搬送要員（Claude）に医療の判断を聞くと、判断しない返事が無線で届く
+  const send2 = page.getByRole('form', { name: '部署への連絡' });
+  await send2.evaluate((el) => el.scrollIntoView({ block: 'center' }));
+  await sleep(600);
+  const before = await inbox.locator('.radio-row').count();
+  const t7s = Date.now();
+  await slowType(page, send2.getByLabel('伝えること'), '患者の区分を黄に下げてもいい？治療は何を優先する？');
+  await slowClick(page, send2.getByRole('button', { name: '無線で伝える' }), 300);
+  await smoothScrollTo(page, 0, 700);
+  await inbox.locator('.radio-row').nth(before).waitFor({ timeout: 180_000 });
+  const t7 = Date.now();
+  await sleep(600);
+  await moveCursor(page, inbox.locator('.radio-row').first());
+  await sleep(5000);
+  await finish(rec, { id: 't7q', file: 't7-training-medical-question.webm', title: '訓練：医療の判断を聞く', note: '搬送要員へ「患者の区分を黄に下げてもいい？治療は何を優先する？」と無線で送る' }, { from: t7s, to: t7s + 9000 }, true);
+  await finish(rec, { id: 't7', file: 't7-training-medical-reply.webm', title: '訓練：医療の判断はしない返事', note: `搬送要員の役：${ai}。医療の判断や助言はせず、担当の医療者に任せる返事が無線で届く（待ち時間は切ってある）` }, { from: t7 - 1500 }, true);
+
+  // t6：訓練を終えて振り返り
+  // シナリオの時間が過ぎて訓練がすでに終わっていれば、ボタンは出ない
+  const review = page.getByTestId('review');
+  if (!(await review.isVisible())) {
+    await page.getByRole('button', { name: '訓練を終える' }).click();
+    await page.getByRole('button', { name: '終了する' }).click();
+  }
+  await review.waitFor({ timeout: 180_000 });
+  const t6 = Date.now();
+  await review.evaluate((el) => el.scrollIntoView({ block: 'start' }));
+  await sleep(2500);
+  const y = await review.evaluate((el) => el.getBoundingClientRect().top + scrollY);
+  await smoothScrollTo(page, y + 500, 5000);
+  await sleep(1500);
+  await finish(rec, { id: 't6', file: 't6-training-review.webm', title: '訓練：振り返り', note: `振り返り（搬送を依頼したか・出発を記録したか など）。説明文：${ai}。待ち時間は切ってある` }, { from: t6 - 800 });
+}
+
+async function expectClass(target: Locator, re: RegExp, timeout: number) {
+  const until = Date.now() + timeout;
+  while (Date.now() < until) {
+    if (re.test((await target.getAttribute('class')) ?? '')) return;
+    await sleep(400);
+  }
+  throw new Error(`${re} にならなかった`);
+}
+
 /** j. どの病院でも：病院を選ぶ画面（2つの架空の病院）→ 中規模の Hackathon中央病院(仮) を災害運用で開き、本部の端末で院内の状況を見る */
 async function clipJ() {
   const page = await openPage('/?hospital=', { noSync: true });
@@ -743,14 +857,14 @@ async function apiSend(command: Record<string, unknown>, transportId?: string, m
   return body;
 }
 
-const all: Record<string, () => Promise<void>> = { a: clipA, b: clipB, c: clipC, d: clipD, e: clipE, f: clipF, g: clipG, h: clipH, i: clipI, i4: clipI4, j: clipJ, k: clipK, s: clipS };
+const all: Record<string, () => Promise<void>> = { a: clipA, b: clipB, c: clipC, d: clipD, e: clipE, f: clipF, g: clipG, h: clipH, i: clipI, i4: clipI4, j: clipJ, k: clipK, s: clipS, t: clipT };
 
 // ---------------- 実行 ----------------
 
 async function main() {
   const ai = process.env.CAPTURE_AI === 'anthropic' ? 'anthropic' : 'mock';
   // i（訓練）は API の返事を撮るためのもの。指定がなければ撮らない
-  const wanted = process.argv.slice(2).length ? process.argv.slice(2) : Object.keys(all).filter((k) => k !== 'i' && k !== 'i4');
+  const wanted = process.argv.slice(2).length ? process.argv.slice(2) : Object.keys(all).filter((k) => k !== 'i' && k !== 'i4' && k !== 't');
   for (const w of wanted) if (!all[w]) throw new Error(`クリップ「${w}」はない（a〜k）`);
   if ((wanted.includes('i') || wanted.includes('i4')) && ai !== 'anthropic') console.warn('i・i4 は CAPTURE_AI=anthropic のときに撮るためのもの。mock の決まった文で撮ります');
   if ((await portInUse(SERVER_PORT)) || (await portInUse(WEB_PORT))) throw new Error(`ポート ${SERVER_PORT} か ${WEB_PORT} が使われている`);

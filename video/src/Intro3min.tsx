@@ -591,31 +591,52 @@ const buildShots = (stock: boolean): Shot[] => [
   ) },
   // 5. 訓練モード
   // 5. 訓練モード：同じ図で「本部はあなた、部署は Claude」を見せてから、災害運用モードと同じ全画面＋右上の図で操作を見せる
-  { from: cut(19), to: cut(20), name: '訓練：本部はあなた、部署は Claude', node: (d) => {
-    const fig = Math.min(5, d * 0.55);
+  { from: cut(19), to: cut(20), name: '訓練：部署の記録が本部に入る', node: (d) => {
+    const fig = Math.min(3.4, d * 0.45);
     return (
       <>
         <Sequence durationInFrames={Math.round(fig * 30) + 8}>
           <SceneFade durationInFrames={Math.round(fig * 30) + 8} fadeIn={1} fadeOut={8}><Hub state="training" /></SceneFade>
         </Sequence>
         <Sequence from={Math.round(fig * 30)}>
-          <ZoomClip file="i1-training-report.webm" from={0} rate={Math.min(1.3, Math.max(0.8, 8.8 / (d - fig)))} zoom={1} style={FULL} bare />
+          <ZoomClip file="t1-training-board.webm" from={0.8} rate={Math.min(1.3, Math.max(0.8, 5.4 / (d - fig)))} zoom={1} style={FULL} bare />
           <SubShade />
-          <HubMini ai active={['er']} flow={[['er', 'hq']]} patient={null} />
+          <HubMini ai active={['er', 'hq']} flow={[['er', 'hq']]} />
         </Sequence>
       </>
     );
   } },
-  { from: cut(20), to: cut(21), name: '聞いて、自分で記録する', node: (d) => (
-    <>
-      <ZoomClip file="i4-training-input.webm" from={I4.memo} rate={Math.min(1.3, Math.max(0.8, (I4.saved - I4.memo) / d))} zoom={1} style={FULL} bare />
-      <SubShade />
-      <HubMini ai active={['hq']} patient={null} />
-    </>
-  ) },
+  // 手術室（Claude）の了承 → 搬送要員に無線で指示 → 搬送要員（Claude）から「出発しました」。同じ速さで並べる
+  { from: cut(20), to: cut(21), name: '訓練：手術室の判断と、搬送要員との無線', node: (d) => {
+    const parts = [
+      ['t2-training-request.webm', 3.6, 5.2, [['hq'], [['hq', 'or']]]],
+      ['t3-training-accepted.webm', 1.8, 4.0, [['or'], [['or', 'hq']]]],
+      ['t4-training-radio-order.webm', 4.6, 5.8, [['hq'], [['hq', 'hall']]]],
+      ['t5-training-radio-departed.webm', 1.8, 4.2, [['hall'], [['hall', 'hq']]]],
+    ] as const;
+    const raw = parts.reduce((t, [, a, b]) => t + (b - a), 0);
+    const rate = Math.min(1.3, Math.max(0.8, raw / d));
+    let at = 0;
+    return (
+      <>
+        {parts.map(([file, a, b, [act, fl]], i) => {
+          const from = at;
+          const len = i === parts.length - 1 ? d - at : (b - a) / rate;
+          at += len;
+          return (
+            <Sequence key={file} from={Math.round(from * 30)} durationInFrames={Math.max(1, Math.round(len * 30))}>
+              <ZoomClip file={file} from={a} rate={rate} zoom={1} style={FULL} bare />
+              <SubShade />
+              <HubMini ai active={act as unknown as NodeId[]} flow={fl as unknown as [NodeId, NodeId][]} />
+            </Sequence>
+          );
+        })}
+      </>
+    );
+  } },
   { from: cut(21), to: cut(22), name: '振り返り', node: (d) => (
     <>
-      <ZoomClip file="i3-training-review.webm" from={1} rate={Math.min(1.3, Math.max(0.8, 14 / d))} zoom={1} style={FULL} bare />
+      <ZoomClip file="t6-training-review.webm" from={0.5} rate={Math.min(1.3, Math.max(0.8, 9 / d))} zoom={1} style={FULL} bare />
       <SubShade />
       <HubMini ai active={['hq']} patient={null} />
     </>
@@ -623,9 +644,9 @@ const buildShots = (stock: boolean): Shot[] => [
   // 6. 安全のしくみ
   { from: cut(22), to: cut(23), name: '医療の判断はしない', node: (d) => (
     <>
-      <ZoomClip file="i2-training-refusal.webm" from={15} rate={Math.min(1.3, Math.max(0.8, 8 / d))} zoom={1} style={FULL} bare />
+      <ZoomClip file="t7-training-medical-reply.webm" from={0.5} rate={Math.min(1.3, Math.max(0.8, 6 / d))} zoom={1} style={FULL} bare />
       <SubShade />
-      <HubMini ai active={['er']} flow={[['hq', 'er']]} patient={null} />
+      <HubMini ai active={['hall']} flow={[['hall', 'hq']]} patient={null} />
     </>
   ) },
   { from: cut(23), to: cut(24), name: 'AIを使わない', node: () => (
