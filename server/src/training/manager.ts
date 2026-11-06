@@ -214,7 +214,8 @@ export class TrainingManager {
         const st = ctx.stimulus;
         const tNow = st.kind === 'transportRequest' ? reduceSim(this.events, sc, this.deps.config).transports[st.transportId] : undefined;
         const stale = st.kind === 'transportRequest' && (!tNow || tNow.cancelled || tNow.toLocationId !== ctx.locationId || tNow.roleAccepted !== null);
-        const mustReport = !stale && ['notice', 'patientArrivedByTransport', 'transportRequest'].includes(st.kind);
+        // 支援要請の催促・手配への返事も、AI の言葉がすべて却下されたら決まった文で補う（決まった文も、手配の後の催促などは却下される）
+        const mustReport = !stale && ['notice', 'patientArrivedByTransport', 'transportRequest', 'supportFollowUp', 'supportArranged'].includes(st.kind);
         if (!failed && mustReport && resolved.every((e) => e.type === 'ProposalResolved' && !e.accepted)) {
           const backup = await this.fallback.proposeForRole(ctx);
           this.append([{ type: 'ProviderFailed', stimulusId, error: '提案がすべて却下されたため、決まった返事で補った' }]);

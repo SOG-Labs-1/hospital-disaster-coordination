@@ -1,7 +1,8 @@
 import { z } from 'zod';
 
 // AI部署役が出せる行動（提案）。これ以外の形は受け付けない。
-// 提案はシミュレーターが検証してから反映する。部署の受け入れの判断だけは、検証を通ったものを、さらにコマンドの検証を通して到着先の端末の記録にする（sim-board.ts）。
+// 提案はシミュレーターが検証してから反映する。部署の受け入れの判断と、支援要請の催促・手配への返事（reply_message）は、
+// 検証を通ったものを、さらにコマンドの検証を通して部署の端末の記録にする（sim-board.ts）。
 // 医療判断（診断・トリアージ判定・治療の助言）をする行動は用意しない。
 
 /** 本部へ無線で伝える言葉。すべての提案に付く */
@@ -46,8 +47,8 @@ export const proposalLabels: Record<ProposalAction, string> = {
 export const proposalTools = [
   {
     name: 'reply_message',
-    description: '本部への返事・連絡だけをする。状態は変えない。',
-    input_schema: { type: 'object', properties: { message: { type: 'string', description: '本部へ無線で伝える言葉（日本語、短く）' } }, required: ['message'], additionalProperties: false },
+    description: '本部への返事・連絡だけをする。状態は変えない。部署の職員の役なら、支援要請に結び付けた連絡メモとして部署の端末から記録される。',
+    input_schema: { type: 'object', properties: { message: { type: 'string', description: '本部へ伝える言葉（日本語、短く）。搬送要員は無線で、部署は端末の連絡メモで伝わる' } }, required: ['message'], additionalProperties: false },
   },
   {
     name: 'report_status',

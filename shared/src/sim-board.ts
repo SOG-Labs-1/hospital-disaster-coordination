@@ -154,8 +154,17 @@ export function pendingBoardWrites(view: SimView, scenario: Scenario, config: Ho
       command: { type: 'LogMessage', payload: { channel: 'other', fromLocationId: r.role, toLocationId: undefined, text, relatedIds: [bs.id] } },
       meta: { ...meta(r.role), reportedBy: { locationId: r.role, name: AI_ROLE_REPORTER } },
     };
-    // 返事を待つ間に本部が手配したなら、催促は残さない
-    add(st.kind === 'supportFollowUp' && (bs.steps.dispatched || bs.closed) ? { key: `note-${r.id}`, envelope, skipReason: '催促の前に手配された' } : { key: `note-${r.id}`, envelope });
+    // 返事を待つ間に状況が変わったら残さない：催促なら、手配・受け取り・終了、または担当が付いた（「担当を決めて」が古くなる）。
+    // 手配への返事なら、要請が終わった・手配の記録が取り消された
+    const stale =
+      st.kind === 'supportFollowUp'
+        ? bs.steps.dispatched || bs.steps.received || bs.closed || (!st.assigned && bs.steps.assigned)
+          ? '催促の前に状況が変わった（手配・受け取り・担当）'
+          : undefined
+        : bs.closed || !bs.steps.dispatched
+          ? '返事の前に要請が終わった、または手配の記録が取り消された'
+          : undefined;
+    add(stale ? { key: `note-${r.id}`, envelope, skipReason: stale } : { key: `note-${r.id}`, envelope });
   }
 
   // 3. 到着：到着先の端末から記録する（搬送要員は、無線で本部に到着を伝える）

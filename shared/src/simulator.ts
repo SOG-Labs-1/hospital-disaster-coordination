@@ -627,7 +627,7 @@ export function advance(input: AdvanceInput): AdvanceResult {
   for (const s of Object.values(view.supports)) {
     if (s.requestedSimMs === undefined || s.dispatchedSimMs !== undefined || followedUp.has(s.id)) continue;
     const bs = board.supports[s.id];
-    if (!bs || bs.retracted || bs.closed || bs.steps.dispatched) continue;
+    if (!bs || bs.retracted || bs.closed || bs.steps.dispatched || bs.steps.received) continue;
     const waited = sim - s.requestedSimMs;
     if (waited < scenario.settings.supportFollowUpMinutes * 60000) continue;
     queue(s.fromLocationId, { kind: 'supportFollowUp', supportId: s.id, itemsText: describeItems(config, bs.items), note: bs.note, assigned: !!bs.steps.assigned, waitedMinutes: Math.max(1, Math.round(waited / 60000)) });
@@ -739,9 +739,14 @@ export function validateProposal(view: SimView, config: HospitalConfig, role: st
       const sup = view.supports[stimulus.supportId];
       if (!sup || sup.fromLocationId !== role) return 'この部署の支援要請ではない';
       if (stimulus.kind === 'supportFollowUp' && sup.dispatchedSimMs !== undefined) return 'すでに手配されている（催促は要らない）';
-      // 言葉の中の人数・数量は、要請の中身にある数だけ（数字を作り出さない）
-      const known = new Set([...stimulus.itemsText.normalize('NFKC').matchAll(/\d+/g)].map((m) => m[0]));
-      const said = [...p.message.normalize('NFKC').matchAll(/(\d+)\s*(人|名|本|台|個|枚|セット|箱)/g)].map((m) => m[1]!);
+      // 言葉の中の人数・数量は、要請の中身と自部署の実際の状況（受け入れ枠・いる患者・職員の数）にある数だけ（数字を作り出さない）
+      const present = (triage: string) => Object.values(view.patients).filter((x) => x.locationId === role && x.triage === triage).length;
+      const known = new Set([
+        ...[...stimulus.itemsText.normalize('NFKC').matchAll(/\d+/g)].map((m) => m[0]),
+        ...Object.entries(loc.capacity).flatMap(([t, n]) => [String(n), String(present(t)), String(Math.max(0, n - present(t)))]),
+        ...Object.values(loc.staff).map(String),
+      ]);
+      const said = [...kanjiDigits(p.message.normalize('NFKC')).matchAll(/(\d+)\s*(人|名|本|台|個|枚|セット|箱|枠)/g)].map((m) => m[1]!);
       if (said.some((n) => !known.has(n))) return '言葉の中の数が要請の中身と違う';
       return null;
     }
@@ -798,6 +803,14 @@ export function validateProposal(view: SimView, config: HospitalConfig, role: st
     case 'request_support':
       return view.needs.some((n) => n.locationId === role && !n.requested) ? null : 'この部署にいま必要な支援はない';
   }
+}
+
+/** 一〜十の漢数字を算用数字にする（「三人」「十人」で数の確認を抜けないように。十一〜九十九も） */
+function kanjiDigits(text: string): string {
+  const d: Record<string, number> = { 一: 1, 二: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9 };
+  return text.replace(/([一二三四五六七八九]?)十([一二三四五六七八九]?)|[一二三四五六七八九]/g, (m, a?: string, b?: string) =>
+    m.includes('十') ? String((a ? d[a]! : 1) * 10 + (b ? d[b]! : 0)) : String(d[m]),
+  );
 }
 
 /** 搬送要員の役の提案：無線の返事、出発・到着の連絡 */

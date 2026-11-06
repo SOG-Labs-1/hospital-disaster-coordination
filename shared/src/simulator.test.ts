@@ -314,6 +314,46 @@ describe('支援要請：手配されないと部署役が端末から催促し�
     expect(id).toBe(id2);
   });
 
+  it('自部署の実際の数（受け入れ枠など）は言ってよいが、漢数字でも要請にない数は記録しない', () => {
+    const id = requested();
+    dispatch(id);
+    run.tick(0);
+    const [aid] = [...run.view().stimuli].find(([, x]) => x.stimulus.kind === 'supportArranged')!;
+    run.propose(aid, { action: 'reply_message', message: '場所Bです。看護師1人の手配を確認しました。いまの受け入れ枠は1枠です' });
+    expect(run.view().proposals.at(-1)).toMatchObject({ accepted: true });
+    expect(run.board.filter((e) => e.type === 'MessageLogged')).toHaveLength(1);
+
+    run = new Run(scenario());
+    requested();
+    run.tick(70_000);
+    const [sid] = followUps()[0]!;
+    run.propose(sid, { action: 'reply_message', message: '場所Bです。看護師を三人お願いします' });
+    expect(run.view().proposals.at(-1)).toMatchObject({ accepted: false, reason: '言葉の中の数が要請の中身と違う' });
+  });
+
+  it('返事を待つ間に担当が付いた「担当を決めて」の催促、取り消された要請への手配の返事は記録しない', () => {
+    const id = requested();
+    run.tick(70_000);
+    const [sid] = followUps()[0]!;
+    run.boardSend((b) => ({ command: { type: 'AssignSupport', supportId: id, payload: { assignee: { positionId: 'lead-b' } } }, meta, expectedVersion: versionOf(reduce(b), { kind: 'support', id }) }));
+    run.propose(sid, { action: 'reply_message', message: '場所Bです。担当を決めてください' });
+    expect(run.board.filter((e) => e.type === 'MessageLogged')).toHaveLength(0);
+
+    dispatch(id);
+    run.tick(0);
+    const [aid] = [...run.view().stimuli].find(([, x]) => x.stimulus.kind === 'supportArranged')!;
+    run.boardSend((b) => ({ command: { type: 'CancelSupport', supportId: id, payload: { reason: '別の部署で足りた' } }, meta, expectedVersion: versionOf(reduce(b), { kind: 'support', id }) }));
+    run.propose(aid, { action: 'reply_message', message: '場所Bです。手配を確認しました' });
+    expect(run.board.filter((e) => e.type === 'MessageLogged')).toHaveLength(0);
+  });
+
+  it('手配の記録がなくても受け取りが記録されていれば、催促しない', () => {
+    const id = requested();
+    run.boardSend((b) => ({ command: { type: 'RecordSupportReceived', supportId: id, payload: {} }, meta, expectedVersion: versionOf(reduce(b), { kind: 'support', id }) }));
+    run.tick(2 * 60_000);
+    expect(followUps()).toHaveLength(0);
+  });
+
   it('部署役のいない部署の要請には、催促も返事も来ない', () => {
     run = new Run(scenario({ roles: [{ locationId: 'loc-a', name: '場所Aの人' }] }));
     const id = requested();
