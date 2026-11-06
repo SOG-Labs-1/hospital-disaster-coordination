@@ -135,7 +135,7 @@ function voiceFeatures(buf) {
   }
   return { f0: f0s[Math.floor(f0s.length / 2)] ?? 120, cent: num / (den || 1) };
 }
-const refF = process.env.VOICE_REF ? (() => {
+let refF = process.env.VOICE_REF ? (() => {
   const w = readFileSync(process.env.VOICE_REF);
   // 24kHz のことがあるので、48kHz に引き伸ばしてから測る（直線補間）
   const sr = w.readUInt32LE(24);
@@ -206,6 +206,11 @@ if (process.env.PARAGRAPH === '1') {
         if (d < bestD) [best, bestD] = [cand, d];
       }
       v = best;
+      // REF_FIRST=1：2つ目の場面からは、冒頭（1つ目の場面）に選んだ声を基準にする。場面ごとに声の感じが変わらないように（利用者の指摘 2026-11-06）
+      if (process.env.REF_FIRST === '1' && sec === sections[0]) {
+        refF = voiceFeatures(v);
+        if (process.env.SPLIT_DEBUG) console.error(`基準を冒頭の声に：f0 ${refF.f0.toFixed(0)} 重心 ${refF.cent.toFixed(0)}`);
+      }
     }
     // GAP_MAX：段落の中の長すぎる無音（文の途中の間も含む）を、その長さまで詰める。声そのものは速くしない
     if (process.env.GAP_MAX) {

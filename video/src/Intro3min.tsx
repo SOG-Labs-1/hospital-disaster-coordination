@@ -201,6 +201,15 @@ const Overview = () => {
   );
 };
 
+/** 共有できない図 → つながる図 の切り替えまでのコマ数 */
+const BEFORE = 66;
+/** 図の上の見出し（共有できない／すべての端末で共有）。色だけにせず、言葉と枠で示す */
+const ShareCaption = ({ text, color }: { text: string; color: string }) => (
+  <AbsoluteFill style={{ top: 70, alignItems: 'center', fontFamily }}>
+    <div style={{ fontSize: 46, fontWeight: 700, color, border: `4px solid ${color}`, padding: '8px 32px', backgroundColor: 'rgba(7,13,24,0.9)', letterSpacing: 3 }}>{text}</div>
+  </AbsoluteFill>
+);
+
 /** 全画面の録画の上で字幕が読めるよう、下に暗い帯を敷く */
 const SubShade = () => <AbsoluteFill style={{ background: 'linear-gradient(transparent 70%, rgba(4,8,16,0.88) 88%)' }} />;
 
@@ -228,12 +237,15 @@ const ModeChapter = ({ mode }: { mode: 'live' | 'training' }) => {
   const col = live ? c.accent : c.warn;
   // 災害運用モードは少し長く見せる（利用者の指示 2026-11-06。約1.3秒→約2.7秒）
   const op = interpolate(frame, live ? [0, 8, 80, 92] : [0, 8, 40, 52], [0, 1, 1, 0], clamp);
+  // 訓練モードは画面を暗くせず、図（本部と部署の図）を見せたまま、図の下に札を出す（利用者の指示 2026-11-06）
   return (
-    <AbsoluteFill style={{ backgroundColor: `rgba(7,13,24,${0.92 * op})`, alignItems: 'center', justifyContent: 'center', fontFamily, paddingBottom: 140 }}>
-      <div style={{ opacity: op, textAlign: 'center', scale: String(0.96 + 0.04 * op) }}>
-        <div style={{ display: 'inline-block', fontSize: 92, fontWeight: 700, color: col, border: `5px ${live ? 'solid' : 'dashed'} ${col}`, padding: '10px 48px', letterSpacing: 8 }}>{live ? '■ 災害運用モード' : '◇ 訓練モード'}</div>
+    <AbsoluteFill style={live
+      ? { backgroundColor: `rgba(7,13,24,${0.92 * op})`, alignItems: 'center', justifyContent: 'center', fontFamily, paddingBottom: 140 }
+      : { alignItems: 'center', justifyContent: 'flex-end', fontFamily, paddingBottom: 200 }}>
+      <div style={{ opacity: op, textAlign: 'center', scale: String(0.96 + 0.04 * op), ...(live ? {} : { backgroundColor: 'rgba(7,13,24,0.92)', padding: '18px 40px' }) }}>
+        <div style={{ display: 'inline-block', fontSize: live ? 92 : 72, fontWeight: 700, color: col, border: `5px ${live ? 'solid' : 'dashed'} ${col}`, padding: '10px 48px', letterSpacing: 8 }}>{live ? '■ 災害運用モード' : '◇ 訓練モード'}</div>
         {/* 災害運用モードの下の説明（「AI は使わない」）は利用者の判断で出さない（2026-11-06） */}
-        {!live && <div style={{ marginTop: 26, fontSize: 34, color: c.text, letterSpacing: 4 }}>ふだんの訓練。部署の役を Claude が担う</div>}
+        {!live && <div style={{ marginTop: 18, fontSize: 34, color: c.text, letterSpacing: 4 }}>ふだんの訓練。部署の役を Claude が担う</div>}
       </div>
     </AbsoluteFill>
   );
@@ -503,10 +515,23 @@ const buildShots = (stock: boolean): Shot[] => [
   ) },
   // 3. 名前と、つながる図
   { from: cut(6), to: cut(7), name: '名前', node: () => <Logo /> },
-  { from: cut(7), to: cut(8), name: '病院リンクBCPでつながる（解決）', node: () => (
+  // 共有できない（線に✕の図）→ 病院リンクBCPで共有できる（つながる図）。利用者の指示 2026-11-06
+  { from: cut(7), to: cut(8), name: '共有できない → 病院リンクBCPでつながる（解決）', node: () => (
     <>
-      <Hub state="connected" />
-      <Sequence from={40}><Overview /></Sequence>
+      <Sequence durationInFrames={BEFORE + 12}>
+        <SceneFade durationInFrames={BEFORE + 12} fadeIn={1} fadeOut={12}>
+          {/* ✕ が出きった所から見せる */}
+          <Sequence from={-56}><Hub state="broken" /></Sequence>
+          <ShareCaption text="これまで：共有できない" color={c.red} />
+        </SceneFade>
+      </Sequence>
+      <Sequence from={BEFORE}>
+        <SceneFade durationInFrames={100000} fadeIn={12} fadeOut={1}>
+          <Hub state="connected" />
+          <ShareCaption text="病院リンクBCP：すべての端末で共有" color={c.accent} />
+          <Sequence from={40}><Overview /></Sequence>
+        </SceneFade>
+      </Sequence>
     </>
   ) },
   { from: cut(8), to: cut(9), name: '2つのモード', node: (_d, s) => (
