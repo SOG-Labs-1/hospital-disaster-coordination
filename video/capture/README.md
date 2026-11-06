@@ -1,6 +1,6 @@
-# 画面の録画素材（30秒映像用）
+# 画面の録画素材（紹介映像用）
 
-30秒映像（コンテ `docs/video/30s-storyboard.md`、主に 0:15–0:26）に差し込む、実際の画面の録画です。
+3分の紹介映像（原稿 `docs/video/3min-script.md`）に差し込む、実際の画面の録画です。
 データはすべて架空（`scripts/demo/seed.ts`）。訓練の部署役は `AI_PROVIDER=mock` で、Claude API は使っていません。
 
 ## 撮り方

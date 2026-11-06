@@ -1,4 +1,4 @@
-// 使い方: OUT_DIR=video/public node video/scripts/narration.mjs <声の名前 例 Charon> [speakingRate]
+// 使い方: npm run narration:3min（video/package.json）。原稿 SCRIPT_MD の表から読み上げと字幕の時刻を作る
 // APIキーはリポジトリの .env の GOOGLE_TTS_API_KEY から読む（表示しない）
 // 文ごとに音声を作り、決めた長さの無音をはさんで1本の WAV にする
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -22,19 +22,6 @@ const vertexPrompt = process.env.VERTEX_PROMPT ?? '日本の医療ドキュメ�
 const stylePrompt = process.env.STYLE_PROMPT ?? '深く、落ち着いた、信頼感のある穏やかな声で。ドキュメンタリーのナレーションのように、ゆっくり、はっきりと読んでください。';
 const tag = vertex ? `vertex_${voice}` : gemini ? `gemini_${voice}` : `google_${voice}`;
 
-// [読み上げる文, 英語の字幕, 後ろの無音（秒）]。字幕の日本語は読み上げ用の「エーアイ」を「AI」に戻して使う
-// 第2版の原稿（です・ます）。声は Enceladus（利用者が聞き比べて選んだ）
-const lines = [
-  ['地震、豪雨、台風。', 'Earthquakes. Torrential rain. Typhoons.', 0.5],
-  ['災害のたび、病院には患者が押し寄せます。', 'With every disaster, patients pour into hospitals.', 0.8],
-  ['患者は、人は、物は、いまどこにあるのか。', 'Patients, staff, supplies: where are they right now?', 0.45],
-  ['混乱の中で、院内の状況はつかみきれません。', 'In the chaos, no one has the full picture.', 0.8],
-  ['日々の業務に追われ、訓練も十分にはできません。', 'Busy with daily work, staff rarely get to train.', 1.0],
-  ['病院リンクBCPは、二つの機能で備えます。', 'Hospital Link BCP prepares hospitals in two ways.', 0.5],
-  ['災害時の院内調整ツールと、エーアイを相手にした、平常時の訓練です。', 'A coordination tool for disasters, and everyday drills with AI.', 0.8],
-  ['総合病院から、中規模病院まで。', 'From general hospitals to mid-sized hospitals.', 0.4],
-  ['安全で効率的な災害対応を、支えます。', 'Supporting safe, efficient disaster response.', 0.6],
-];
 
 // 同じ文・声・速さの音声は video/.tts-cache/ に取っておき、作り直すときに API を呼ばない
 const cacheDir = fileURLToPath(new URL('../.tts-cache/', import.meta.url));
@@ -168,8 +155,9 @@ let pos = 0;
 const READ = [['事業継続計画（BCP）', '事業継続計画'], ['病院リンクBCP', 'びょういんリンク、ビーシーピー'], ['BCP', 'ビーシーピー'], ['Claude Code', 'クロードコード'], ['Claude', 'クロード'], ['AI', 'エーアイ'], ['ID', 'アイディー'], ['「0人」', 'ゼロにん'], ['年に何度も', 'ねんに何度も'], ['私は', 'わたしは'], ['私が', 'わたしが']];
 const gapAfter = new Map();
 const spoken = (t) => READ.reduce((x, [a, b]) => x.replaceAll(a, b), t.replaceAll('｜', '')); // 「｜」は字幕の改行の位置（読まない）
-let script = lines.map(([t, en, pause]) => ({ say: t, text: t.replace('エーアイ', 'AI'), en, pause, section: 0 }));
-if (process.env.SCRIPT_MD) {
+if (!process.env.SCRIPT_MD) { console.error('SCRIPT_MD（原稿の md）を指定してください'); process.exit(1); }
+let script;
+{
   const md = readFileSync(process.env.SCRIPT_MD, 'utf8');
   const body = md.slice(0, md.indexOf('## 推せるポイント'));
   script = [];
@@ -346,7 +334,7 @@ for (const { say: t, text, en, pause, section } of script) {
   parts.push(silence); pos += silence.length;
 }
 const outDir = process.env.OUT_DIR;
-const outName = process.env.OUT_NAME ?? 'narration';
+const outName = process.env.OUT_NAME ?? 'narration-3min';
 if (outDir) writeFileSync(`${outDir}/${outName}.json`, JSON.stringify({ voice: vertex ? `${vertex}/${voice}` : gemini ? `${gemini}/${voice}` : `ja-JP-Chirp3-HD-${voice}`, ...(vertex ? { prompt: vertexPrompt } : {}), speakingRate, lines: timings }, null, 2) + '\n');
 const data = Buffer.concat(parts);
 const h = Buffer.alloc(44);

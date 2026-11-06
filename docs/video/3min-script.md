@@ -20,7 +20,7 @@
 |---|---|---|
 | 制作者の私は、災害対応に深く関わる病院で、看護師として働いています。 | I, the creator, work as a nurse at a hospital deeply involved in disaster response. | 院内の見取り図（架空の Claude総合病院(仮) の配置で描く）。顔は出さない |
 | 院内の災害訓練では、部署どうしの情報が伝わらず、｜患者や人、物の状況が、その時その時でつかめないことが課題です。 | In hospital disaster drills, information doesn't flow between departments,｜so no one can see patients, staff and supplies in real time. | 画面の文字（出典つき）：訓練の参加者アンケートでも「連携と情報伝達が不十分」の回答が多い（千代ほか 2012、154人） |
-| 日々の業務の中で、大規模な訓練は、年に何度もできません。 | And amid daily work, large-scale drills can't be held many times a year. | 勤務表が埋まる図（30秒版から） |
+| 日々の業務の中で、大規模な訓練は、年に何度もできません。 | And amid daily work, large-scale drills can't be held many times a year. | 勤務表が埋まる図 |
 
 ## 3. 病院リンクBCPと2つのモード（0:44–0:56）
 
@@ -28,7 +28,7 @@
 |---|---|---|
 | そこで私が作成したのは、病院リンクBCPというツールです。 | So I built a tool called Hospital Link BCP. | 名前（ロゴ）を大きく |
 | 患者の居場所や依頼、人数を、院内のすべての端末で共有します。 | It shares patients' locations, requests and staffing across every terminal in the hospital. | ツール名 |
-| モードは二つ。災害のときの「災害運用モード」と、ふだんの「訓練モード」。｜どちらも、同じ画面です。 | It has two modes: Disaster Mode for real emergencies, and Training Mode for everyday practice.｜Both use the same screens. | 30秒版と同じく画面を左右に分ける。上部の帯「■ 災害運用」と「◇ 訓練」を並べる |
+| モードは二つ。災害のときの「災害運用モード」と、ふだんの「訓練モード」。｜どちらも、同じ画面です。 | It has two modes: Disaster Mode for real emergencies, and Training Mode for everyday practice.｜Both use the same screens. | 画面を左右に分ける。上部の帯「■ 災害運用」と「◇ 訓練」を並べる |
 
 ## 4. 災害運用モード：ひとつの場面で見る（0:56–2:00）
 
@@ -107,7 +107,7 @@
 
 ## メモ
 
-- 長さ：30秒版の Enceladus（速さ 1.08）は1秒に約6.4文字。第3案は約1025字で、読み上げ約160秒＋文の間で約2分57秒の見込み。2026-11-05 に利用者の判断で、経緯の「被災地の病院でも…」（資料の原文が未確認）を削り、「訂正しても…」を字幕だけにした
+- 長さ：Enceladus（速さ 1.08）は1秒に約6.4文字。第3案は約1025字で、読み上げ約160秒＋文の間で約2分57秒の見込み。2026-11-05 に利用者の判断で、経緯の「被災地の病院でも…」（資料の原文が未確認）を削り、「訂正しても…」を字幕だけにした
 - 新しく撮る録画（4の通しの場面）：救急外来でタッグ101を登録→本部で搬送の依頼・了承・要員の割り当て・指示→出発→到着を、救急外来・本部・掲示用画面の3台で同じ時刻に撮る。いまのデモ用データ（`scripts/demo/seed.ts`）は P-001 がタッグ101で、T-001 が到着済みなので、録画の前にデータの組み方を合わせる（`video/capture/` は録画の担当のセッションと相談）
 - ソフトの変更（2026-11-05）：タブの件数が赤の二重枠に、要員の割り当てと指示は本部の端末だけ、場所を選ぶ画面の見出しが「このパソコンを置いた場所を選んでください」。原稿はこれに合わせてある
 - 録画：`video/public/captures/` の a〜f は 2026-11-05 に新しい画面（上部が「■ 災害運用」、搬送は「次にすること」だけを大きく出す形）で撮り直し済み。ソフトの改修がさらに進んだら、録画の前に照合の表を確かめる

@@ -29,7 +29,7 @@ const G = { start: 0.8, register: 6.8, reqStart: 7.9, request: 14.5, accept: 18.
 
 const has = (file: string) => getStaticFiles().some((f) => f.name === `captures/${file}`);
 
-/** 30秒版の場面を、3分版の行に読み替えて使う（map：30秒版の行番号 → 3分版の行番号） */
+/** 場面が決めている行番号を、3分版の行に読み替えて使う（map：場面の行番号 → 3分版の行番号） */
 const Remap = ({ map, children }: { map: Record<number, number>; children: ReactNode }) => (
   <TimingContext.Provider value={{ at: (n) => L(map[n] ?? n), endAt: (n) => E(map[n] ?? n) }}>{children}</TimingContext.Provider>
 );

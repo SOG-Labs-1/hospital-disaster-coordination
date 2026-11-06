@@ -1,4 +1,4 @@
-// 紹介映像（30秒・3分）に差し込む「実際の画面の録画」を撮る。
+// 紹介映像（3分）に差し込む「実際の画面の録画」を撮る。
 //
 //   npx tsx video/capture/record.ts            # a〜k をすべて撮る（i は除く。i は下の CAPTURE_AI を参照）
 //   npx tsx video/capture/record.ts c e        # 一部だけ撮り直す（データは毎回入れ直す）

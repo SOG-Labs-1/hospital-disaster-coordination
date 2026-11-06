@@ -1,6 +1,5 @@
 import { loadFont } from '@remotion/google-fonts/BIZUDGothic';
 import { createContext, useContext } from 'react';
-import narration from '../public/narration.json';
 
 // BIZ UDゴシック（SIL OFL）。アプリ本体と同じ書体
 export const { fontFamily } = loadFont('normal', { weights: ['400', '700'] });
@@ -14,11 +13,6 @@ export const LOGO = { ja: '病院リンクBCP', en: 'Hospital Link BCP' } as con
 export const FPS = 30;
 /** ナレーションを映像の何秒後から始めるか */
 export const AUDIO_DELAY = 0.5;
-export const lines = narration.lines;
-/** ナレーションの n 行目が始まる時刻（映像の秒） */
-export const at = (n: number) => lines[n]!.start + AUDIO_DELAY;
-export const endAt = (n: number) => lines[n]!.end + AUDIO_DELAY;
-export const TOTAL_SECONDS = Math.ceil(endAt(lines.length - 1) + 2.6);
 
 export const c = {
   bg: '#070d18',
@@ -36,10 +30,10 @@ export const c = {
   green: '#3fa34d',
 };
 
-/** 場面が使うナレーションの時刻。30秒版の時刻が既定。3分版は TimingContext で差し替える（場面の行番号を3分版の行に読み替える） */
+/** 場面が使うナレーションの時刻（映像の秒）。3分版が TimingContext で場面ごとに渡す（場面の行番号を3分版の行に読み替える） */
 export interface Timing {
   at: (n: number) => number;
   endAt: (n: number) => number;
 }
-export const TimingContext = createContext<Timing>({ at, endAt });
+export const TimingContext = createContext<Timing>({ at: () => 0, endAt: () => 0 });
 export const useTiming = () => useContext(TimingContext);

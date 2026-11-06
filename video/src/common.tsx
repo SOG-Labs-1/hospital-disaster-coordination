@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { AbsoluteFill, Easing, interpolate, useCurrentFrame, useVideoConfig } from 'remotion';
-import { AUDIO_DELAY, c, fontFamily, lines as lines30 } from './theme';
+import { AUDIO_DELAY, c, fontFamily } from './theme';
 
 const clamp = { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' } as const;
 export const ease = Easing.bezier(0.16, 1, 0.3, 1);
@@ -33,28 +33,6 @@ export const SceneFade = ({ children, durationInFrames, fadeIn = 10, fadeOut = 1
       }}
     >
       {children}
-    </AbsoluteFill>
-  );
-};
-
-/** 画面の上の帯：ツール名と、進んでいく確認時刻 */
-export const Hud = () => {
-  const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
-  const base = 10 * 3600 + 42 * 60 + 5;
-  const t = base + Math.floor((frame / fps) * 7);
-  const hh = String(Math.floor(t / 3600)).padStart(2, '0');
-  const mm = String(Math.floor((t % 3600) / 60)).padStart(2, '0');
-  const ss = String(t % 60).padStart(2, '0');
-  return (
-    <AbsoluteFill style={{ fontFamily, color: c.sub, fontSize: 22, letterSpacing: 2, padding: '40px 64px', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', opacity: interpolate(frame, [0, 20], [0, 1], clamp) }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-        <div style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: c.accent, opacity: 0.5 + 0.5 * Math.abs(Math.sin(frame / 12)) }} />
-        HOSPITAL LINK BCP ／ DEMO
-      </div>
-      <div style={{ fontVariantNumeric: 'tabular-nums' }}>
-        確認時刻 {hh}:{mm}:{ss}
-      </div>
     </AbsoluteFill>
   );
 };
@@ -110,7 +88,7 @@ function splitAt(text: string, marks: string[], minPart: number): string {
 
 /** cinema：背景の箱なし。細い文字を字間を空けて置き、影で読みやすくする（映画の字幕のような雰囲気。3分版） */
 const SHADOW = '0 0 10px rgba(0,0,0,0.85), 0 1px 3px rgba(0,0,0,0.95), 0 0 2px rgba(0,0,0,0.9)';
-export const Subtitles = ({ lines = lines30 as SubLine[], delay = AUDIO_DELAY, variant = 'box', english = true }: { lines?: SubLine[]; delay?: number; variant?: 'box' | 'cinema'; english?: boolean }) => {
+export const Subtitles = ({ lines, delay = AUDIO_DELAY, variant = 'box', english = true }: { lines: SubLine[]; delay?: number; variant?: 'box' | 'cinema'; english?: boolean }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const t = frame / fps;

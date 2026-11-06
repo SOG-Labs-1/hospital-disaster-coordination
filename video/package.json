@@ -5,8 +5,6 @@
   "description": "タシカメの紹介映像（Remotion）。アプリ本体の workspaces には入れない",
   "scripts": {
     "studio": "remotion studio",
-    "render": "remotion render Intro30 out/intro-30s.mp4",
-    "narration": "OUT_DIR=public node scripts/narration.mjs Enceladus 1.08",
     "typecheck": "tsc --noEmit",
     "narration:3min": "OUT_DIR=public OUT_NAME=narration-3min SCRIPT_MD=../docs/video/3min-script.md PARAGRAPH=1 PAUSE_SECTION=0.65 GAP_MAX=0.8 VERTEX_TTS=gemini-3.1-flash-tts-preview VOICE_REF=../docs/video/samples/gemini-tempo/Charon.wav VOICE_TAKES=4 node scripts/narration.mjs Charon 1",
     "render:3min": "remotion render Intro3min out/intro-3min.mp4",
