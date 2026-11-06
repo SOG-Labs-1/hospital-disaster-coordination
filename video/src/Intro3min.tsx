@@ -236,7 +236,8 @@ const ModeChapter = ({ mode }: { mode: 'live' | 'training' }) => {
   const live = mode === 'live';
   const col = live ? c.accent : c.warn;
   // 災害運用モードは少し長く見せる（利用者の指示 2026-11-06。約1.3秒→約2.7秒）
-  const op = interpolate(frame, live ? [0, 8, 80, 92] : [0, 8, 40, 52], [0, 1, 1, 0], clamp);
+  // 訓練モードも、図を見せている間（約3.3秒）は出したままにする（利用者の指示 2026-11-07。約1.5秒→約3.2秒）
+  const op = interpolate(frame, live ? [0, 8, 80, 92] : [0, 8, 84, 96], [0, 1, 1, 0], clamp);
   // 訓練モードは画面を暗くせず、図（本部と部署の図）を見せたまま、図の下に札を出す（利用者の指示 2026-11-06）
   return (
     <AbsoluteFill style={live
