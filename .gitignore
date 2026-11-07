@@ -161,8 +161,9 @@ playwright-report/
 e2e/.tmp/
 dist/
 
-# 映像用の音声の試作（聞き比べ用。コミットしない）
-docs/video/samples/
+# 紹介映像の作業フォルダ（手元にだけ残す。コミットしない）
+video/
+docs/video/
 
 # 審査・デモ用の記録（npm run demo。架空のデータ）
 .demo-data/

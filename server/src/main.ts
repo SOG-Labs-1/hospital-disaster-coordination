@@ -48,7 +48,7 @@ const app = createApp({ hospitals, dataDir, defaultHospitalId, staticDir: join(r
   allowedHosts: (process.env.ALLOWED_HOSTS ?? '').split(',').map((h) => h.trim()).filter(Boolean),
   // PUBLIC_DEMO=1：インターネットに公開する審査用のデモ（架空のデータだけ。下で、しばらく操作がなければ最初に戻す）
   ...(publicDemo ? { publicDemo: { maxCreatedHospitals: 10, writesPerMinute: 120, trainingRunsPerDay: Number(process.env.TRAINING_RUNS_PER_DAY ?? 50) } } : {}),
-  // デモ・録画専用の起動（npm run demo と video/capture/record.ts が DEMO_CAPTURE=1 を渡す）
+  // デモ・録画専用の起動（npm run demo が DEMO_CAPTURE=1 を渡す）
   demoCapture: process.env.DEMO_CAPTURE === '1',
 });
 

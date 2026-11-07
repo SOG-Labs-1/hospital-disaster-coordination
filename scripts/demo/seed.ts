@@ -1,9 +1,9 @@
-// 審査・デモ用（npm run demo）と紹介映像の録画用に、Claude総合病院(仮)の災害運用の記録へ架空のデモ用データを入れる。
+// 審査・デモ用（npm run demo）に、Claude総合病院(仮)の災害運用の記録へ架空のデモ用データを入れる。
 // すべて架空（患者・特徴メモは作り話）。サーバーの HTTP API にコマンドを送るだけで、記録の仕組みは通常と同じ。
 //
 // 使い方（デモ・録画専用に起動したサーバーにだけ書き込む。/api/health が demoCapture を返さないサーバーには書かない）:
 //   DEMO_API=http://localhost:4200 npx tsx scripts/demo/seed.ts
-// scripts/demo/start.ts（npm run demo）と video/capture/record.ts が、サーバーの起動からこのスクリプトの実行までまとめて行う。
+// scripts/demo/start.ts（npm run demo）が、サーバーの起動からこのスクリプトの実行までまとめて行う。
 
 import { versionOf, type Subject } from '@hdc/shared';
 
@@ -47,7 +47,7 @@ async function main() {
   if (!health?.ok) throw new Error(`サーバー ${API} に接続できない`);
   // デモ・録画専用に起動したサーバー（DEMO_CAPTURE=1）にだけ書き込む。記録は追記のみで消せないため、通常の災害運用の記録に混ぜない
   if ((await health.json()).demoCapture !== true) {
-    throw new Error(`${API} はデモ・録画専用のサーバーではないため、デモ用データを入れません（npm run demo か video/capture/record.ts から実行してください）`);
+    throw new Error(`${API} はデモ・録画専用のサーバーではないため、デモ用データを入れません（npm run demo から実行してください）`);
   }
   const state = await getState();
   if (state.registeredCount > 0) throw new Error('すでに記録がある。録画用の保存先（DATA_DIR）を空にしてから実行する');

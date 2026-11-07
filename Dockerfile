@@ -6,7 +6,7 @@ FROM node:22-slim
 WORKDIR /app
 ENV NODE_ENV=development
 
-# 依存（npm workspaces。紹介映像の video/ は入れない）
+# 依存（npm workspaces）
 COPY package.json package-lock.json ./
 COPY shared/package.json shared/
 COPY server/package.json server/
