@@ -24,6 +24,20 @@
 > [!NOTE]
 > **データはすべて架空です。** 実在の患者・職員・病院の情報は使っていません。
 
+## 🧑‍⚖️ インストールなしで試す（公開デモ）
+
+ブラウザのタブを3つ並べると、端末どうしの同期が分かります。
+
+| 手順 | 開く画面 | すること |
+| :---: | --- | --- |
+| 1 | 🧭 [**本部**](https://hospital-link-bcp-demo-926016263642.asia-northeast1.run.app/?hospital=claude&terminal=hq&mode=live) | 入力者の名前を押す |
+| 2 | 🚑 [**救急外来**](https://hospital-link-bcp-demo-926016263642.asia-northeast1.run.app/?hospital=claude&terminal=er&mode=live) | 患者を登録 → 本部にすぐ出る |
+| 3 | 🩺 [**手術室**](https://hospital-link-bcp-demo-926016263642.asia-northeast1.run.app/?hospital=claude&terminal=or&mode=live) | 本部が依頼した搬送を了承 |
+| 4 | 📺 [**掲示用モニター**](https://hospital-link-bcp-demo-926016263642.asia-northeast1.run.app/?hospital=claude&view=board&mode=live) | 操作なしで自動更新 |
+| 🔷 | 🤖 [**訓練モードの本部**](https://hospital-link-bcp-demo-926016263642.asia-northeast1.run.app/?hospital=claude&terminal=hq&mode=training) | 「訓練」タブで「審査用5分シナリオ」を開始。**Claude が部署と搬送要員を演じます** |
+
+公開は**2026年11月13日まで**。訓練は同時に1回だけです（2倍速で約2分半）。
+
 ---
 
 ## 😣 解決したい課題
@@ -38,6 +52,12 @@
 | 🗒️ 患者・人・物の場所と数 | **ホワイトボード**に手書き | 本部に行かないと見えず、いつの情報かも分からない |
 
 多くの患者と職員が入り組む中で、**膨大な情報が錯綜し、正しく伝わらない・記録に残らない。**
+
+**調査でも**
+
+- 📋 災害訓練の参加者154人のアンケートで、「**連携と情報伝達が不十分**」という回答が多かった（千代ほか、日本臨床救急医学会雑誌 15巻3号、2012）
+- 🏫 施設内の災害研修は「**年1回**」の病院が47.9%で最多、「開催なし」も22.8%（日本看護管理学会「病院における防災訓練に関する実態調査報告書」2024）
+- 📄 BCP を策定している病院は**25.0%**（厚生労働省「医療機関におけるBCP策定について」2021）
 
 ## ✅ 病院リンクBCPの強み
 
