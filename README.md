@@ -24,7 +24,7 @@
 > [!NOTE]
 > **データはすべて架空です。** 実在の患者・職員・病院の情報は使っていません。
 
-## 🧑‍⚖️ インストールなしで試す（公開デモ）
+## 🖥️ インストールなしで試す（公開デモ）
 
 ブラウザのタブを3つ並べると、端末どうしの同期が分かります。
 
@@ -34,9 +34,12 @@
 | 2 | 🚑 [**救急外来**](https://hospital-link-bcp-demo-926016263642.asia-northeast1.run.app/?hospital=claude&terminal=er&mode=live) | 患者を登録 → 本部にすぐ出る |
 | 3 | 🩺 [**手術室**](https://hospital-link-bcp-demo-926016263642.asia-northeast1.run.app/?hospital=claude&terminal=or&mode=live) | 本部が依頼した搬送を了承 |
 | 4 | 📺 [**掲示用モニター**](https://hospital-link-bcp-demo-926016263642.asia-northeast1.run.app/?hospital=claude&view=board&mode=live) | 操作なしで自動更新 |
-| 🔷 | 🤖 [**訓練モードの本部**](https://hospital-link-bcp-demo-926016263642.asia-northeast1.run.app/?hospital=claude&terminal=hq&mode=training) | 「訓練」タブで「審査用5分シナリオ」を開始。**Claude が部署と搬送要員を演じます** |
+| 🔷 | 🤖 [**訓練モードの本部**](https://hospital-link-bcp-demo-926016263642.asia-northeast1.run.app/?hospital=claude&terminal=hq&mode=training) | 「訓練」タブで「審査用5分シナリオ」を開始。部署と搬送要員は、**決まった返事**（mock）が演じます |
 
-公開は**2026年11月13日まで**。訓練は同時に1回だけです（2倍速で約2分半）。
+> [!NOTE]
+> 公開デモは **Claude API を使わない形（mock）** で動かしています。Claude が演じた訓練は、[本物の Claude の返事の記録](docs/training-with-claude.md)で確かめられます。手元では `AI_PROVIDER=anthropic` で試せます（下の「Claude API で訓練する」）。
+
+訓練は同時に1回だけです（2倍速で約2分半）。
 
 ---
 
@@ -123,7 +126,7 @@
 **動かす場所**
 
 - 🏥 **実際の病院**：院内のネットワークの中で動かします。院内の1台のPC（またはサーバー）で起動し、各部署のPCはブラウザで開くだけ。院外の回線が切れても使えます。
-- 🧑‍⚖️ **審査用**：インストールなしで触れる[公開デモ](https://hospital-link-bcp-demo-926016263642.asia-northeast1.run.app)を用意しています（Google Cloud Run・**2026年11月13日まで**）。
+- 🖥️ **お試し用**：インストールなしで触れる[公開デモ](https://hospital-link-bcp-demo-926016263642.asia-northeast1.run.app)を用意しています（Google Cloud Run・Claude API は使わない形）。
 
 ## 🚀 セットアップ
 
